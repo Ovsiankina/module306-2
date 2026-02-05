@@ -45,7 +45,7 @@ const UserOrders = async () => {
 };
 
 const Orders = async () => {
-  const orders: OrdersDocument | undefined | null = await getUserOrders();
+  const orders: any = await getUserOrders();
 
   if (orders === undefined || orders === null) {
     return (

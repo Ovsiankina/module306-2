@@ -1,5 +1,4 @@
-import { connectDB } from "@/libs/mongodb";
-import User from "@/models/User";
+import { prisma } from "@/libs/db";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -19,10 +18,9 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        await connectDB();
-        const userFound = await User.findOne({
-          email: credentials?.email,
-        }).select("+password");
+        const userFound = await prisma.user.findUnique({
+          where: { email: credentials?.email },
+        });
 
         if (!userFound) throw new Error("Invalid Email");
 
@@ -32,7 +30,13 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!passwordMatch) throw new Error("Invalid Password");
-        return userFound;
+        return {
+          id: userFound.id,
+          email: userFound.email,
+          name: userFound.name,
+          phone: userFound.phone,
+          isAdmin: userFound.isAdmin,
+        };
       },
     }),
   ],

@@ -2,7 +2,6 @@
 
 import React, { useMemo, useCallback } from "react";
 import { Wishlists, delItem, addItem } from "@/app/(carts)/wishlist/action";
-import { Schema } from "mongoose";
 import { Session } from "next-auth";
 import { toast } from "sonner";
 
@@ -17,7 +16,7 @@ const WishlistButton = ({
   productId,
   wishlistString,
 }: WishlistButtonProps) => {
-  const id: Schema.Types.ObjectId = useMemo(
+  const id: string = useMemo(
     () => JSON.parse(productId),
     [productId]
   );

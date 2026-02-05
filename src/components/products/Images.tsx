@@ -26,7 +26,7 @@ export const Images = ({
   priority,
   sizes,
 }: {
-  image: [string];
+  image: string[];
   name: string;
   width: number;
   height: number;

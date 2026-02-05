@@ -20,8 +20,8 @@ const capitalizeFirstLetter = (string: string) => {
 };
 
 export async function generateMetadata({ params }: Props) {
-  const product: ProductDocument = await getProduct(params.id);
-  const capitalizedName = capitalizeFirstLetter(product.name);
+  const product: any = await getProduct(params.id);
+  const capitalizedName = capitalizeFirstLetter(product?.name || "");
 
   return {
     title: `${capitalizedName} | Ecommerce Template`,
@@ -52,7 +52,7 @@ const ProductPage = async ({ params }: Props) => (
 
 const AllProducts = async ({ id }: { id: string }) => {
   const session: Session | null = await getServerSession(authOptions);
-  const product: ProductDocument = await getProduct(id);
+  const product: any = await getProduct(id);
   const randomProducts = await getRandomProducts(id);
   const productJSON = JSON.stringify(product);
 

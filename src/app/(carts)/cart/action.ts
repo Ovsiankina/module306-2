@@ -1,35 +1,67 @@
 "use server";
 
-import { kv } from "@vercel/kv";
 import { revalidatePath } from "next/cache";
-import { Schema } from "mongoose";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import { Session } from "next-auth";
-import { Product } from "@/models/Products";
+import { prisma } from "@/libs/db";
 import { EnrichedProducts, VariantsDocument } from "@/types/types";
-import { connectDB } from "@/libs/mongodb";
+
+export type CartItem = {
+  productId: string;
+  size: string;
+  variantId: string;
+  quantity: number;
+  price: number;
+};
 
 export type Cart = {
   userId: string;
-  items: Array<{
-    productId: Schema.Types.ObjectId;
-    size: string;
-    variantId: string;
-    quantity: number;
-    price: number;
-  }>;
+  items: CartItem[];
 };
 
-export async function getItems(userId: string) {
-  connectDB();
+// Helper function to transform Prisma product
+function transformProduct(product: any) {
+  return {
+    ...product,
+    _id: product.id,
+    sizes: JSON.parse(product.sizes),
+    image: JSON.parse(product.image),
+    variants: product.variants.map((v: any) => ({
+      ...v,
+      images: JSON.parse(v.images),
+    })),
+  };
+}
 
+// Helper to get cart from database
+async function getCartFromDb(userId: string): Promise<Cart | null> {
+  const cartRecord = await prisma.cart.findUnique({
+    where: { userId },
+  });
+  if (!cartRecord) return null;
+  return {
+    userId,
+    items: JSON.parse(cartRecord.items),
+  };
+}
+
+// Helper to save cart to database
+async function saveCartToDb(userId: string, items: CartItem[]): Promise<void> {
+  await prisma.cart.upsert({
+    where: { userId },
+    update: { items: JSON.stringify(items) },
+    create: { userId, items: JSON.stringify(items) },
+  });
+}
+
+export async function getItems(userId: string) {
   if (!userId) {
     console.error(`User Id not found.`);
     return undefined;
   }
 
-  const cart: Cart | null = await kv.get(`cart-${userId}`);
+  const cart = await getCartFromDb(userId);
 
   if (cart === null) {
     return undefined;
@@ -39,7 +71,10 @@ export async function getItems(userId: string) {
   for (const cartItem of cart.items) {
     try {
       if (cartItem.productId && cartItem.variantId) {
-        const matchingProduct = await Product.findById(cartItem.productId);
+        const matchingProduct = await prisma.product.findUnique({
+          where: { id: cartItem.productId },
+          include: { variants: true },
+        });
 
         if (!matchingProduct) {
           console.error(
@@ -47,18 +82,19 @@ export async function getItems(userId: string) {
           );
           continue;
         } else {
-          const matchingVariant = matchingProduct.variants.find(
+          const transformed = transformProduct(matchingProduct);
+          const matchingVariant = transformed.variants.find(
             (variant: VariantsDocument) =>
               variant.priceId === cartItem.variantId,
           );
           const updatedCartItem: EnrichedProducts = {
             ...cartItem,
-            color: matchingVariant.color,
+            color: matchingVariant?.color || "",
             category: matchingProduct.category,
-            image: [matchingVariant.images[0]],
+            image: matchingVariant ? [matchingVariant.images[0]] : [],
             name: matchingProduct.name,
             purchased: false,
-            _id: matchingProduct._id.toString(),
+            _id: matchingProduct.id,
           };
 
           updatedCart.push(updatedCartItem);
@@ -75,7 +111,9 @@ export async function getItems(userId: string) {
 }
 
 export async function getTotalItems(session: Session | null) {
-  const cart: Cart | null = await kv.get(`cart-${session?.user._id}`);
+  if (!session?.user._id) return 0;
+
+  const cart = await getCartFromDb(session.user._id);
   const total: number =
     cart?.items.reduce((sum, item) => sum + item.quantity, 0) || 0;
 
@@ -84,7 +122,7 @@ export async function getTotalItems(session: Session | null) {
 
 export async function addItem(
   category: string,
-  productId: Schema.Types.ObjectId,
+  productId: string,
   size: string,
   variantId: string,
   price: number,
@@ -97,27 +135,24 @@ export async function addItem(
   }
 
   const userId = session.user._id;
-  let cart: Cart | null = await kv.get(`cart-${userId}`);
+  const cart = await getCartFromDb(userId);
 
-  let myCart = {} as Cart;
+  let items: CartItem[] = [];
 
   if (!cart || !cart.items) {
-    myCart = {
-      userId: userId,
-      items: [
-        {
-          productId: productId,
-          size: size,
-          variantId: variantId,
-          quantity: 1,
-          price: price,
-        },
-      ],
-    };
+    items = [
+      {
+        productId: productId,
+        size: size,
+        variantId: variantId,
+        quantity: 1,
+        price: price,
+      },
+    ];
   } else {
     let itemFound = false;
 
-    myCart.items = cart.items.map((item) => {
+    items = cart.items.map((item) => {
       if (
         item.productId === productId &&
         item.variantId === variantId &&
@@ -127,10 +162,10 @@ export async function addItem(
         item.quantity += 1;
       }
       return item;
-    }) as Cart["items"];
+    });
 
     if (!itemFound) {
-      myCart.items.push({
+      items.push({
         productId: productId,
         size: size,
         variantId: variantId,
@@ -140,69 +175,69 @@ export async function addItem(
     }
   }
 
-  await kv.set(`cart-${userId}`, myCart);
+  await saveCartToDb(userId, items);
   revalidatePath(`/${category}/${productId}`);
 }
 
 export async function delItem(
-  productId: Schema.Types.ObjectId,
+  productId: string,
   size: string,
   variantId: string,
 ) {
   const session: Session | null = await getServerSession(authOptions);
   const userId = session?.user._id;
-  let cart: Cart | null = await kv.get(`cart-${userId}`);
+
+  if (!userId) return;
+
+  const cart = await getCartFromDb(userId);
 
   if (cart && cart.items) {
-    const updatedCart = {
-      userId: userId,
-      items: cart.items.filter(
-        (item) =>
-          !(
-            item.productId === productId &&
-            item.variantId === variantId &&
-            item.size === size
-          ),
-      ),
-    };
+    const updatedItems = cart.items.filter(
+      (item) =>
+        !(
+          item.productId === productId &&
+          item.variantId === variantId &&
+          item.size === size
+        ),
+    );
 
-    await kv.set(`cart-${userId}`, updatedCart);
+    await saveCartToDb(userId, updatedItems);
     revalidatePath("/cart");
   }
 }
 
 export async function delOneItem(
-  productId: Schema.Types.ObjectId,
+  productId: string,
   size: string,
   variantId: string,
 ) {
   try {
     const session: Session | null = await getServerSession(authOptions);
     const userId = session?.user._id;
-    let cart: Cart | null = await kv.get(`cart-${userId}`);
+
+    if (!userId) return;
+
+    const cart = await getCartFromDb(userId);
 
     if (cart && cart.items) {
-      const updatedCart = {
-        userId: userId,
-        items: cart.items
-          .map((item) => {
-            if (
-              item.productId === productId &&
-              item.variantId === variantId &&
-              item.size === size
-            ) {
-              if (item.quantity > 1) {
-                item.quantity -= 1;
-              } else {
-                return null;
-              }
+      const updatedItems = cart.items
+        .map((item) => {
+          if (
+            item.productId === productId &&
+            item.variantId === variantId &&
+            item.size === size
+          ) {
+            if (item.quantity > 1) {
+              item.quantity -= 1;
+            } else {
+              return null;
             }
-            return item;
-          })
-          .filter(Boolean) as Cart["items"],
-      };
+          }
+          return item;
+        })
+        .filter(Boolean) as CartItem[];
 
-      await kv.set(`cart-${userId}`, updatedCart);
+      await saveCartToDb(userId, updatedItems);
       revalidatePath("/cart");
     }
   } catch (error) {
@@ -212,11 +247,10 @@ export async function delOneItem(
 
 export const emptyCart = async (userId: string) => {
   try {
-    let cart: Cart | null = await kv.get(`cart-${userId}`);
+    const cart = await getCartFromDb(userId);
 
     if (cart && cart.items) {
-      cart.items = [];
-      await kv.set(`cart-${userId}`, cart);
+      await saveCartToDb(userId, []);
       revalidatePath("/cart");
       console.log("Cart emptied successfully.");
     } else {
