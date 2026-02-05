@@ -3,20 +3,54 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/libs/auth";
 import { Session } from "next-auth";
-import mongoose, { Schema } from "mongoose";
-import { kv } from "@vercel/kv";
 import { revalidatePath } from "next/cache";
-import { Product } from "@/models/Products";
-import { connectDB } from "@/libs/mongodb";
+import { prisma } from "@/libs/db";
+
+export type WishlistItem = {
+  productId: string;
+};
 
 export type Wishlists = {
   userId: string;
-  items: Array<{
-    productId: Schema.Types.ObjectId;
-  }>;
+  items: WishlistItem[];
 };
 
-export async function addItem(productId: Schema.Types.ObjectId) {
+// Helper function to transform Prisma product
+function transformProduct(product: any) {
+  return {
+    ...product,
+    _id: product.id,
+    sizes: JSON.parse(product.sizes),
+    image: JSON.parse(product.image),
+    variants: product.variants.map((v: any) => ({
+      ...v,
+      images: JSON.parse(v.images),
+    })),
+  };
+}
+
+// Helper to get wishlist from database
+async function getWishlistFromDb(userId: string): Promise<Wishlists | null> {
+  const wishlistRecord = await prisma.wishlist.findUnique({
+    where: { userId },
+  });
+  if (!wishlistRecord) return null;
+  return {
+    userId,
+    items: JSON.parse(wishlistRecord.items),
+  };
+}
+
+// Helper to save wishlist to database
+async function saveWishlistToDb(userId: string, items: WishlistItem[]): Promise<void> {
+  await prisma.wishlist.upsert({
+    where: { userId },
+    update: { items: JSON.stringify(items) },
+    create: { userId, items: JSON.stringify(items) },
+  });
+}
+
+export async function addItem(productId: string) {
   const session: Session | null = await getServerSession(authOptions);
 
   if (!session?.user._id) {
@@ -25,49 +59,38 @@ export async function addItem(productId: Schema.Types.ObjectId) {
   }
 
   const userId = session.user._id;
-  let wishlists: Wishlists | null = await kv.get(`wishlist-${userId}`);
+  const wishlists = await getWishlistFromDb(userId);
 
-  let myWishlists = {} as Wishlists;
+  let items: WishlistItem[] = [];
 
   if (!wishlists || !wishlists.items) {
-    myWishlists = {
-      userId: userId,
-      items: [
-        {
-          productId: productId,
-        },
-      ],
-    };
+    items = [{ productId }];
   } else {
     let itemFound = false;
 
-    myWishlists.items = wishlists.items.map((item) => {
+    items = wishlists.items.map((item) => {
       if (item.productId === productId) {
         itemFound = true;
       }
       return item;
-    }) as Wishlists["items"];
+    });
 
     if (!itemFound) {
-      myWishlists.items.push({
-        productId: productId,
-      });
+      items.push({ productId });
     }
   }
 
-  await kv.set(`wishlist-${userId}`, myWishlists);
+  await saveWishlistToDb(userId, items);
   revalidatePath("/wishlist");
 }
 
 export async function getItems(userId: string) {
-  connectDB();
-
   if (!userId) {
     console.error(`User Id not found.`);
     return null;
   }
 
-  const wishlist: Wishlists | null = await kv.get(`wishlist-${userId}`);
+  const wishlist = await getWishlistFromDb(userId);
 
   if (wishlist === null) {
     console.error("wishlist not found.");
@@ -78,7 +101,10 @@ export async function getItems(userId: string) {
   for (const wishlistItem of wishlist.items) {
     try {
       if (wishlistItem.productId) {
-        const matchingProduct = await Product.findById(wishlistItem.productId);
+        const matchingProduct = await prisma.product.findUnique({
+          where: { id: wishlistItem.productId },
+          include: { variants: true },
+        });
 
         if (!matchingProduct) {
           console.error(
@@ -86,7 +112,7 @@ export async function getItems(userId: string) {
           );
           continue;
         } else {
-          updatedWishlist.push(matchingProduct);
+          updatedWishlist.push(transformProduct(matchingProduct));
         }
       }
     } catch (error) {
@@ -101,9 +127,10 @@ export async function getItems(userId: string) {
 
 export async function getTotalWishlist() {
   const session: Session | null = await getServerSession(authOptions);
-  const wishlists: Wishlists | null = await kv.get(
-    `wishlist-${session?.user._id}`,
-  );
+
+  if (!session?.user._id) return undefined;
+
+  const wishlists = await getWishlistFromDb(session.user._id);
 
   if (wishlists === null) {
     return undefined;
@@ -112,7 +139,7 @@ export async function getTotalWishlist() {
   return wishlists;
 }
 
-export async function delItem(productId: Schema.Types.ObjectId) {
+export async function delItem(productId: string) {
   const session: Session | null = await getServerSession(authOptions);
   const userId = session?.user._id;
 
@@ -121,15 +148,14 @@ export async function delItem(productId: Schema.Types.ObjectId) {
     return;
   }
 
-  let wishlists: Wishlists | null = await kv.get(`wishlist-${userId}`);
+  const wishlists = await getWishlistFromDb(userId);
 
   if (wishlists && wishlists.items) {
-    const updatedWishlist = {
-      userId: userId,
-      items: wishlists.items.filter((item) => !(item.productId === productId)),
-    };
+    const updatedItems = wishlists.items.filter(
+      (item) => item.productId !== productId
+    );
 
-    await kv.set(`wishlist-${userId}`, updatedWishlist);
+    await saveWishlistToDb(userId, updatedItems);
     revalidatePath("/wishlist");
   }
 }

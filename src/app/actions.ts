@@ -1,15 +1,28 @@
 "use server";
 
-import { connectDB } from "@/libs/mongodb";
-import { Product } from "@/models/Products";
-import { EnrichedProducts } from "@/types/types";
+import { prisma } from "@/libs/db";
+import { EnrichedProducts, VariantsDocument } from "@/types/types";
+
+// Helper function to transform Prisma product to EnrichedProducts format
+function transformProduct(product: any): EnrichedProducts {
+  return {
+    ...product,
+    _id: product.id,
+    sizes: JSON.parse(product.sizes),
+    image: JSON.parse(product.image),
+    variants: product.variants.map((v: any) => ({
+      ...v,
+      images: JSON.parse(v.images),
+    })),
+  };
+}
 
 export const getAllProducts = async () => {
   try {
-    await connectDB();
-
-    const products: EnrichedProducts[] = await Product.find();
-    return products;
+    const products = await prisma.product.findMany({
+      include: { variants: true },
+    });
+    return products.map(transformProduct);
   } catch (error) {
     console.error("Error getting products:", error);
     throw new Error("Failed to fetch category products");
@@ -18,10 +31,11 @@ export const getAllProducts = async () => {
 
 export const getCategoryProducts = async (category: string) => {
   try {
-    await connectDB();
-
-    const products: EnrichedProducts[] = await Product.find({ category });
-    return products;
+    const products = await prisma.product.findMany({
+      where: { category },
+      include: { variants: true },
+    });
+    return products.map(transformProduct);
   } catch (error) {
     console.error("Error getting products:", error);
     throw new Error("Failed to fetch category products");
@@ -39,12 +53,13 @@ export const getRandomProducts = async (productId: string) => {
   };
 
   try {
-    await connectDB();
-
-    const allProducts: EnrichedProducts[] = await Product.find();
-    const shuffledProducts = shuffleArray(allProducts);
+    const allProducts = await prisma.product.findMany({
+      include: { variants: true },
+    });
+    const transformedProducts = allProducts.map(transformProduct);
+    const shuffledProducts = shuffleArray(transformedProducts);
     const randomProducts = shuffledProducts
-      .filter((product) => product._id.toString() !== productId)
+      .filter((product) => product._id !== productId)
       .slice(0, 6);
     return randomProducts;
   } catch (error) {
@@ -55,10 +70,12 @@ export const getRandomProducts = async (productId: string) => {
 
 export const getProduct = async (_id: string) => {
   try {
-    await connectDB();
-
-    const product = await Product.findOne({ _id });
-    return product;
+    const product = await prisma.product.findUnique({
+      where: { id: _id },
+      include: { variants: true },
+    });
+    if (!product) return null;
+    return transformProduct(product);
   } catch (error) {
     console.error("Error getting product:", error);
   }
