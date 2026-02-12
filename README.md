@@ -1,229 +1,250 @@
-# Next.js E-commerce Template
+# Centre Commercial - E-commerce Template
 
-A modern, fully-featured e-commerce template built with Next.js 16, React 19, Supabase (PostgreSQL) with Drizzle ORM, Better Auth for authentication, and Stripe for payment processing.
+A modern e-commerce template built with Next.js 14, Prisma with SQLite, and Cloudinary for image management.
 
-## 🚀 Features
-- Responsive Modern Design with Tailwind CSS
-- User Authentication with Better Auth (Email/Password & Social Login)
-- Product Catalog with Categories and Variants
-- Shopping Cart with Real-time Updates (React Query)
-- Product Search with Fuse.js
-- Wishlist Functionality
-- Secure Payment Processing with Stripe
-- Order History and Tracking
-- Admin Dashboard for Product Management
-- Email Notifications with Nodemailer
-- SEO Optimized
-- Type-safe with TypeScript and Zod validation
+## Quick Start
 
-## 🛠 Tech Stack
-- **Framework:** Next.js 16 with App Router
-- **React:** React 19
-- **Database:** Supabase (PostgreSQL)
-- **ORM:** Drizzle ORM
-- **Authentication:** Better Auth
-- **Payments:** Stripe
-- **State Management:** React Query (TanStack Query)
-- **Styling:** Tailwind CSS
-- **UI Components:** Radix UI
-- **Validation:** Zod
-- **Search:** Fuse.js
-
-## 🛠 Installation & Set Up
-
-1. Install dependencies
 ```bash
+# Install dependencies
 npm install
-```
 
-2. Set up environment variables (see below)
+# Initialize the database and seed sample data
+npm run seed
 
-3. Run database migrations
-```bash
-# First, run migrations to create required PostgreSQL functions (like app.current_user_id())
-npm run db:migrate
-
-# Then, push the schema to the database
-npm run db:push
-```
-
-4. Run the development server
-```bash
+# Start the development server
 npm run dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## ⚙️ Environment Variables
+## Features
 
-Rename `.env.example` to `.env.local` in the root directory and configure the following variables:
+- Responsive Modern Design
+- User Authentication (Google OAuth + Credentials)
+- Product Catalog with Categories
+- Shopping Cart & Wishlist
+- Product Search
+- User Profile Management
+- Image Management with Cloudinary
+- Order History
+- SQLite Database (no external DB required)
 
-### Required Environment Variables:
-```env
-# App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+## Database Setup
 
-# Database Configuration (Supabase PostgreSQL)
-DATABASE_URL=your_supabase_database_url
+This project uses **SQLite** with **Prisma ORM** for simplicity. No external database is required.
 
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+### Initialize Database
 
-# Better Auth Configuration
-BETTER_AUTH_SECRET=your_better_auth_secret
+```bash
+# Push schema to database (creates tables)
+npx prisma db push
 
-# Stripe Configuration
-STRIPE_SECRET_KEY=your_stripe_secret_key
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-
-# Email Configuration (Nodemailer)
-EMAIL_SERVER_HOST=your_email_host
-EMAIL_SERVER_PORT=your_email_port
-EMAIL_SERVER_USER=your_email_user
-EMAIL_SERVER_PASSWORD=your_email_password
-EMAIL_FROM=your_email_from
+# Generate Prisma client
+npx prisma generate
 ```
 
-### Setting Up Services:
+### Seed Sample Data
 
-#### Supabase Database
-- Create a free Supabase project at [supabase.com](https://supabase.com)
-- Get your database URL from Project Settings > Database
-- Used for:
-  - Product catalog
-  - User information
-  - Orders and order products
-  - Shopping cart data
-  - Wishlist
+```bash
+npm run seed
+```
 
-#### Better Auth
-- Better Auth provides secure authentication out of the box
-- Supports email/password and social login providers
-- Generate a secret key:
+This creates 8 sample products with variants.
+
+### View/Edit Database
+
+```bash
+npx prisma studio
+```
+
+Opens a visual database editor at http://localhost:5555
+
+## Adding Products
+
+### Option 1: Using Prisma Studio
+
+1. Run `npx prisma studio`
+2. Click on the `Product` table
+3. Click "Add record"
+4. Fill in the fields:
+   - `name`: Product name
+   - `description`: Product description
+   - `price`: Price as a number (e.g., 29.99)
+   - `category`: Category slug (e.g., "t-shirts", "pants", "shoes")
+   - `sizes`: JSON array as string (e.g., `["S", "M", "L", "XL"]`)
+   - `image`: JSON array of image paths (e.g., `["products/tshirt-1.jpg"]`)
+5. Save and add variants in the `ProductVariant` table
+
+### Option 2: Using the Seed Script
+
+Edit `prisma/seed.ts` and add new products to the `products` array:
+
+```typescript
+{
+  name: "Your Product Name",
+  description: "Product description here",
+  price: 49.99,
+  category: "category-slug",
+  sizes: JSON.stringify(["S", "M", "L"]),
+  image: JSON.stringify(["path/to/image.jpg"]),
+  variants: [
+    {
+      priceId: "unique_price_id",
+      color: "blue",
+      images: JSON.stringify(["path/to/blue-variant.jpg"])
+    },
+  ],
+}
+```
+
+Then run:
+```bash
+npm run seed
+```
+
+### Option 3: Programmatically
+
+```typescript
+import { prisma } from "@/libs/db";
+
+const product = await prisma.product.create({
+  data: {
+    name: "New Product",
+    description: "Description",
+    price: 59.99,
+    category: "category",
+    sizes: JSON.stringify(["S", "M", "L"]),
+    image: JSON.stringify(["image-path.jpg"]),
+  },
+});
+
+await prisma.productVariant.create({
+  data: {
+    productId: product.id,
+    priceId: "variant_price_id",
+    color: "red",
+    images: JSON.stringify(["red-variant.jpg"]),
+  },
+});
+```
+
+## Adding Images
+
+This project uses **Cloudinary** for image hosting and optimization.
+
+### Setup Cloudinary
+
+1. Create a free account at [cloudinary.com](https://cloudinary.com)
+2. Get your credentials from the Dashboard
+3. Add to your `.env` file:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+```
+
+### Upload Images
+
+1. Go to your Cloudinary Media Library
+2. Upload your product images
+3. Copy the public ID (path) of the image
+4. Use this path in your product data
+
+**Example:**
+- Upload `tshirt-blue.jpg` to Cloudinary
+- Cloudinary gives you public ID: `products/tshirt-blue`
+- Use `"products/tshirt-blue"` in your product's image field
+
+### Image Path Format
+
+Images are stored as paths without the full URL. The app constructs the full Cloudinary URL automatically.
+
+```typescript
+// In your product data:
+image: JSON.stringify(["products/my-product-image"])
+
+// The app will load from:
+// https://res.cloudinary.com/YOUR_CLOUD_NAME/image/upload/products/my-product-image
+```
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# Database (SQLite - default path)
+DATABASE_URL="file:./prisma/dev.db"
+
+# Authentication
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+NEXTAUTH_SECRET=your_random_secret
+NEXTAUTH_URL=http://localhost:3000
+
+# Image Storage (Cloudinary)
+CLOUDINARY_CLOUD_NAME=your_cloudinary_name
+CLOUDINARY_API_KEY=your_cloudinary_key
+CLOUDINARY_API_SECRET=your_cloudinary_secret
+
+# Stripe (for payments - optional)
+STRIPE_SECRET_KEY=your_stripe_secret
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+```
+
+### Generate NextAuth Secret
+
 ```bash
 openssl rand -base64 32
 ```
 
-#### Stripe Configuration
-- Create a Stripe account at [stripe.com](https://stripe.com)
-- Get your API keys from the Dashboard > Developers > API keys
-- Set up webhooks for order processing
+## Project Structure
 
-#### Email Configuration
-- Configure SMTP settings for email notifications
-- Used for order confirmations and user notifications
-
-## 📁 Project Structure
 ```
 src/
-├── app/              
-│   ├── (auth)/        # Authentication pages (login, register)
-│   ├── (store)/       # Store pages (categories, products, search)
-│   ├── (user)/        # User pages (cart, orders, wishlist)
-│   ├── admin/         # Admin dashboard (product management)
-│   ├── api/           # API routes
-│   └── layout.tsx     # Root layout
-├── components/    
-│   ├── admin/         # Admin components
-│   ├── cart/          # Shopping cart components
-│   ├── layout/        # Layout components (navbar, footer)
-│   ├── orders/        # Order components
-│   ├── product/       # Single product components
-│   ├── products/      # Product grid components
-│   ├── ui/            # Reusable UI components (shadcn/ui)
-│   └── wishlist/      # Wishlist components
-├── hooks/             # Custom React hooks
-│   ├── auth/          # Authentication hooks
-│   ├── cart/          # Cart hooks (queries, mutations)
-│   ├── product/       # Product hooks
-│   └── wishlist/      # Wishlist hooks
-├── lib/              
-│   ├── auth/          # Authentication utilities
-│   ├── db/            # Database configuration
-│   │   ├── drizzle/   # Drizzle ORM setup
-│   │   │   ├── schema/      # Database schemas
-│   │   │   └── repositories/ # Data access layer
-│   │   └── supabase/  # Supabase client
-│   ├── email/         # Email utilities
-│   └── stripe/        # Stripe utilities
-├── services/          # Business logic services
-├── schemas/           # Zod validation schemas
-├── types/             # TypeScript types
-├── utils/             # Helper functions
-└── styles/            # CSS and styling
+├── app/                    # Next.js App Router
+│   ├── api/               # API endpoints
+│   ├── [category]/        # Product category pages
+│   ├── (carts)/           # Cart & Wishlist pages
+│   ├── (user)/            # User pages (orders, profile)
+│   └── actions.ts         # Server actions
+├── components/            # React components
+│   ├── products/          # Product components
+│   ├── cart/              # Cart components
+│   ├── account/           # Auth components
+│   └── ui/                # UI components
+├── libs/                  # Utilities
+│   ├── db.ts              # Prisma client
+│   └── auth.ts            # NextAuth config
+└── types/                 # TypeScript types
+
+prisma/
+├── schema.prisma          # Database schema
+├── seed.ts                # Seed script
+└── dev.db                 # SQLite database file
 ```
 
-## 📜 Available Scripts
+## Scripts
 
-```bash
-# Development
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run start` | Start production server |
+| `npm run seed` | Seed database with sample data |
+| `npm run lint` | Run ESLint |
 
-# Database (Drizzle)
-npm run db:generate  # Generate migrations from schema changes
-npm run db:migrate   # Run migrations (required first for RLS functions)
-npm run db:push      # Push schema to database (run after db:migrate)
-npm run db:studio    # Open Drizzle Studio
-npm run db:pull      # Introspect database
-```
+## Deployment
 
-## 🛍️ E-commerce Features
+### Vercel (Recommended)
 
-### For Customers
-- Browse product catalog by categories
-- Search products with fuzzy search
-- View product variants (colors, sizes)
-- Add items to cart with variant selection
-- Wishlist functionality
-- Secure checkout with Stripe
-- Order tracking and history
-- User profile management
+1. Push your code to GitHub
+2. Import project in Vercel
+3. Add environment variables
+4. Deploy
 
-### For Administrators
-- Create and edit products with variants
-- Manage product images
-- Product categorization
-- Order management
+**Note:** For production, consider using a hosted database like PostgreSQL instead of SQLite.
 
-## 🔒 Security Features
-- Secure authentication with Better Auth
-- Protected API routes
-- Secure payment processing with Stripe
-- Type-safe database queries with Drizzle
-- Input validation with Zod
-- XSS protection
+## License
 
-## 🚀 Deployment
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
-
-Deployment Checklist:
-1. Configure all environment variables in Vercel
-2. Ensure Supabase database is properly configured
-3. Set up Stripe webhooks for production URL
-4. Configure email service for production
-5. Update `NEXT_PUBLIC_APP_URL` to production domain
-
-## 🤝 Contributing
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add: AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📚 Learn More
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Drizzle ORM Documentation](https://orm.drizzle.team/docs/overview)
-- [Better Auth Documentation](https://www.better-auth.com/docs)
-- [Stripe Documentation](https://stripe.com/docs)
-- [React Query Documentation](https://tanstack.com/query/latest/docs)
-
-## 📝 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License

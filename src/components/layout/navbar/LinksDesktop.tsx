@@ -11,6 +11,7 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 
 export function LinksDesktop() {
@@ -18,40 +19,51 @@ export function LinksDesktop() {
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Collections</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Boutiques</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid gap-3 p-4 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
                   <Link
-                    className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none from-muted/50 to-muted focus:shadow-md bg-center bg-[url('/main-image.webp')]"
-                    href="/"
+                    className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none bg-gradient-to-br from-orange-500 to-red-600 focus:shadow-md"
+                    href="/#boutiques"
                   >
-                    <div className="mt-4 mb-1 text-sm font-medium">
-                      VIEW ALL
+                    <div className="mt-4 mb-1 text-sm font-medium text-white">
+                      160 BOUTIQUES
                     </div>
-                    <p className="text-sm leading-tight text-muted-foreground">
-                      Discover wardrobe staples for every occasion.
+                    <p className="text-sm leading-tight text-orange-100">
+                      250 marques prestigieuses sur 4 niveaux. Réductions 30-70%.
                     </p>
                   </Link>
                 </NavigationMenuLink>
               </li>
-              <ListItem href="/t-shirts" title="T-SHIRTS">
-                Our men&apos;s T-shirts offer timeless style in a range of
-                designs, colors, and textures. From classic to contemporary,
-                find the perfect tee for any occasion.
+              <ListItem href="/#boutiques" title="High Fashion">
+                Prada, Gucci, Versace, Burberry, Armani et plus encore.
               </ListItem>
-              <ListItem href="/pants" title="TROUSERS | PANTS">
-                Explore essential men&apos;s pants for all occasions. From
-                classic chinos to modern joggers, find your perfect fit in a
-                variety of styles and colors.
+              <ListItem href="/#boutiques" title="Sportswear">
+                Nike, Puma, The North Face, Salomon, New Balance.
               </ListItem>
-              <ListItem href="/sweatshirts" title="SWEATERS | JERSEYS">
-                Much like the T-shirt, men&apos;s sweatshirts are far more than
-                a basic.
+              <ListItem href="/#boutiques" title="Food & Drinks">
+                9 bars et restaurants - Lindt, Starbucks, restaurants italiens.
               </ListItem>
             </ul>
           </NavigationMenuContent>
+        </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <Link href="/plan" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+              Plan
+            </NavigationMenuLink>
+          </Link>
+        </NavigationMenuItem>
+
+        <NavigationMenuItem>
+          <Link href="/parking" legacyBehavior passHref>
+            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
+              Parking
+            </NavigationMenuLink>
+          </Link>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>

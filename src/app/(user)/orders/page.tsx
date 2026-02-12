@@ -30,12 +30,8 @@ const UserOrders = () => {
   );
 };
 
-/**
- * Dynamic component that checks user and renders orders
- * This streams at request time (uses headers() via getUser)
- */
-const OrdersContent = async () => {
-  const user = await getUser();
+const Orders = async () => {
+  const orders: any = await getUserOrders();
 
   if (!user) {
     return (
