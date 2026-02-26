@@ -1,0 +1,1399 @@
+{
+  "mall": "FoxTown Factory Stores",
+  "location": "Mendrisio, Switzerland",
+  "website": "www.foxtown.com",
+  "total_stores": 160,
+  "level_colors": {
+    "0": "YELLOW",
+    "1": "RED",
+    "2": "BLUE",
+    "3": "GREEN"
+  },
+  "categories": {
+    "HIGH_FASHION": "High Fashion",
+    "LADIES_MENSWEAR": "Ladies & Menswear",
+    "CASUALWEAR": "Casualwear",
+    "SPORTSWEAR_EQUIPMENT": "Sportswear & Equipment",
+    "CHILDRENSWEAR": "Childrenswear",
+    "FOOTWEAR": "Footwear",
+    "UNDERWEAR": "Underwear",
+    "WATCHES_JEWELLERY": "Watches & Jewellery",
+    "ACCESSORIES": "Accessories",
+    "ELECTRONICS": "Electronics",
+    "BEAUTY": "Beauty",
+    "HOME": "Home",
+    "FOOD_DRINKS": "Food & Drinks",
+    "SERVICES": "Services",
+    "TEMPORARY_STORES": "Temporary Stores"
+  },
+  "shops": [
+    {
+      "name": "Akris",
+      "category": "HIGH_FASHION",
+      "store_number": "320",
+      "level": 3,
+      "phone": "+41 091 601 93 30",
+      "website": null
+    },
+    {
+      "name": "Armani",
+      "category": "HIGH_FASHION",
+      "store_number": "328",
+      "level": 3,
+      "phone": "+41 091 630 06 17",
+      "website": null
+    },
+    {
+      "name": "Borbonese",
+      "category": "HIGH_FASHION",
+      "store_number": "244",
+      "level": 2,
+      "phone": "+41 091 646 26 60",
+      "website": null
+    },
+    {
+      "name": "Boss",
+      "category": "HIGH_FASHION",
+      "store_number": "326",
+      "level": 3,
+      "phone": "+41 091 630 26 40",
+      "website": null
+    },
+    {
+      "name": "Brooks Brothers",
+      "category": "HIGH_FASHION",
+      "store_number": "362",
+      "level": 3,
+      "phone": "+41 091 646 62 52",
+      "website": null
+    },
+    {
+      "name": "Burberry",
+      "category": "HIGH_FASHION",
+      "store_number": "343",
+      "level": 3,
+      "phone": "+41 044 588 99 62",
+      "website": null
+    },
+    {
+      "name": "Coach",
+      "category": "HIGH_FASHION",
+      "store_number": "201",
+      "level": 2,
+      "phone": "+41 091 646 01 86",
+      "website": null
+    },
+    {
+      "name": "Corneliani",
+      "category": "HIGH_FASHION",
+      "store_number": "306",
+      "level": 3,
+      "phone": "+41 091 630 01 47",
+      "website": null
+    },
+    {
+      "name": "Dolce & Gabbana",
+      "category": "HIGH_FASHION",
+      "store_number": "339",
+      "level": 3,
+      "phone": "+41 091 630 29 90",
+      "website": null
+    },
+    {
+      "name": "Dsquared2",
+      "category": "HIGH_FASHION",
+      "store_number": "160",
+      "level": 1,
+      "phone": "+41 091 646 35 36",
+      "website": null
+    },
+    {
+      "name": "Etro",
+      "category": "HIGH_FASHION",
+      "store_number": "315",
+      "level": 3,
+      "phone": "+41 091 646 34 15",
+      "website": null
+    },
+    {
+      "name": "Fay",
+      "category": "HIGH_FASHION",
+      "store_number": "309",
+      "level": 3,
+      "phone": "+41 091 646 92 15",
+      "website": null
+    },
+    {
+      "name": "Furla",
+      "category": "HIGH_FASHION",
+      "store_number": "316",
+      "level": 3,
+      "phone": "+41 091 646 36 01",
+      "website": null
+    },
+    {
+      "name": "John Richmond",
+      "category": "HIGH_FASHION",
+      "store_number": "342",
+      "level": 3,
+      "phone": "+41 091 630 29 33",
+      "website": null
+    },
+    {
+      "name": "Kate Spade New York",
+      "category": "HIGH_FASHION",
+      "store_number": "327",
+      "level": 3,
+      "phone": "+41 091 646 77 67",
+      "website": null
+    },
+    {
+      "name": "Kiton",
+      "category": "HIGH_FASHION",
+      "store_number": "311",
+      "level": 3,
+      "phone": "+41 091 683 02 02",
+      "website": null
+    },
+    {
+      "name": "Longchamp",
+      "category": "HIGH_FASHION",
+      "store_number": "322",
+      "level": 3,
+      "phone": "+41 091 600 35 30",
+      "website": null
+    },
+    {
+      "name": "Loro Piana",
+      "category": "HIGH_FASHION",
+      "store_number": "330",
+      "level": 3,
+      "phone": "+41 091 640 99 30",
+      "website": null
+    },
+    {
+      "name": "Michael Kors",
+      "category": "HIGH_FASHION",
+      "store_number": "214",
+      "level": 2,
+      "phone": "+41 091 646 81 00",
+      "website": null
+    },
+    {
+      "name": "Missoni",
+      "category": "HIGH_FASHION",
+      "store_number": "314",
+      "level": 3,
+      "phone": "+41 091 646 74 19",
+      "website": null
+    },
+    {
+      "name": "Off-White",
+      "category": "HIGH_FASHION",
+      "store_number": "325",
+      "level": 3,
+      "phone": "+41 091 646 33 90",
+      "website": null
+    },
+    {
+      "name": "Patrizia Pepe",
+      "category": "HIGH_FASHION",
+      "store_number": "372",
+      "level": 3,
+      "phone": "+41 091 640 08 11",
+      "website": null
+    },
+    {
+      "name": "Philipp Plein Men",
+      "category": "HIGH_FASHION",
+      "store_number": "158",
+      "level": 1,
+      "phone": "+41 091 646 24 08",
+      "website": null
+    },
+    {
+      "name": "Philipp Plein Women",
+      "category": "HIGH_FASHION",
+      "store_number": "157",
+      "level": 1,
+      "phone": "+41 091 646 24 08",
+      "website": null
+    },
+    {
+      "name": "Polo Ralph Lauren",
+      "category": "HIGH_FASHION",
+      "store_number": "108",
+      "level": 1,
+      "phone": "+41 091 641 30 10",
+      "website": null
+    },
+    {
+      "name": "Prada",
+      "category": "HIGH_FASHION",
+      "store_number": "312",
+      "level": 3,
+      "phone": "+41 091 986 64 40",
+      "website": null
+    },
+    {
+      "name": "Salvatore Ferragamo",
+      "category": "HIGH_FASHION",
+      "store_number": "106",
+      "level": 1,
+      "phone": "+41 091 630 05 90",
+      "website": null
+    },
+    {
+      "name": "Versace",
+      "category": "HIGH_FASHION",
+      "store_number": "301",
+      "level": 3,
+      "phone": "+41 091 646 74 74",
+      "website": null
+    },
+    {
+      "name": "7 for all mankind",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "359",
+      "level": 3,
+      "phone": "+41 091 646 35 12",
+      "website": null
+    },
+    {
+      "name": "André Maurice",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "355",
+      "level": 3,
+      "phone": "+41 091 630 29 29",
+      "website": null
+    },
+    {
+      "name": "Angelico",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "262",
+      "level": 2,
+      "phone": "+41 091 224 65 57",
+      "website": null
+    },
+    {
+      "name": "Boggi Milano",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "109",
+      "level": 1,
+      "phone": "+41 091 646 78 33",
+      "website": null
+    },
+    {
+      "name": "Camicissima",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "162",
+      "level": 1,
+      "phone": "+41 091 646 27 27",
+      "website": null
+    },
+    {
+      "name": "Caroll",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "277",
+      "level": 2,
+      "phone": "+41 091 922 81 72",
+      "website": null
+    },
+    {
+      "name": "Costume National",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "217",
+      "level": 2,
+      "phone": "+41 091 646 80 62",
+      "website": null
+    },
+    {
+      "name": "Elena Mirò",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "202",
+      "level": 2,
+      "phone": "+41 091 646 38 66",
+      "website": null
+    },
+    {
+      "name": "Elmas Phil",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "267",
+      "level": 2,
+      "phone": "+41 091 220 84 53",
+      "website": null
+    },
+    {
+      "name": "Elmas Phil Collection",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "356",
+      "level": 3,
+      "phone": "+41 091 220 84 53",
+      "website": null
+    },
+    {
+      "name": "Elmas Phil Uomo",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "349",
+      "level": 3,
+      "phone": "+41 091 220 84 53",
+      "website": null
+    },
+    {
+      "name": "Falke",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "354",
+      "level": 3,
+      "phone": "+41 091 646 83 88",
+      "website": null
+    },
+    {
+      "name": "Fiorella Rubino",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "226",
+      "level": 2,
+      "phone": "+41 091 224 48 62",
+      "website": null
+    },
+    {
+      "name": "Flavio Castellani",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "337",
+      "level": 3,
+      "phone": "+41 091 646 48 48",
+      "website": null
+    },
+    {
+      "name": "Gaudì",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "364",
+      "level": 3,
+      "phone": "+41 091 646 87 44",
+      "website": null
+    },
+    {
+      "name": "Hackett London",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "215",
+      "level": 2,
+      "phone": "+41 091 630 03 29",
+      "website": null
+    },
+    {
+      "name": "Human Couture",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "275",
+      "level": 2,
+      "phone": "+41 091 646 36 53",
+      "website": null
+    },
+    {
+      "name": "Il Lanificio",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "231",
+      "level": 2,
+      "phone": "+41 091 630 23 10",
+      "website": null
+    },
+    {
+      "name": "Jerem",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "115",
+      "level": 1,
+      "phone": "+41 091 646 01 10",
+      "website": null
+    },
+    {
+      "name": "Maje",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "366",
+      "level": 3,
+      "phone": "+41 091 630 01 46",
+      "website": null
+    },
+    {
+      "name": "Marc O'Polo",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "373",
+      "level": 3,
+      "phone": "+41 091 252 00 01",
+      "website": null
+    },
+    {
+      "name": "Modesto Bertotto",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "230",
+      "level": 2,
+      "phone": "+41 091 646 06 25",
+      "website": null
+    },
+    {
+      "name": "Moorer",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "336",
+      "level": 3,
+      "phone": "+41 091 640 95 56",
+      "website": null
+    },
+    {
+      "name": "Morgan",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "276",
+      "level": 2,
+      "phone": "+41 091 646 77 52",
+      "website": null
+    },
+    {
+      "name": "Motivi",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "150",
+      "level": 1,
+      "phone": "+41 091 630 28 45",
+      "website": null
+    },
+    {
+      "name": "Paul & Shark",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "300",
+      "level": 3,
+      "phone": "+41 091 646 00 67",
+      "website": null
+    },
+    {
+      "name": "Peuterey",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "319",
+      "level": 3,
+      "phone": "+41 091 646 36 56",
+      "website": null
+    },
+    {
+      "name": "Pinko",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "338",
+      "level": 3,
+      "phone": "+41 091 630 22 16",
+      "website": null
+    },
+    {
+      "name": "Sandro",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "388",
+      "level": 3,
+      "phone": "+41 091 260 08 64",
+      "website": null
+    },
+    {
+      "name": "Trussardi",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "248",
+      "level": 2,
+      "phone": "+41 091 225 63 23",
+      "website": null
+    },
+    {
+      "name": "Vero Moda",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "139",
+      "level": 1,
+      "phone": "+41 091 646 31 35",
+      "website": null
+    },
+    {
+      "name": "Woolrich",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "352",
+      "level": 3,
+      "phone": "+41 091 646 01 81",
+      "website": null
+    },
+    {
+      "name": "Zadig & Voltaire",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "363",
+      "level": 3,
+      "phone": "+41 091 646 28 32",
+      "website": null
+    },
+    {
+      "name": "Aeronautica Militare",
+      "category": "CASUALWEAR",
+      "store_number": "243",
+      "level": 2,
+      "phone": "+41 091 971 60 00",
+      "website": null
+    },
+    {
+      "name": "Boxeur Des Rues - Malloy",
+      "category": "CASUALWEAR",
+      "store_number": "225",
+      "level": 2,
+      "phone": "+41 091 646 01 01",
+      "website": null
+    },
+    {
+      "name": "Calvin Klein",
+      "category": "CASUALWEAR",
+      "store_number": "247",
+      "level": 2,
+      "phone": "+41 091 646 02 50",
+      "website": null
+    },
+    {
+      "name": "C.P. Company",
+      "category": "CASUALWEAR",
+      "store_number": "212",
+      "level": 2,
+      "phone": "+41 091 646 02 21",
+      "website": null
+    },
+    {
+      "name": "Diesel Factory Outlet",
+      "category": "CASUALWEAR",
+      "store_number": "113",
+      "level": 1,
+      "phone": "+41 091 646 02 46",
+      "website": null
+    },
+    {
+      "name": "Gant",
+      "category": "CASUALWEAR",
+      "store_number": "145",
+      "level": 1,
+      "phone": "+41 091 646 50 22",
+      "website": null
+    },
+    {
+      "name": "Guess 1",
+      "category": "CASUALWEAR",
+      "store_number": "241",
+      "level": 2,
+      "phone": "+41 091 630 26 50",
+      "website": null
+    },
+    {
+      "name": "Guess 2",
+      "category": "CASUALWEAR",
+      "store_number": "269",
+      "level": 2,
+      "phone": "+41 091 646 87 01",
+      "website": null
+    },
+    {
+      "name": "Harmont & Blaine",
+      "category": "CASUALWEAR",
+      "store_number": "216",
+      "level": 2,
+      "phone": "+41 091 646 03 55",
+      "website": null
+    },
+    {
+      "name": "Jack & Jones",
+      "category": "CASUALWEAR",
+      "store_number": "143",
+      "level": 1,
+      "phone": "+41 091 630 00 04",
+      "website": null
+    },
+    {
+      "name": "K·Way",
+      "category": "CASUALWEAR",
+      "store_number": "130",
+      "level": 1,
+      "phone": "+41 091 609 10 00",
+      "website": null
+    },
+    {
+      "name": "La Martina",
+      "category": "CASUALWEAR",
+      "store_number": "114",
+      "level": 1,
+      "phone": "+41 091 646 54 35",
+      "website": null
+    },
+    {
+      "name": "Lacoste",
+      "category": "CASUALWEAR",
+      "store_number": "129",
+      "level": 1,
+      "phone": "+41 091 646 11 24",
+      "website": null
+    },
+    {
+      "name": "Lee - Wrangler",
+      "category": "CASUALWEAR",
+      "store_number": "219",
+      "level": 2,
+      "phone": "+41 091 646 01 01",
+      "website": null
+    },
+    {
+      "name": "Levi's & Dockers",
+      "category": "CASUALWEAR",
+      "store_number": "146",
+      "level": 1,
+      "phone": "+41 091 630 29 85",
+      "website": null
+    },
+    {
+      "name": "Napapijri",
+      "category": "CASUALWEAR",
+      "store_number": "353",
+      "level": 3,
+      "phone": "+41 091 646 74 83",
+      "website": null
+    },
+    {
+      "name": "Only",
+      "category": "CASUALWEAR",
+      "store_number": "171",
+      "level": 1,
+      "phone": "+41 091 646 23 35",
+      "website": null
+    },
+    {
+      "name": "Pepe Jeans",
+      "category": "CASUALWEAR",
+      "store_number": "251",
+      "level": 2,
+      "phone": "+41 091 630 03 27",
+      "website": null
+    },
+    {
+      "name": "Quiksilver",
+      "category": "CASUALWEAR",
+      "store_number": "142",
+      "level": 1,
+      "phone": "+41 091 646 82 33",
+      "website": null
+    },
+    {
+      "name": "Replay",
+      "category": "CASUALWEAR",
+      "store_number": "221",
+      "level": 2,
+      "phone": "+41 091 630 27 14",
+      "website": null
+    },
+    {
+      "name": "Timberland",
+      "category": "CASUALWEAR",
+      "store_number": "261",
+      "level": 2,
+      "phone": "+41 091 630 23 55",
+      "website": null
+    },
+    {
+      "name": "Tommy Hilfiger",
+      "category": "CASUALWEAR",
+      "store_number": "242",
+      "level": 2,
+      "phone": "+41 091 630 20 54",
+      "website": null
+    },
+    {
+      "name": "Aventurx",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "263",
+      "level": 2,
+      "phone": "+41 091 646 24 90",
+      "website": null
+    },
+    {
+      "name": "Cmp",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "257",
+      "level": 2,
+      "phone": "+41 091 630 06 06",
+      "website": null
+    },
+    {
+      "name": "Freddy",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "013",
+      "level": 0,
+      "phone": "+41 091 646 32 22",
+      "website": null
+    },
+    {
+      "name": "Icebreaker",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "237",
+      "level": 2,
+      "phone": "+41 091 600 00 95",
+      "website": null
+    },
+    {
+      "name": "Jaked",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "164",
+      "level": 1,
+      "phone": "+41 091 646 42 76",
+      "website": null
+    },
+    {
+      "name": "Mammut",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "254",
+      "level": 2,
+      "phone": "+41 091 630 12 44",
+      "website": null
+    },
+    {
+      "name": "New Balance",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "256",
+      "level": 2,
+      "phone": "+41 091 646 11 01",
+      "website": null
+    },
+    {
+      "name": "Nike Factory Store",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "111",
+      "level": 1,
+      "phone": "+41 091 640 40 60",
+      "website": null
+    },
+    {
+      "name": "Oakley",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "213",
+      "level": 2,
+      "phone": "+41 091 646 49 50",
+      "website": null
+    },
+    {
+      "name": "Odlo",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "246",
+      "level": 2,
+      "phone": "+41 041 545 36 79",
+      "website": null
+    },
+    {
+      "name": "Peak Performance",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "135",
+      "level": 1,
+      "phone": "+41 091 640 95 20",
+      "website": null
+    },
+    {
+      "name": "Plein Sport",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "232",
+      "level": 2,
+      "phone": "+41 091 646 80 75",
+      "website": null
+    },
+    {
+      "name": "Puma",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "245",
+      "level": 2,
+      "phone": "+41 091 630 27 01",
+      "website": null
+    },
+    {
+      "name": "Rh+",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "331",
+      "level": 3,
+      "phone": "+41 091 682 10 97",
+      "website": null
+    },
+    {
+      "name": "Salomon",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "255",
+      "level": 2,
+      "phone": "+41 091 646 77 44",
+      "website": null
+    },
+    {
+      "name": "The North Face",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "235",
+      "level": 2,
+      "phone": "+41 091 646 23 09",
+      "website": null
+    },
+    {
+      "name": "Vaude",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "264",
+      "level": 2,
+      "phone": "+41 091 630 10 78",
+      "website": null
+    },
+    {
+      "name": "Brums",
+      "category": "CHILDRENSWEAR",
+      "store_number": "153",
+      "level": 1,
+      "phone": null,
+      "website": null
+    },
+    {
+      "name": "Harmont & Blaine Junior",
+      "category": "CHILDRENSWEAR",
+      "store_number": "131",
+      "level": 1,
+      "phone": "+41 091 646 66 34",
+      "website": null
+    },
+    {
+      "name": "Jacadi Paris",
+      "category": "CHILDRENSWEAR",
+      "store_number": "358",
+      "level": 3,
+      "phone": "+41 091 646 38 88",
+      "website": null
+    },
+    {
+      "name": "Kid Space",
+      "category": "CHILDRENSWEAR",
+      "store_number": "222",
+      "level": 2,
+      "phone": "+41 091 646 80 62",
+      "website": null
+    },
+    {
+      "name": "Kid Space Collection",
+      "category": "CHILDRENSWEAR",
+      "store_number": "133",
+      "level": 1,
+      "phone": "+41 091 646 20 62",
+      "website": null
+    },
+    {
+      "name": "Simonetta",
+      "category": "CHILDRENSWEAR",
+      "store_number": "332",
+      "level": 3,
+      "phone": "+41 091 646 38 13",
+      "website": null
+    },
+    {
+      "name": "Baldinini",
+      "category": "FOOTWEAR",
+      "store_number": "249",
+      "level": 2,
+      "phone": "+41 091 630 28 30",
+      "website": null
+    },
+    {
+      "name": "Bally",
+      "category": "FOOTWEAR",
+      "store_number": "305",
+      "level": 3,
+      "phone": "+41 091 646 73 45",
+      "website": null
+    },
+    {
+      "name": "Church's",
+      "category": "FOOTWEAR",
+      "store_number": "323",
+      "level": 3,
+      "phone": "+41 091 640 60 20",
+      "website": null
+    },
+    {
+      "name": "Clarks",
+      "category": "FOOTWEAR",
+      "store_number": "128",
+      "level": 1,
+      "phone": "+41 091 630 08 01",
+      "website": null
+    },
+    {
+      "name": "Ecco",
+      "category": "FOOTWEAR",
+      "store_number": "238",
+      "level": 2,
+      "phone": "+41 091 646 08 88",
+      "website": null
+    },
+    {
+      "name": "Fratelli Rossetti",
+      "category": "FOOTWEAR",
+      "store_number": "233",
+      "level": 2,
+      "phone": "+41 091 630 28 72",
+      "website": null
+    },
+    {
+      "name": "Geox",
+      "category": "FOOTWEAR",
+      "store_number": "155",
+      "level": 1,
+      "phone": "+41 091 630 22 24",
+      "website": null
+    },
+    {
+      "name": "Jimmy Choo",
+      "category": "FOOTWEAR",
+      "store_number": "206",
+      "level": 2,
+      "phone": "+41 091 646 18 20",
+      "website": null
+    },
+    {
+      "name": "Pollini",
+      "category": "FOOTWEAR",
+      "store_number": "304",
+      "level": 3,
+      "phone": "+41 091 646 79 06",
+      "website": null
+    },
+    {
+      "name": "Skechers",
+      "category": "FOOTWEAR",
+      "store_number": "228",
+      "level": 2,
+      "phone": "+41 091 646 01 60",
+      "website": null
+    },
+    {
+      "name": "Tod's - Hogan",
+      "category": "FOOTWEAR",
+      "store_number": "309",
+      "level": 3,
+      "phone": "+41 091 646 92 15",
+      "website": null
+    },
+    {
+      "name": "Ugg",
+      "category": "FOOTWEAR",
+      "store_number": "210",
+      "level": 2,
+      "phone": "+41 091 630 00 71",
+      "website": null
+    },
+    {
+      "name": "Vans",
+      "category": "FOOTWEAR",
+      "store_number": "252",
+      "level": 2,
+      "phone": "+41 091 630 02 93",
+      "website": null
+    },
+    {
+      "name": "Calida",
+      "category": "UNDERWEAR",
+      "store_number": "134",
+      "level": 1,
+      "phone": "+41 091 630 23 45",
+      "website": null
+    },
+    {
+      "name": "Calzedonia - Intimissimi",
+      "category": "UNDERWEAR",
+      "store_number": "112",
+      "level": 1,
+      "phone": "+41 091 646 74 41",
+      "website": null
+    },
+    {
+      "name": "Hanro",
+      "category": "UNDERWEAR",
+      "store_number": "224",
+      "level": 2,
+      "phone": "+41 091 630 09 94",
+      "website": null
+    },
+    {
+      "name": "Triumph",
+      "category": "UNDERWEAR",
+      "store_number": "148",
+      "level": 1,
+      "phone": "+41 091 646 37 02",
+      "website": null
+    },
+    {
+      "name": "Wolford",
+      "category": "UNDERWEAR",
+      "store_number": "347",
+      "level": 3,
+      "phone": "+41 091 630 10 27",
+      "website": null
+    },
+    {
+      "name": "Damiani",
+      "category": "WATCHES_JEWELLERY",
+      "store_number": "303",
+      "level": 3,
+      "phone": "+41 091 630 15 95",
+      "website": null
+    },
+    {
+      "name": "Hour Passion",
+      "category": "WATCHES_JEWELLERY",
+      "store_number": "317",
+      "level": 3,
+      "phone": "+41 091 646 14 44",
+      "website": null
+    },
+    {
+      "name": "Swarovski",
+      "category": "WATCHES_JEWELLERY",
+      "store_number": "117",
+      "level": 1,
+      "phone": "+41 091 646 01 78",
+      "website": null
+    },
+    {
+      "name": "Swatch",
+      "category": "WATCHES_JEWELLERY",
+      "store_number": "345",
+      "level": 3,
+      "phone": "+41 091 646 90 09",
+      "website": null
+    },
+    {
+      "name": "Belotti OtticaUdito",
+      "category": "ACCESSORIES",
+      "store_number": "387",
+      "level": 3,
+      "phone": "+41 091 646 30 31",
+      "website": null
+    },
+    {
+      "name": "Blitz for eyes",
+      "category": "ACCESSORIES",
+      "store_number": "116",
+      "level": 1,
+      "phone": "+41 091 630 01 30",
+      "website": null
+    },
+    {
+      "name": "Bric's",
+      "category": "ACCESSORIES",
+      "store_number": "151",
+      "level": 1,
+      "phone": "+41 091 646 07 18",
+      "website": null
+    },
+    {
+      "name": "Coccinelle",
+      "category": "ACCESSORIES",
+      "store_number": "310",
+      "level": 3,
+      "phone": "+41 091 630 00 24",
+      "website": null
+    },
+    {
+      "name": "Freitag",
+      "category": "ACCESSORIES",
+      "store_number": "370",
+      "level": 3,
+      "phone": null,
+      "website": null
+    },
+    {
+      "name": "Mantero",
+      "category": "ACCESSORIES",
+      "store_number": "203",
+      "level": 2,
+      "phone": "+41 091 646 90 60",
+      "website": null
+    },
+    {
+      "name": "Miriade",
+      "category": "ACCESSORIES",
+      "store_number": "253",
+      "level": 2,
+      "phone": "+41 091 640 95 43",
+      "website": null
+    },
+    {
+      "name": "Samsonite",
+      "category": "ACCESSORIES",
+      "store_number": "204",
+      "level": 2,
+      "phone": "+41 091 630 21 70",
+      "website": null
+    },
+    {
+      "name": "Sbs",
+      "category": "ELECTRONICS",
+      "store_number": "127",
+      "level": 1,
+      "phone": "+41 091 646 08 05",
+      "website": null
+    },
+    {
+      "name": "Free Shop 1",
+      "category": "BEAUTY",
+      "store_number": "107",
+      "level": 1,
+      "phone": "+41 091 646 09 29",
+      "website": null
+    },
+    {
+      "name": "Free Shop 2",
+      "category": "BEAUTY",
+      "store_number": "357",
+      "level": 3,
+      "phone": "+41 091 646 32 41",
+      "website": null
+    },
+    {
+      "name": "Kiko Milano",
+      "category": "BEAUTY",
+      "store_number": "274",
+      "level": 2,
+      "phone": "+41 091 630 02 55",
+      "website": null
+    },
+    {
+      "name": "Bassetti",
+      "category": "HOME",
+      "store_number": "227",
+      "level": 2,
+      "phone": "+41 091 646 45 05",
+      "website": null
+    },
+    {
+      "name": "Christmas Store",
+      "category": "HOME",
+      "store_number": "350",
+      "level": 3,
+      "phone": "+41 091 646 77 12",
+      "website": null
+    },
+    {
+      "name": "Le Creuset",
+      "category": "HOME",
+      "store_number": "010",
+      "level": 0,
+      "phone": "+41 091 646 83 37",
+      "website": null
+    },
+    {
+      "name": "Millefiori store",
+      "category": "HOME",
+      "store_number": "152",
+      "level": 1,
+      "phone": "+41 091 646 77 12",
+      "website": null
+    },
+    {
+      "name": "Villeroy & Boch",
+      "category": "HOME",
+      "store_number": "220",
+      "level": 2,
+      "phone": "+41 091 630 26 20",
+      "website": null
+    },
+    {
+      "name": "Wmf",
+      "category": "HOME",
+      "store_number": "258",
+      "level": 2,
+      "phone": "+41 091 646 21 25",
+      "website": null
+    },
+    {
+      "name": "Chalet Suisse",
+      "category": "FOOD_DRINKS",
+      "store_number": "259",
+      "level": 2,
+      "phone": "+41 091 630 28 89",
+      "website": null
+    },
+    {
+      "name": "Fashion Bar",
+      "category": "FOOD_DRINKS",
+      "store_number": "234",
+      "level": 2,
+      "phone": "+41 091 646 12 43",
+      "website": null
+    },
+    {
+      "name": "Gelateria",
+      "category": "FOOD_DRINKS",
+      "store_number": "154",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": null
+    },
+    {
+      "name": "Il Caffè",
+      "category": "FOOD_DRINKS",
+      "store_number": "278",
+      "level": 2,
+      "phone": "+41 091 646 58 06",
+      "website": null
+    },
+    {
+      "name": "Lindt - Maître Chocolatier Suisse depuis 1845",
+      "category": "FOOD_DRINKS",
+      "store_number": "132",
+      "level": 1,
+      "phone": "+41 091 914 48 58",
+      "website": null
+    },
+    {
+      "name": "Maui Poke",
+      "category": "FOOD_DRINKS",
+      "store_number": "169",
+      "level": 1,
+      "phone": "+41 091 222 99 01",
+      "website": null
+    },
+    {
+      "name": "Pizzeria",
+      "category": "FOOD_DRINKS",
+      "store_number": "137",
+      "level": 1,
+      "phone": "+41 091 630 27 81",
+      "website": null
+    },
+    {
+      "name": "The Place Asian",
+      "category": "FOOD_DRINKS",
+      "store_number": "121",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": null
+    },
+    {
+      "name": "The Place Juices",
+      "category": "FOOD_DRINKS",
+      "store_number": "154",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": null
+    },
+    {
+      "name": "The Place Sweet & Salt",
+      "category": "FOOD_DRINKS",
+      "store_number": "121",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": null
+    },
+    {
+      "name": "Wood Avenue - Italian Restaurant",
+      "category": "FOOD_DRINKS",
+      "store_number": "170",
+      "level": 1,
+      "phone": "+41 091 646 03 56",
+      "website": null
+    },
+    {
+      "name": "Casinò Admiral",
+      "category": "SERVICES",
+      "store_number": "1011",
+      "level": 1,
+      "phone": "+41 091 640 50 20",
+      "website": null
+    },
+    {
+      "name": "Cloakroom",
+      "category": "SERVICES",
+      "store_number": "019",
+      "level": 0,
+      "phone": "+41 091 646 78 83",
+      "website": null
+    },
+    {
+      "name": "Global Blue Tax Free Refund Point",
+      "category": "SERVICES",
+      "store_number": "120",
+      "level": 1,
+      "phone": "+41 091 630 00 61",
+      "website": null
+    },
+    {
+      "name": "Infopoint",
+      "category": "SERVICES",
+      "store_number": null,
+      "level": null,
+      "phone": "+41 0848 828 888",
+      "website": null
+    },
+    {
+      "name": "Incoming Info Desk",
+      "category": "SERVICES",
+      "store_number": null,
+      "level": null,
+      "phone": "+41 091 630 08 03",
+      "website": null
+    },
+    {
+      "name": "Planet Tax Refund Point",
+      "category": "SERVICES",
+      "store_number": "120",
+      "level": 1,
+      "phone": "+41 091 630 00 61",
+      "website": null
+    },
+    {
+      "name": "Tailor's Store",
+      "category": "SERVICES",
+      "store_number": "019",
+      "level": 0,
+      "phone": "+41 091 646 78 83",
+      "website": null
+    },
+    {
+      "name": "The Sense Gallery",
+      "category": "SERVICES",
+      "store_number": "166",
+      "level": 1,
+      "phone": "+41 091 610 99 63",
+      "website": null
+    },
+    {
+      "name": "Tichange - Exchange Office",
+      "category": "SERVICES",
+      "store_number": "120",
+      "level": 1,
+      "phone": "+41 091 630 00 61",
+      "website": null
+    },
+    {
+      "name": "Vantaviaggi",
+      "category": "SERVICES",
+      "store_number": "141",
+      "level": 1,
+      "phone": "+41 091 646 42 85",
+      "website": null
+    },
+    {
+      "name": "Bally Temporary",
+      "category": "TEMPORARY_STORES",
+      "store_number": "005",
+      "level": 0,
+      "phone": "+41 091 646 73 45",
+      "website": null
+    },
+    {
+      "name": "Boxeur Des Rues Temporary",
+      "category": "TEMPORARY_STORES",
+      "store_number": "371",
+      "level": 3,
+      "phone": "+41 091 646 01 01",
+      "website": null
+    },
+    {
+      "name": "Odlo Temporary",
+      "category": "TEMPORARY_STORES",
+      "store_number": "240",
+      "level": 2,
+      "phone": "+41 041 545 36 79",
+      "website": null
+    },
+    {
+      "name": "Timberland Temporary",
+      "category": "TEMPORARY_STORES",
+      "store_number": "236",
+      "level": 2,
+      "phone": "+41 091 630 23 55",
+      "website": null
+    }
+  ]
+}
