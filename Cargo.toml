@@ -18,3 +18,11 @@ chrono = { version = "0.4", features = ["serde"] }
 [features]
 web = ["dioxus/web"]
 server = ["dioxus/server"]
+
+[profile.release]
+lto = true
+opt-level = 3
+
+[profile.dev]
+lto = false
+opt-level = 1
