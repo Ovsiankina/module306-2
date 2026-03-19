@@ -34,9 +34,10 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
 
 #### 1. Shop Directory & Information
 - [ ] **Replace FakeStoreAPI with real shopping center data**
-  - [ ] Create database schema for shops (name, category, floor/level, store number, phone, website)
-  - [ ] Import all 160 stores from the FoxTown plan (documentation/Plan centre commercial.pdf)
-  - [ ] Categorize shops by type (High Fashion, Casualwear, Sportswear, Footwear, etc.)
+  - [x] Define `Store` / `Category` types with serde (see `src/stores.rs`)
+  - [x] Embed all 160 FoxTown stores from `data/stores.json` (compile-time via `include_str!`)
+  - [x] Categorize shops by type (High Fashion, Casualwear, Sportswear, Footwear, etc.)
+  - [x] Expose Dioxus server functions: `get_stores()`, `get_stores_by_category()`, `get_stores_by_level()`
 - [ ] **Shop listing page**
   - [ ] Display all shops in the center with filtering by category
   - [ ] Show shop details (location, contact info, opening hours)
@@ -196,13 +197,13 @@ Based on `documentation/Directives_v2.pdf`:
 - FakeStoreAPI integration (to be replaced) ⚠️
 - SSR and routing implemented ✅
 - Tailwind CSS styling ✅
+- Store data types + server API (`src/stores.rs`) ✅
 
 **Next Steps**:
-1. Design database schema for shopping center data
+1. Build shop listing page using `get_stores()` / `get_stores_by_category()`
 2. Implement authentication system
-3. Create shop directory functionality
-4. Design and implement the game system
-5. Integrate shopping center map
+3. Design and implement the game system
+4. Integrate shopping center map
 
 ---
 

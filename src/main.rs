@@ -13,6 +13,7 @@ mod components {
     pub mod product_page;
 }
 mod api;
+pub mod stores;
 
 fn main() {
     dioxus::launch(|| {
