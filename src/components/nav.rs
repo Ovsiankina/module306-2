@@ -29,10 +29,16 @@ pub fn Nav() -> Element {
                                 "Story"
                             }
                         }
-                        li {
+                        li { class: "mr-12",
                             a { class: "hover:text-gray-600",
                                 href: "/",
                                 "Brand"
+                            }
+                        }
+                        li {
+                            a { class: "hover:text-gray-600",
+                                href: "/map",
+                                "Map"
                             }
                         }
                     }
@@ -145,10 +151,16 @@ pub fn Nav() -> Element {
                                 "Story"
                             }
                         }
-                        li {
+                        li { class: "mb-8",
                             a {
                                 href: "/",
                                 "Brand"
+                            }
+                        }
+                        li {
+                            a {
+                                href: "/map",
+                                "Map"
                             }
                         }
                     }

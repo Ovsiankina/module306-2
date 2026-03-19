@@ -5,6 +5,7 @@ use components::loading::ChildrenOrLoading;
 use dioxus::prelude::*;
 
 mod components {
+    pub mod directory;
     pub mod error;
     pub mod home;
     pub mod loading;
@@ -37,6 +38,16 @@ enum Route {
 
     #[route("/details/:product_id")]
     Details { product_id: usize },
+
+    #[route("/map")]
+    Map {},
+}
+
+fn Map() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::directory::ShopDirectory {}
+    }
 }
 
 #[component]

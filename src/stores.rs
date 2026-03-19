@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
 // Embedded at compile time — no file I/O at runtime
+#[cfg(feature = "server")]
 const STORES_JSON: &str = include_str!("../data/stores.json");
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -53,13 +54,53 @@ impl Category {
             Category::Services => "Services",
         }
     }
+
+    pub fn key(&self) -> &'static str {
+        match self {
+            Category::HighFashion => "HIGH_FASHION",
+            Category::LadiesMenswear => "LADIES_MENSWEAR",
+            Category::Casualwear => "CASUALWEAR",
+            Category::SportswearEquipment => "SPORTSWEAR_EQUIPMENT",
+            Category::Childrenswear => "CHILDRENSWEAR",
+            Category::Footwear => "FOOTWEAR",
+            Category::Underwear => "UNDERWEAR",
+            Category::WatchesJewellery => "WATCHES_JEWELLERY",
+            Category::Accessories => "ACCESSORIES",
+            Category::Electronics => "ELECTRONICS",
+            Category::Beauty => "BEAUTY",
+            Category::Home => "HOME",
+            Category::FoodDrinks => "FOOD_DRINKS",
+            Category::Services => "SERVICES",
+        }
+    }
+
+    pub fn all() -> Vec<Category> {
+        vec![
+            Category::HighFashion,
+            Category::LadiesMenswear,
+            Category::Casualwear,
+            Category::SportswearEquipment,
+            Category::Childrenswear,
+            Category::Footwear,
+            Category::Underwear,
+            Category::WatchesJewellery,
+            Category::Accessories,
+            Category::Electronics,
+            Category::Beauty,
+            Category::Home,
+            Category::FoodDrinks,
+            Category::Services,
+        ]
+    }
 }
 
+#[cfg(feature = "server")]
 #[derive(Deserialize)]
 struct StoresData {
     shops: Vec<Store>,
 }
 
+#[cfg(feature = "server")]
 fn load_stores() -> Vec<Store> {
     serde_json::from_str::<StoresData>(STORES_JSON)
         .expect("stores.json is invalid")
