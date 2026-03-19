@@ -39,9 +39,9 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
   - [x] Categorize shops by type (High Fashion, Casualwear, Sportswear, Footwear, etc.)
   - [x] Expose Dioxus server functions: `get_stores()`, `get_stores_by_category()`, `get_stores_by_level()`
 - [ ] **Shop listing page**
-  - [ ] Display all shops in the center with filtering by category
-  - [ ] Show shop details (location, contact info, opening hours)
-  - [ ] Add external links to each shop's official website
+  - [x] Display all shops in the center with filtering by category
+  - [x] Show shop details (location, contact info)
+  - [x] Add external links to each shop's official website
 - [ ] **Shop detail page**
   - [ ] Individual page for each shop with full information
   - [ ] Display location on shopping center map

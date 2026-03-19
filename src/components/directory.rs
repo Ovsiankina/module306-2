@@ -45,7 +45,7 @@ pub fn ShopDirectory() -> Element {
         .filter(|s| {
             (q.is_empty() || s.name.to_lowercase().contains(&q))
                 && (ck.is_empty() || s.category.key() == ck.as_str())
-                && (lv.is_empty() || s.level.to_string() == lv.as_str())
+                && (lv.is_empty() || s.level.map(|l| l.to_string()).as_deref() == Some(lv.as_str()))
         })
         .map(|s| (*s).clone())
         .collect();
@@ -120,15 +120,17 @@ pub fn ShopDirectory() -> Element {
                 div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4",
                     for store in filtered {
                         div {
-                            key: "{store.store_number}",
+                            key: "{store.name}",
                             class: "bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 hover:shadow-md transition-shadow",
 
                             // Name + floor badge
                             div { class: "flex items-start justify-between gap-2",
                                 h3 { class: "font-bold font-heading text-gray-900 leading-tight", "{store.name}" }
-                                span {
-                                    class: "shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full {level_badge_class(store.level)}",
-                                    "{level_label(store.level)}"
+                                if let Some(level) = store.level {
+                                    span {
+                                        class: "shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full {level_badge_class(level)}",
+                                        "{level_label(level)}"
+                                    }
                                 }
                             }
 
@@ -138,7 +140,9 @@ pub fn ShopDirectory() -> Element {
                             }
 
                             // Store number
-                            p { class: "text-xs text-gray-400", "Store #{store.store_number}" }
+                            if let Some(ref num) = store.store_number {
+                                p { class: "text-xs text-gray-400", "Store #{num}" }
+                            }
 
                             // Contact / link
                             div { class: "mt-auto pt-1 flex flex-col gap-1",

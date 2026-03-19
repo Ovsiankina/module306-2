@@ -9,8 +9,8 @@ const STORES_JSON: &str = include_str!("../data/stores.json");
 pub struct Store {
     pub name: String,
     pub category: Category,
-    pub store_number: String,
-    pub level: u8,
+    pub store_number: Option<String>,
+    pub level: Option<u8>,
     pub phone: Option<String>,
     pub website: Option<String>,
     pub icon_path: Option<String>,
@@ -126,6 +126,6 @@ pub async fn get_stores_by_category(category: Category) -> Result<Vec<Store>, Se
 pub async fn get_stores_by_level(level: u8) -> Result<Vec<Store>, ServerFnError> {
     Ok(load_stores()
         .into_iter()
-        .filter(|s| s.level == level)
+        .filter(|s| s.level == Some(level))
         .collect())
 }
