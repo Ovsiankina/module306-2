@@ -17,3 +17,19 @@
 *~
 .idea/
 .vscode/
+
+# AI agents
+.AGENTS
+AGENTS.md
+.CLAUDE
+CLAUDE.md
+GEMINI.md
+.cursor/
+.cursorrules
+.cursorignore
+.windsurfrules
+.windsurf/
+.codeium/
+.continue/
+.aider*
+.codex/
