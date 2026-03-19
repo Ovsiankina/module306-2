@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?><project name="Spy de Web I306 - Planification detaillee" company="INFO3 I306" webLink="" view-date="2026-03-09" view-index="0" gantt-divider-location="625" resource-divider-location="300" version="3.3.3322" locale="fr_FR">
+    <description><![CDATA[
+Planification detaillee conforme au cahier des charges (01.03.2026) et aux Directives_v2.
+Calendrier clarifie :
+- debut reel du projet : jeudi 22.01.2026
+- premier rendu planifie : jeudi 05.02.2026
+- deadline finale / mise en service : vendredi 01.05.2026
+Contrainte d'organisation integree : equipe de 3 personnes avec reunion hebdomadaire chaque jeudi.
+Codes couleur par thematique :
+- Pilotage / gouvernance : #2F5597
+- Analyse / conception : #4BACC6
+- Developpement produit : #70AD47
+- Qualite / tests / securite : #ED7D31
+- Documentation / suivi pedagogique : #8064A2
+- Livraison / presentation finale : #C00000
+    ]]></description>
+    <view zooming-state="default:5" id="gantt-chart">
+        <field id="tpd3" name="Nom" width="309" order="0"/>
+        <field id="tpd4" name="Date de début" width="87" order="1"/>
+        <field id="tpd5" name="Date de fin" width="87" order="2"/>
+        <field id="tpd6" name="Durée" width="57" order="3"/>
+        <field id="tpd7" name="Avancée" width="69" order="4"/>
+        <option id="filter.completedTasks" value="false"/>
+        <option id="filter.dueTodayTasks" value="false"/>
+        <option id="filter.overdueTasks" value="false"/>
+        <option id="filter.inProgressTodayTasks" value="false"/>
+    </view>
+    <view id="resource-table">
+        <field id="0" name="Nom" width="188" order="0"/>
+        <field id="1" name="Rôle par défaut" width="108" order="1"/>
+    </view>
+    <!-- -->
+    <calendars>
+        <day-types>
+            <day-type id="0"/>
+            <day-type id="1"/>
+            <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+            <only-show-weekends value="false"/>
+            <overriden-day-types/>
+            <days/>
+        </day-types>
+    </calendars>
+    <tasks empty-milestones="true">
+        <taskproperties>
+            <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+            <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+            <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+            <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+            <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+            <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+            <taskproperty id="tpd6" name="duration" type="default" valuetype="int"/>
+            <taskproperty id="tpd7" name="completion" type="default" valuetype="int"/>
+            <taskproperty id="tpd8" name="coordinator" type="default" valuetype="text"/>
+            <taskproperty id="tpd9" name="predecessorsr" type="default" valuetype="text"/>
+        </taskproperties>
+        <task id="1" uid="00000000000000000000000000000001" name="PROJET Spy de Web - Centre commercial" color="#2f5597" meeting="false" start="2026-01-22" duration="72" complete="0" expand="true">
+            <task id="10" uid="00000000000000000000000000000010" name="0. Pilotage et cadrage projet" color="#2f5597" meeting="false" start="2026-01-22" duration="4" complete="0" expand="false">
+                <depend id="20" type="2" difference="0" hardness="Strong"/>
+                <task id="11" uid="00000000000000000000000000000011" name="Kickoff equipe + prise de connaissance CDC/Directives" color="#2f5597" meeting="false" start="2026-01-22" duration="1" complete="0" expand="true">
+                    <depend id="12" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="12" uid="00000000000000000000000000000012" name="Validation perimetre, objectifs, criteres de reussite" color="#2f5597" meeting="false" start="2026-01-23" duration="1" complete="0" expand="true">
+                    <depend id="13" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="13" uid="00000000000000000000000000000013" name="Structuration WBS, jalons, risques, conventions de suivi" color="#2f5597" meeting="false" start="2026-01-26" duration="1" complete="0" expand="true">
+                    <depend id="14" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="14" uid="00000000000000000000000000000014" name="Planning prevu (version initiale) + baseline" color="#2f5597" meeting="false" start="2026-01-27" duration="1" complete="0" expand="true">
+                    <depend id="15" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="15" uid="00000000000000000000000000000015" name="Jalon: planning valide par le groupe" color="#2f5597" meeting="true" start="2026-01-28" duration="0" complete="0" expand="true">
+                    <depend id="16" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="16" uid="00000000000000000000000000000016" name="Jalon: premier rendu planifie (jeudi 05.02.2026)" color="#2f5597" meeting="true" start="2026-01-28" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="20" uid="00000000000000000000000000000020" name="1. Conception fonctionnelle et technique (CDC: 09.03 -&gt; 20.03)" color="#4bacc6" meeting="false" start="2026-03-09" duration="9" complete="0" expand="false">
+                <depend id="30" type="2" difference="0" hardness="Strong"/>
+                <task id="21" uid="00000000000000000000000000000021" name="Analyse besoins: boutiques, plan, parkings, mini-jeu, admin, stats" color="#4bacc6" meeting="false" start="2026-03-09" duration="2" complete="0" expand="true">
+                    <depend id="22" type="2" difference="0" hardness="Strong"/>
+                    <depend id="24" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="22" uid="00000000000000000000000000000022" name="Etude de faisabilite (technique, budget, legal/recompenses)" color="#4bacc6" meeting="false" start="2026-03-11" duration="2" complete="0" expand="true">
+                    <depend id="23" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="23" uid="00000000000000000000000000000023" name="Arborescence + parcours utilisateurs + user stories detaillees" color="#4bacc6" meeting="false" start="2026-03-13" duration="2" complete="0" expand="true">
+                    <depend id="25" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="24" uid="00000000000000000000000000000024" name="Maquettes UI mobile/desktop (accueil, fiche boutique, admin)" color="#4bacc6" meeting="false" start="2026-03-11" duration="4" complete="0" expand="true">
+                    <depend id="26" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="25" uid="00000000000000000000000000000025" name="Conception donnees (schema boutiques, participations, gains, stats)" color="#4bacc6" meeting="false" start="2026-03-17" duration="2" complete="0" expand="true">
+                    <depend id="27" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="26" uid="00000000000000000000000000000026" name="Conception API + regles metier (1 participation/jour, 2e essai, 10 gagnants/jour)" color="#4bacc6" meeting="false" start="2026-03-17" duration="2" complete="0" expand="true">
+                    <depend id="27" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="27" uid="00000000000000000000000000000027" name="Budget previsionnel detaille (dev, hebergement, SSL, reserve risques)" color="#4bacc6" meeting="false" start="2026-03-19" duration="1" complete="0" expand="true">
+                    <depend id="28" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="28" uid="00000000000000000000000000000028" name="Jalon: conception terminee et validee" color="#4bacc6" meeting="true" start="2026-03-20" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="30" uid="00000000000000000000000000000030" name="2. Realisation / developpement (CDC: 23.03 -&gt; 17.04)" color="#70ad47" meeting="false" start="2026-03-23" duration="19" complete="0" expand="false">
+                <task id="31" uid="00000000000000000000000000000031" name="Mise en place environnement, depot, conventions de code" color="#70ad47" meeting="false" start="2026-03-23" duration="1" complete="0" expand="true">
+                    <depend id="32" type="2" difference="0" hardness="Strong"/>
+                    <depend id="33" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="32" uid="00000000000000000000000000000032" name="Dev socle back-end (authentification admin + comptes utilisateurs)" color="#70ad47" meeting="false" start="2026-03-24" duration="3" complete="0" expand="true">
+                    <depend id="34" type="2" difference="0" hardness="Strong"/>
+                    <depend id="35" type="2" difference="0" hardness="Strong"/>
+                    <depend id="38" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="33" uid="00000000000000000000000000000033" name="Dev socle front-end (layout, navigation, responsive, design system)" color="#70ad47" meeting="false" start="2026-03-24" duration="3" complete="0" expand="true">
+                    <depend id="36" type="2" difference="0" hardness="Strong"/>
+                    <depend id="37" type="2" difference="0" hardness="Strong"/>
+                    <depend id="39" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="34" uid="00000000000000000000000000000034" name="Module boutiques: CRUD + recherche/filtre nom/categorie + visuels" color="#70ad47" meeting="false" start="2026-03-27" duration="4" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="35" uid="00000000000000000000000000000035" name="Gestion liens officiels + correction liens invalides en administration" color="#70ad47" meeting="false" start="2026-03-27" duration="2" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="36" uid="00000000000000000000000000000036" name="Page plan du centre (zones + lisibilite mobile/desktop)" color="#70ad47" meeting="false" start="2026-03-27" duration="3" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="37" uid="00000000000000000000000000000037" name="Module parkings (affichage places libres + fallback indisponibilite)" color="#70ad47" meeting="false" start="2026-03-27" duration="2" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="38" uid="00000000000000000000000000000038" name="Mini-jeu: regles participation + tracabilite participations/gains" color="#70ad47" meeting="false" start="2026-03-27" duration="5" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="39" uid="00000000000000000000000000000039" name="UI mini-jeu sur accueil + retours utilisateur (essai 1/2, resultat)" color="#70ad47" meeting="false" start="2026-03-27" duration="4" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="40" uid="00000000000000000000000000000040" name="Statistiques de frequentation (journalier/mensuel/annuel + export)" color="#70ad47" meeting="false" start="2026-04-07" duration="4" complete="0" expand="true">
+                    <depend id="41" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="41" uid="00000000000000000000000000000041" name="Interface administration complete (accueil, contenus pratiques, boutiques, plan, liens)" color="#70ad47" meeting="false" start="2026-04-13" duration="4" complete="0" expand="true">
+                    <depend id="42" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="42" uid="00000000000000000000000000000042" name="Jalon: developpement termine (feature freeze)" color="#70ad47" meeting="true" start="2026-04-17" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="50" uid="00000000000000000000000000000050" name="3. Qualite, tests et corrections (CDC: 20.04 -&gt; 26.04)" color="#ed7d31" meeting="false" start="2026-04-20" duration="5" complete="0" expand="false">
+                <task id="51" uid="00000000000000000000000000000051" name="Plan de tests (fonctionnels, non-regression, securite, perf legere)" color="#ed7d31" meeting="false" start="2026-04-20" duration="1" complete="0" expand="true">
+                    <depend id="52" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="52" uid="00000000000000000000000000000052" name="Tests fonctionnels complets par module CDC" color="#ed7d31" meeting="false" start="2026-04-21" duration="2" complete="0" expand="true">
+                    <depend id="53" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="53" uid="00000000000000000000000000000053" name="Tests non-regression + correction anomalies prioritaires" color="#ed7d31" meeting="false" start="2026-04-23" duration="2" complete="0" expand="true">
+                    <depend id="54" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="54" uid="00000000000000000000000000000054" name="Validation interne pre-client + go/no-go deploiement" color="#ed7d31" meeting="true" start="2026-04-27" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="60" uid="00000000000000000000000000000060" name="4. Documentation, suivi pedagogique et livrables Moodle (en parallele du projet)" color="#8064a2" meeting="false" start="2026-02-05" duration="62" complete="0" expand="false">
+                <task id="61" uid="00000000000000000000000000000061" name="Dossier projet: structure du rapport (planning prevu/reel, budget, faisabilite, realisation)" color="#8064a2" meeting="false" start="2026-02-05" duration="2" complete="0" expand="true"/>
+                <task id="62" uid="00000000000000000000000000000062" name="Semaine 1 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-02-05" duration="0" complete="0" expand="true"/>
+                <task id="63" uid="00000000000000000000000000000063" name="Semaine 2 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-02-12" duration="0" complete="0" expand="true"/>
+                <task id="64" uid="00000000000000000000000000000064" name="Semaine 3 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h) - non rendu (depot non ouvert a l'heure du cours)" color="#8064a2" meeting="true" start="2026-02-26" duration="0" complete="0" expand="true"/>
+                <task id="65" uid="00000000000000000000000000000065" name="Semaine 4 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-03-05" duration="0" complete="0" expand="true"/>
+                <task id="66" uid="00000000000000000000000000000066" name="Semaine 5 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-03-12" duration="0" complete="0" expand="true"/>
+                <task id="67" uid="00000000000000000000000000000067" name="Semaine 6 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-03-19" duration="0" complete="0" expand="true"/>
+                <task id="68" uid="00000000000000000000000000000068" name="Semaine 7 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-03-26" duration="0" complete="0" expand="true"/>
+                <task id="69" uid="00000000000000000000000000000069" name="Semaine 8 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-04-02" duration="0" complete="0" expand="true"/>
+                <task id="74" uid="00000000000000000000000000000074" name="Semaine 9 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-04-23" duration="0" complete="0" expand="true"/>
+                <task id="75" uid="00000000000000000000000000000075" name="Semaine 10 - Journaux individuels + PV groupe + depot Moodle (jeu. 17h)" color="#8064a2" meeting="true" start="2026-04-30" duration="0" complete="0" expand="true"/>
+                <task id="79" uid="00000000000000000000000000000079" name="Cloture documentation pedagogique (vendredi 01.05.2026)" color="#8064a2" meeting="true" start="2026-05-01" duration="0" complete="0" expand="true"/>
+                <task id="70" uid="00000000000000000000000000000070" name="Synthese planning reel vs prevu + difficultes (par personne) + ameliorations (par personne)" color="#8064a2" meeting="false" start="2026-04-20" duration="4" complete="0" expand="true">
+                    <depend id="71" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="71" uid="00000000000000000000000000000071" name="Mode d'emploi client + documentation reprise projet (non-technique)" color="#8064a2" meeting="false" start="2026-04-24" duration="4" complete="0" expand="true">
+                    <depend id="72" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="72" uid="00000000000000000000000000000072" name="Collecte et annexe des correspondances client + verification formats PDF" color="#8064a2" meeting="false" start="2026-04-30" duration="2" complete="0" expand="true">
+                    <depend id="73" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="73" uid="00000000000000000000000000000073" name="Jalon: documents signes scannes (CDC + Directives_v2) prets Moodle" color="#8064a2" meeting="true" start="2026-05-04" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="80" uid="00000000000000000000000000000080" name="5. Deploiement et cloture (CDC: 27.04 -&gt; 30.04 + go-live 01.05)" color="#c00000" meeting="false" start="2026-04-27" duration="3" complete="0" expand="false">
+                <task id="81" uid="00000000000000000000000000000081" name="Preparation production (hebergement cloud, domaine, SSL, variables)" color="#c00000" meeting="false" start="2026-04-27" duration="1" complete="0" expand="true">
+                    <depend id="82" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="82" uid="00000000000000000000000000000082" name="Migration donnees initiales + verification droits admin" color="#c00000" meeting="false" start="2026-04-28" duration="1" complete="0" expand="true">
+                    <depend id="83" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="83" uid="00000000000000000000000000000083" name="Recette finale client + corrections de derniere minute" color="#c00000" meeting="false" start="2026-04-29" duration="1" complete="0" expand="true">
+                    <depend id="84" type="2" difference="0" hardness="Strong"/>
+                    <depend id="85" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="84" uid="00000000000000000000000000000084" name="Remise finale Moodle (rapport complet PDF + annexes + signatures)" color="#c00000" meeting="true" start="2026-04-30" duration="0" complete="0" expand="true">
+                    <depend id="86" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="85" uid="00000000000000000000000000000085" name="Presentation orale en classe (demo + bilan + lessons learned)" color="#c00000" meeting="true" start="2026-04-30" duration="0" complete="0" expand="true">
+                    <depend id="86" type="2" difference="0" hardness="Strong"/>
+                </task>
+                <task id="86" uid="00000000000000000000000000000086" name="Jalon final: mise en service (01.05.2026)" color="#c00000" meeting="true" start="2026-04-30" duration="0" complete="0" expand="true"/>
+            </task>
+            <task id="90" uid="00000000000000000000000000000090" name="6. Rituels d'equipe - reunion chaque jeudi (3 membres)" color="#2f5597" meeting="false" start="2026-02-05" duration="60" complete="0" expand="false">
+                <task id="91" uid="00000000000000000000000000000091" name="Reunion hebdo #1 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-02-05" duration="0" complete="0" expand="true"/>
+                <task id="92" uid="00000000000000000000000000000092" name="Reunion hebdo #2 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-02-12" duration="0" complete="0" expand="true"/>
+                <task id="93" uid="00000000000000000000000000000093" name="Reunion hebdo #3 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-02-26" duration="0" complete="0" expand="true"/>
+                <task id="94" uid="00000000000000000000000000000094" name="Reunion hebdo #4 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-03-05" duration="0" complete="0" expand="true"/>
+                <task id="95" uid="00000000000000000000000000000095" name="Reunion hebdo #5 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-03-12" duration="0" complete="0" expand="true"/>
+                <task id="96" uid="00000000000000000000000000000096" name="Reunion hebdo #6 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-03-19" duration="0" complete="0" expand="true"/>
+                <task id="97" uid="00000000000000000000000000000097" name="Reunion hebdo #7 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-03-26" duration="0" complete="0" expand="true"/>
+                <task id="98" uid="00000000000000000000000000000098" name="Reunion hebdo #8 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-04-02" duration="0" complete="0" expand="true"/>
+                <task id="99" uid="00000000000000000000000000000099" name="Reunion hebdo #9 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-04-23" duration="0" complete="0" expand="true"/>
+                <task id="100" uid="00000000000000000000000000000100" name="Reunion hebdo #10 (jeudi) - avancement, blocages, decisions" color="#2f5597" meeting="true" start="2026-04-30" duration="0" complete="0" expand="true"/>
+            </task>
+        </task>
+    </tasks>
+    <resources>
+        <resource id="1" name="Membre 1" function="Default:1" contacts="" phone=""/>
+        <resource id="2" name="Membre 2" function="Default:1" contacts="" phone=""/>
+        <resource id="3" name="Membre 3" function="Default:1" contacts="" phone=""/>
+    </resources>
+    <allocations/>
+    <vacations/>
+    <previous/>
+    <roles roleset-name="Default"/>
+</project>
