@@ -62,16 +62,13 @@ pub fn Nav() -> Element {
                             icons::icon_1 {}
                         }
                         a { class: "flex items-center hover:text-gray-600",
-                            href: "/",
+                            href: "/login",
                             icons::icon_2 {}
-                            span { class: "inline-block w-6 h-6 text-center bg-gray-50 rounded-full font-semibold font-heading",
-                                "3"
-                            }
                         }
                     }
                 }
                 a { class: "hidden xl:flex items-center px-12 border-l font-semibold font-heading hover:text-gray-600",
-                    href: "/",
+                    href: "/login",
                     icons::icon_3 {}
                     span {
                         "Sign In"
@@ -108,7 +105,7 @@ pub fn Nav() -> Element {
                     }
                     div { class: "flex mb-8 justify-between",
                         a { class: "inline-flex items-center font-semibold font-heading",
-                            href: "/",
+                            href: "/login",
                             icons::icon_7 {}
                             span {
                                 "Sign In"
@@ -120,11 +117,8 @@ pub fn Nav() -> Element {
                                 icons::icon_8 {}
                             }
                             a { class: "flex items-center",
-                                href: "/",
+                                href: "/login",
                                 icons::icon_9 {}
-                                span { class: "inline-block w-6 h-6 text-center bg-gray-100 rounded-full font-semibold font-heading",
-                                    "3"
-                                }
                             }
                         }
                     }

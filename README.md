@@ -38,23 +38,23 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
   - [x] Embed all 160 FoxTown stores from `data/stores.json` (compile-time via `include_str!`)
   - [x] Categorize shops by type (High Fashion, Casualwear, Sportswear, Footwear, etc.)
   - [x] Expose Dioxus server functions: `get_stores()`, `get_stores_by_category()`, `get_stores_by_level()`
-- [ ] **Shop listing page**
-  - [x] Display all shops in the center with filtering by category
-  - [x] Show shop details (location, contact info)
-  - [x] Add external links to each shop's official website
-- [ ] **Shop detail page**
-  - [ ] Individual page for each shop with full information
-  - [ ] Display location on shopping center map
-  - [ ] Link to official website
+- [x] **Shop listing page** (`/map`)
+  - [x] Display all shops with filtering by category, floor, name search
+  - [x] Sort by name or floor
+  - [x] Each card links to the shop detail page
+- [x] **Shop detail page** (`/store/:name`)
+  - [x] Individual page for each shop (name, category, floor, store number, phone)
+  - [ ] Display location on shopping center map (TODO: interactive floor plan)
+  - [x] Link to official website
 
 #### 2. Interactive Game System 🎮
 - [ ] **Design and implement a game for voucher prizes**
   - [ ] Choose game type (wheel of fortune, scratch card, slot machine, etc.)
   - [ ] Game logic implementation
-- [ ] **User authentication system**
-  - [ ] User registration
-  - [ ] User login/logout
-  - [ ] Session management
+- [x] **User authentication system** (`src/auth/`)
+  - [x] User registration (`register` server fn)
+  - [x] User login/logout (`login`, `logout` server fns)
+  - [x] Session management (in-memory token store — TODO: persist to DB)
 - [ ] **Game rules implementation**
   - [ ] One game per day per user
   - [ ] Second chance if user loses first round
@@ -77,18 +77,18 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
   - [ ] Show current location (if possible)
 
 #### 4. Content Management System (CMS) 📝
-- [ ] **Admin panel for collaborators**
+- [ ] **Admin panel for collaborators** (UI not yet built)
   - [ ] Simple, user-friendly interface (no technical knowledge required)
-  - [ ] WYSIWYG editor for content updates
-- [ ] **Editable content**
-  - [ ] Shop information updates
-  - [ ] News and announcements
-  - [ ] Event management
-  - [ ] Banner/promotional content
-- [ ] **User roles and permissions**
-  - [ ] Admin role (full access)
-  - [ ] Editor role (content updates only)
-  - [ ] Authentication for admin area
+  - [ ] WYSIWYG editor for content updates (TODO: wire up frontend editor, e.g. Quill/TipTap via JS interop)
+- [x] **Editable content API** (`src/admin/` — see `ADMIN_API.md`)
+  - [x] Shop information overlay (`upsert_shop_info`, `get_shop_info`)
+  - [x] News and announcements (full CRUD: `create_news`, `list_news`, `update_news`, `delete_news`)
+  - [x] Event management (full CRUD: `create_event`, `list_events`, `update_event`, `delete_event`)
+  - [x] Banner/promotional content (full CRUD + `set_banner_active`, `list_all_banners`)
+- [x] **User roles and permissions**
+  - [x] Admin role (full access — can delete and manage users)
+  - [x] Editor role (create/update content only)
+  - [x] Authentication for admin area (`require_role` guard used in all admin server fns)
 
 #### 5. Parking Information 🅿️
 - [ ] **Parking availability display**

@@ -9,11 +9,15 @@ mod components {
     pub mod error;
     pub mod home;
     pub mod loading;
+    pub mod login;
     pub mod nav;
     pub mod product_item;
     pub mod product_page;
+    pub mod store_page;
 }
 mod api;
+pub mod auth;
+pub mod admin;
 pub mod stores;
 
 fn main() {
@@ -32,7 +36,7 @@ fn main() {
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
-enum Route {
+pub enum Route {
     #[route("/")]
     Home {},
 
@@ -41,6 +45,27 @@ enum Route {
 
     #[route("/map")]
     Map {},
+
+    #[route("/store/:name")]
+    Store { name: String },
+
+    #[route("/login")]
+    Login {},
+}
+
+#[component]
+fn Store(name: String) -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::store_page::StorePage { name }
+    }
+}
+
+fn Login() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::login::LoginPage {}
+    }
 }
 
 fn Map() -> Element {

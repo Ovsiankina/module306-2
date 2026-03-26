@@ -1,4 +1,5 @@
-use crate::stores::{get_stores, Category, Store};
+use crate::stores::{get_stores, slugify, Category, Store};
+use crate::Route;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -119,8 +120,8 @@ pub fn ShopDirectory() -> Element {
             } else {
                 div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4",
                     for store in filtered {
-                        div {
-                            key: "{store.name}",
+                        Link {
+                            to: Route::Store { name: slugify(&store.name) },
                             class: "bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 hover:shadow-md transition-shadow",
 
                             // Name + floor badge
@@ -139,24 +140,12 @@ pub fn ShopDirectory() -> Element {
                                 "{store.category.label()}"
                             }
 
-                            // Store number
-                            if let Some(ref num) = store.store_number {
-                                p { class: "text-xs text-gray-400", "Store #{num}" }
-                            }
-
-                            // Contact / link
-                            div { class: "mt-auto pt-1 flex flex-col gap-1",
-                                if let Some(phone) = store.phone {
-                                    p { class: "text-xs text-gray-500", "{phone}" }
+                            div { class: "mt-auto pt-1 flex flex-col gap-1 text-xs text-gray-400",
+                                if let Some(ref num) = store.store_number {
+                                    p { "Store #{num}" }
                                 }
-                                if let Some(website) = store.website {
-                                    a {
-                                        class: "text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline self-start",
-                                        href: "{website}",
-                                        target: "_blank",
-                                        rel: "noopener noreferrer",
-                                        "Visit website \u{2192}"
-                                    }
+                                if let Some(ref phone) = store.phone {
+                                    p { "{phone}" }
                                 }
                             }
                         }

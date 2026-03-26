@@ -107,7 +107,26 @@ fn load_stores() -> Vec<Store> {
         .shops
 }
 
+// --- Slug ---
+
+pub fn slugify(name: &str) -> String {
+    let raw: String = name
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c.to_lowercase().next().unwrap() } else { '-' })
+        .collect();
+    raw.split('-').filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
+}
+
 // --- Server functions ---
+
+#[server]
+pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
+    load_stores()
+        .into_iter()
+        .find(|s| slugify(&s.name) == slug)
+        .ok_or_else(|| ServerFnError::new(format!("Store '{}' not found", slug)))
+}
+
 
 #[server]
 pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
