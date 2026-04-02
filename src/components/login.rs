@@ -1,4 +1,6 @@
-use crate::auth::{login, register, Role};
+use crate::auth::{login, me, register};
+use crate::context::auth::{write_token, AuthState};
+use crate::Route;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -10,10 +12,12 @@ enum Tab {
 pub fn LoginPage() -> Element {
     let mut tab = use_signal(|| Tab::SignIn);
     let mut username = use_signal(String::new);
+    let mut email = use_signal(String::new);
     let mut password = use_signal(String::new);
     let mut confirm = use_signal(String::new);
     let mut error = use_signal(|| Option::<String>::None);
-    let mut success = use_signal(|| Option::<String>::None);
+    let mut auth = use_context::<Signal<AuthState>>();
+    let nav = use_navigator();
 
     let input_class = "w-full py-4 px-6 text-sm font-semibold font-heading bg-gray-50 border border-gray-200 rounded-md placeholder-gray-400 focus:ring-blue-300 focus:border-blue-300 focus:outline-none";
     let tab_active = "pb-3 border-b-2 border-gray-900 text-sm font-bold font-heading";
@@ -29,24 +33,19 @@ pub fn LoginPage() -> Element {
             div { class: "flex gap-8 mb-8",
                 button {
                     class: if tab() == Tab::SignIn { tab_active } else { tab_inactive },
-                    onclick: move |_| { tab.set(Tab::SignIn); error.set(None); success.set(None); },
+                    onclick: move |_| { tab.set(Tab::SignIn); error.set(None); },
                     "Sign in"
                 }
                 button {
                     class: if tab() == Tab::SignUp { tab_active } else { tab_inactive },
-                    onclick: move |_| { tab.set(Tab::SignUp); error.set(None); success.set(None); },
+                    onclick: move |_| { tab.set(Tab::SignUp); error.set(None); },
                     "Create account"
                 }
             }
 
-            // Feedback banners
+            // Error banner
             if let Some(ref msg) = error() {
                 div { class: "mb-4 px-4 py-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700 font-semibold",
-                    "{msg}"
-                }
-            }
-            if let Some(ref msg) = success() {
-                div { class: "mb-4 px-4 py-3 rounded-md bg-green-50 border border-green-200 text-sm text-green-700 font-semibold",
                     "{msg}"
                 }
             }
@@ -59,6 +58,15 @@ pub fn LoginPage() -> Element {
                     placeholder: "Username",
                     value: "{username}",
                     oninput: move |e| username.set(e.value()),
+                }
+                if tab() == Tab::SignUp {
+                    input {
+                        class: "{input_class}",
+                        r#type: "email",
+                        placeholder: "Email",
+                        value: "{email}",
+                        oninput: move |e| email.set(e.value()),
+                    }
                 }
                 input {
                     class: "{input_class}",
@@ -81,18 +89,21 @@ pub fn LoginPage() -> Element {
                     class: "w-full py-4 px-6 text-sm font-bold font-heading text-white bg-gray-900 hover:bg-gray-700 rounded-md transition-colors",
                     onclick: move |_| {
                         let u = username();
+                        let em = email();
                         let p = password();
                         let c = confirm();
                         let t = tab();
                         async move {
                             error.set(None);
-                            success.set(None);
                             match t {
                                 Tab::SignIn => {
                                     match login(u, p).await {
-                                        Ok(_token) => {
-                                            // TODO: store token in context / localStorage and redirect
-                                            success.set(Some("Signed in successfully.".into()));
+                                        Ok(token) => {
+                                            write_token(&token);
+                                            if let Ok(Some(user)) = me(token).await {
+                                                auth.set(AuthState::LoggedIn(user));
+                                            }
+                                            nav.replace(Route::Home {});
                                         }
                                         Err(e) => error.set(Some(e.to_string())),
                                     }
@@ -102,14 +113,17 @@ pub fn LoginPage() -> Element {
                                         error.set(Some("Passwords do not match.".into()));
                                         return;
                                     }
-                                    if u.is_empty() || p.is_empty() {
-                                        error.set(Some("Username and password are required.".into()));
+                                    if u.is_empty() || em.is_empty() || p.is_empty() {
+                                        error.set(Some("All fields are required.".into()));
                                         return;
                                     }
-                                    match register(u, p, Role::Editor).await {
-                                        Ok(()) => {
-                                            success.set(Some("Account created. You can now sign in.".into()));
-                                            tab.set(Tab::SignIn);
+                                    match register(u, em, p).await {
+                                        Ok(token) => {
+                                            write_token(&token);
+                                            if let Ok(Some(user)) = me(token).await {
+                                                auth.set(AuthState::LoggedIn(user));
+                                            }
+                                            nav.replace(Route::Home {});
                                         }
                                         Err(e) => error.set(Some(e.to_string())),
                                     }

@@ -3,7 +3,9 @@
 All endpoints are Dioxus server functions exposed via `POST /api/<function_name>`.
 Requests and responses are JSON-encoded.
 
-Authentication uses a **session token** returned by `login`. Pass it as `token` in every protected call.
+Authentication uses a **JWT** returned by `login` or `register`.
+Store it in `localStorage` (key `auth_token`) and pass it as `token` in every
+protected call.
 
 ---
 
@@ -19,48 +21,46 @@ Authentication uses a **session token** returned by `login`. Pass it as `token` 
 ### Endpoints
 
 #### `POST /api/register`
-Create a new user account.
-> TODO: restrict to Admin callers before going to production.
+Create a new account and receive a JWT (user is immediately logged in).
 
 ```json
-{ "username": "alice", "password": "secret", "role": "Editor" }
+{ "username": "alice", "email": "alice@example.com", "password": "secret" }
 ```
-Returns: `null` on success.
+Returns: `"<jwt>"` (string). New accounts are created with the `Editor` role.
 
 ---
 
 #### `POST /api/login`
-Authenticate and receive a session token.
+Authenticate and receive a JWT.
 
 ```json
 { "username": "admin", "password": "admin" }
 ```
-Returns: `"<session-token>"` (string).
+Returns: `"<jwt>"` (string).
 
-Store the token client-side and pass it to all protected calls.
-> TODO: switch to HTTP-only secure cookies to prevent XSS token theft.
+Store the token in `localStorage` and pass it to all protected calls.
 
 Development seed: `admin` / `admin` (Admin role).
 
 ---
 
 #### `POST /api/logout`
-Invalidate a session token.
+No-op on the server (JWT is stateless). Client must clear `localStorage`.
 
 ```json
-{ "token": "<session-token>" }
+{ "token": "<jwt>" }
 ```
 Returns: `null`.
 
 ---
 
-#### `POST /api/whoami`
-Get the user associated with a token, or `null` if the token is invalid.
+#### `POST /api/me`
+Decode a JWT and return the associated user, or `null` if invalid/expired.
 
 ```json
-{ "token": "<session-token>" }
+{ "token": "<jwt>" }
 ```
-Returns: `{ "username": "alice", "role": "Editor" }` or `null`.
+Returns: `{ "id": 1, "username": "alice", "email": "...", "role": "Editor" }` or `null`.
 
 ---
 
@@ -208,10 +208,8 @@ Creates or fully replaces the overlay for a store.
 
 ## Known TODOs
 
-- Persist all data to a real database (PostgreSQL or SQLite via SQLx)
-- Replace SHA-256 password hashing with argon2 or bcrypt with per-user salts
-- Replace session token in response body with HTTP-only secure cookie
-- Restrict `register` to Admin callers only
+- Persist CMS content (news, events, banners, shop info) to the SQLite database
+- Switch from `localStorage` JWT to an HTTP-only secure cookie (XSS protection)
+- Restrict `register` to Admin callers only (currently open)
 - Sanitize HTML body/description fields server-side (e.g. `ammonia` crate)
 - Replace `image_url` in banners with a file-upload endpoint
-- Persist sessions to Redis/DB so they survive server restarts

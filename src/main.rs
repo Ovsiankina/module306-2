@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
-use components::home::Home;
-use components::loading::ChildrenOrLoading;
+use context::auth::{AuthProvider, AuthState};
 use dioxus::prelude::*;
 
 mod components {
@@ -15,12 +14,20 @@ mod components {
     pub mod product_page;
     pub mod store_page;
 }
+mod context {
+    pub mod auth;
+}
 mod api;
+mod db;
 pub mod auth;
 pub mod admin;
 pub mod stores;
 
 fn main() {
+    // Load .env (DATABASE_URL, JWT_SECRET) on the server; no-op on WASM.
+    #[cfg(not(target_family = "wasm"))]
+    dotenvy::dotenv().ok();
+
     dioxus::launch(|| {
         rsx! {
             document::Link {
@@ -28,8 +35,10 @@ fn main() {
                 href: asset!("/public/tailwind.css")
             }
 
-            ChildrenOrLoading {
-                Router::<Route> {}
+            components::loading::ChildrenOrLoading {
+                AuthProvider {
+                    Router::<Route> {}
+                }
             }
         }
     });
@@ -51,6 +60,17 @@ pub enum Route {
 
     #[route("/login")]
     Login {},
+}
+
+// ─── Route components ─────────────────────────────────────────────────────────
+
+/// Home page — protected: redirects to /login when unauthenticated.
+fn Home() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::home::Home {}
+        }
+    }
 }
 
 #[component]
@@ -76,14 +96,38 @@ fn Map() -> Element {
 }
 
 #[component]
-/// Render a more sophisticated page with ssr
 fn Details(product_id: usize) -> Element {
     rsx! {
         div {
             components::nav::Nav {}
-            components::product_page::ProductPage {
-                product_id
-            }
+            components::product_page::ProductPage { product_id }
         }
+    }
+}
+
+// ─── Route guard ──────────────────────────────────────────────────────────────
+
+/// Wraps protected pages. Shows a loading indicator while auth is being
+/// rehydrated from localStorage, then either renders children or redirects
+/// to /login.
+#[component]
+fn ProtectedRoute(children: Element) -> Element {
+    let auth = use_context::<Signal<AuthState>>();
+    let nav = use_navigator();
+
+    use_effect(move || {
+        if matches!(auth(), AuthState::LoggedOut) {
+            nav.replace(Route::Login {});
+        }
+    });
+
+    match auth() {
+        AuthState::Loading => rsx! {
+            div { class: "flex items-center justify-center min-h-64",
+                span { class: "text-gray-400 text-sm", "Loading…" }
+            }
+        },
+        AuthState::LoggedOut => rsx! {},
+        AuthState::LoggedIn(_) => rsx! { {children} },
     }
 }

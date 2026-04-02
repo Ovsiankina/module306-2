@@ -10,86 +10,98 @@ pub enum Role {
     Editor,
 }
 
-/// Public profile returned by session checks. Never includes the password hash.
+/// Public user profile returned by auth calls. Never includes the password hash.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct User {
+pub struct UserDto {
+    pub id: i64,
     pub username: String,
+    pub email: String,
     pub role: Role,
 }
 
-// ─── Server-side internals ────────────────────────────────────────────────────
+// ─── Server-only helpers ──────────────────────────────────────────────────────
 
+/// Hash a password with argon2id + random salt.
+/// Exposed at crate root so `db.rs` can call it for the seed user.
 #[cfg(feature = "server")]
-mod store {
-    use super::{Role, User};
-    use rand::Rng;
-    use sha2::{Digest, Sha256};
-    use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
-
-    pub struct StoredUser {
-        pub username: String,
-        pub password_hash: String,
-        pub role: Role,
-    }
-
-    impl StoredUser {
-        pub fn to_user(&self) -> User {
-            User { username: self.username.clone(), role: self.role.clone() }
-        }
-    }
-
-    pub fn users() -> &'static Mutex<HashMap<String, StoredUser>> {
-        static U: OnceLock<Mutex<HashMap<String, StoredUser>>> = OnceLock::new();
-        U.get_or_init(|| {
-            let mut map = HashMap::new();
-            // TODO: load from database on startup
-            // Development seed — change before going to production
-            map.insert("admin".into(), StoredUser {
-                username: "admin".into(),
-                password_hash: hash_password("admin"),
-                role: Role::Admin,
-            });
-            Mutex::new(map)
-        })
-    }
-
-    pub fn sessions() -> &'static Mutex<HashMap<String, String>> {
-        static S: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
-        // TODO: persist sessions to Redis/DB so they survive server restarts
-        S.get_or_init(|| Mutex::new(HashMap::new()))
-    }
-
-    /// Hash a password with a static pepper.
-    /// TODO: replace with argon2 or bcrypt with per-user salts.
-    pub fn hash_password(password: &str) -> String {
-        let mut h = Sha256::new();
-        h.update(b"foxtown-v1-");
-        h.update(password.as_bytes());
-        format!("{:x}", h.finalize())
-    }
-
-    pub fn generate_token() -> String {
-        let bytes: [u8; 32] = rand::thread_rng().gen();
-        bytes.iter().map(|b| format!("{:02x}", b)).collect()
-    }
-
-    pub fn get_user_by_token(token: &str) -> Option<User> {
-        let sessions = sessions().lock().unwrap();
-        let username = sessions.get(token)?.clone();
-        drop(sessions);
-        users().lock().unwrap().get(&username).map(|u| u.to_user())
-    }
+pub fn hash_password(password: &str) -> Result<String, String> {
+    use argon2::{Argon2, PasswordHasher};
+    use argon2::password_hash::SaltString;
+    use rand_core::OsRng;
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map(|h| h.to_string())
+        .map_err(|e| e.to_string())
 }
 
-/// Server-only guard: verify token and require a minimum role.
-/// Import this in admin server functions via `crate::auth::require_role`.
 #[cfg(feature = "server")]
-pub fn require_role(token: &str, min_role: &Role) -> Result<User, ServerFnError> {
-    let user = store::get_user_by_token(token)
-        .ok_or_else(|| ServerFnError::new("Unauthorized: invalid or expired session"))?;
+fn verify_password(password: &str, hash: &str) -> bool {
+    use argon2::{Argon2, PasswordHash, PasswordVerifier};
+    let Ok(parsed) = PasswordHash::new(hash) else {
+        return false;
+    };
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .is_ok()
+}
+
+#[cfg(feature = "server")]
+fn jwt_secret() -> String {
+    std::env::var("JWT_SECRET")
+        .unwrap_or_else(|_| "dev-secret-change-in-production".to_string())
+}
+
+#[cfg(feature = "server")]
+#[derive(Serialize, Deserialize)]
+struct Claims {
+    sub: i64,
+    username: String,
+    email: String,
+    role: String,
+    exp: usize,
+}
+
+#[cfg(feature = "server")]
+fn encode_jwt(user: &UserDto) -> Result<String, String> {
+    use jsonwebtoken::{encode, EncodingKey, Header};
+    let exp = (chrono::Utc::now() + chrono::Duration::days(30)).timestamp() as usize;
+    let claims = Claims {
+        sub: user.id,
+        username: user.username.clone(),
+        email: user.email.clone(),
+        role: format!("{:?}", user.role),
+        exp,
+    };
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret().as_bytes()),
+    )
+    .map_err(|e| e.to_string())
+}
+
+#[cfg(feature = "server")]
+fn decode_jwt(token: &str) -> Option<UserDto> {
+    use jsonwebtoken::{decode, DecodingKey, Validation};
+    let data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(jwt_secret().as_bytes()),
+        &Validation::default(),
+    )
+    .ok()?;
+    let c = data.claims;
+    let role = if c.role == "Admin" { Role::Admin } else { Role::Editor };
+    Some(UserDto { id: c.sub, username: c.username, email: c.email, role })
+}
+
+/// Verify a JWT and require a minimum role. Used by admin server functions.
+#[cfg(feature = "server")]
+pub fn require_role(token: &str, min_role: &Role) -> Result<UserDto, ServerFnError> {
+    let user = decode_jwt(token)
+        .ok_or_else(|| ServerFnError::new("Unauthorized: invalid or expired token"))?;
     let allowed = match min_role {
-        Role::Editor => true, // Editor or Admin both pass
+        Role::Editor => true,
         Role::Admin => user.role == Role::Admin,
     };
     if !allowed {
@@ -100,59 +112,82 @@ pub fn require_role(token: &str, min_role: &Role) -> Result<User, ServerFnError>
 
 // ─── Server functions ─────────────────────────────────────────────────────────
 
-/// Register a new user account.
-/// POST /api/register
-/// Body: { username, password, role }
-/// TODO: restrict to Admin callers before going to production.
+/// Register a new user account and return a JWT.
+/// POST /api/register — body: { username, email, password }
 #[server]
 pub async fn register(
     username: String,
+    email: String,
     password: String,
-    role: Role,
-) -> Result<(), ServerFnError> {
-    let hash = store::hash_password(&password);
-    let mut users = store::users().lock().unwrap();
-    if users.contains_key(&username) {
-        return Err(ServerFnError::new("Username already taken"));
-    }
-    users.insert(username.clone(), store::StoredUser { username, password_hash: hash, role });
-    // TODO: persist to database
-    Ok(())
+) -> Result<String, ServerFnError> {
+    let hash = hash_password(&password).map_err(ServerFnError::new)?;
+    let pool = crate::db::pool().await;
+
+    sqlx::query(
+        "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Editor')",
+    )
+    .bind(&username)
+    .bind(&email)
+    .bind(&hash)
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        if e.to_string().contains("UNIQUE") {
+            ServerFnError::new("Username or email already taken")
+        } else {
+            ServerFnError::new(e.to_string())
+        }
+    })?;
+
+    let (id, uname, mail, role_str): (i64, String, String, String) = sqlx::query_as(
+        "SELECT id, username, email, role FROM users WHERE username = ?",
+    )
+    .bind(&username)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let role = if role_str == "Admin" { Role::Admin } else { Role::Editor };
+    let user = UserDto { id, username: uname, email: mail, role };
+    encode_jwt(&user).map_err(ServerFnError::new)
 }
 
-/// Authenticate and get a session token.
-/// POST /api/login
-/// Body: { username, password }
-/// Returns: session token string.
-/// TODO: set as HTTP-only cookie instead of returning in body (XSS protection).
+/// Authenticate with username + password and return a JWT.
+/// POST /api/login — body: { username, password }
 #[server]
 pub async fn login(username: String, password: String) -> Result<String, ServerFnError> {
-    let hash = store::hash_password(&password);
-    let users = store::users().lock().unwrap();
-    let user = users.get(&username)
-        .ok_or_else(|| ServerFnError::new("Invalid credentials"))?;
-    if user.password_hash != hash {
+    let pool = crate::db::pool().await;
+
+    let row: Option<(i64, String, String, String, String)> = sqlx::query_as(
+        "SELECT id, username, email, password_hash, role FROM users WHERE username = ?",
+    )
+    .bind(&username)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let (id, uname, email, hash, role_str) =
+        row.ok_or_else(|| ServerFnError::new("Invalid credentials"))?;
+
+    if !verify_password(&password, &hash) {
         return Err(ServerFnError::new("Invalid credentials"));
     }
-    drop(users);
-    let token = store::generate_token();
-    store::sessions().lock().unwrap().insert(token.clone(), username);
-    Ok(token)
+
+    let role = if role_str == "Admin" { Role::Admin } else { Role::Editor };
+    let user = UserDto { id, username: uname, email, role };
+    encode_jwt(&user).map_err(ServerFnError::new)
 }
 
-/// Invalidate a session token.
-/// POST /api/logout
-/// Body: { token }
+/// Decode a JWT and return the associated user, or None if invalid/expired.
+/// POST /api/me — body: { token }
 #[server]
-pub async fn logout(token: String) -> Result<(), ServerFnError> {
-    store::sessions().lock().unwrap().remove(&token);
+pub async fn me(token: String) -> Result<Option<UserDto>, ServerFnError> {
+    Ok(decode_jwt(&token))
+}
+
+/// No-op on the server — JWT is stateless. Client clears localStorage.
+/// POST /api/logout — body: { token }
+#[server]
+pub async fn logout(_token: String) -> Result<(), ServerFnError> {
     Ok(())
-}
-
-/// Return the user for a session token, or None if the token is invalid.
-/// POST /api/whoami
-/// Body: { token }
-#[server]
-pub async fn whoami(token: String) -> Result<Option<User>, ServerFnError> {
-    Ok(store::get_user_by_token(&token))
 }
