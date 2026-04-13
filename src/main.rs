@@ -4,6 +4,7 @@ use context::auth::{AuthProvider, AuthState};
 use dioxus::prelude::*;
 
 mod components {
+    pub mod button;
     pub mod directory;
     pub mod error;
     pub mod home;
@@ -13,6 +14,8 @@ mod components {
     pub mod product_item;
     pub mod product_page;
     pub mod store_page;
+    pub mod interactive_map;
+    pub mod game;
 }
 mod context {
     pub mod auth;
@@ -33,6 +36,10 @@ fn main() {
             document::Link {
                 rel: "stylesheet",
                 href: asset!("/public/tailwind.css")
+            }
+            document::Link {
+                rel: "stylesheet",
+                href: asset!("/public/figma-styles.css")
             }
 
             components::loading::ChildrenOrLoading {
@@ -55,6 +62,9 @@ pub enum Route {
     #[route("/map")]
     Map {},
 
+    #[route("/rewards")]
+    Rewards {},
+
     #[route("/store/:name")]
     Store { name: String },
 
@@ -64,12 +74,11 @@ pub enum Route {
 
 // ─── Route components ─────────────────────────────────────────────────────────
 
-/// Home page — protected: redirects to /login when unauthenticated.
+/// Home page — public, no login required.
 fn Home() -> Element {
     rsx! {
-        ProtectedRoute {
-            components::home::Home {}
-        }
+        components::nav::Nav {}
+        components::home::Home {}
     }
 }
 
@@ -91,7 +100,14 @@ fn Login() -> Element {
 fn Map() -> Element {
     rsx! {
         components::nav::Nav {}
-        components::directory::ShopDirectory {}
+        components::interactive_map::InteractiveMap {}
+    }
+}
+
+fn Rewards() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::game::Game {}
     }
 }
 
