@@ -6,12 +6,14 @@ use dioxus::prelude::*;
 mod components {
     pub mod directory;
     pub mod error;
+    pub mod footer;
     pub mod home;
     pub mod loading;
     pub mod login;
     pub mod nav;
     pub mod product_item;
     pub mod product_page;
+    pub mod rewards;
     pub mod store_page;
 }
 mod context {
@@ -24,12 +26,15 @@ pub mod admin;
 pub mod stores;
 
 fn main() {
-    // Load .env (DATABASE_URL, JWT_SECRET) on the server; no-op on WASM.
     #[cfg(not(target_family = "wasm"))]
     dotenvy::dotenv().ok();
 
     dioxus::launch(|| {
         rsx! {
+            document::Link {
+                rel: "stylesheet",
+                href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+            }
             document::Link {
                 rel: "stylesheet",
                 href: asset!("/public/tailwind.css")
@@ -55,6 +60,9 @@ pub enum Route {
     #[route("/map")]
     Map {},
 
+    #[route("/rewards")]
+    Rewards {},
+
     #[route("/store/:name")]
     Store { name: String },
 
@@ -64,34 +72,38 @@ pub enum Route {
 
 // ─── Route components ─────────────────────────────────────────────────────────
 
-/// Home page — protected: redirects to /login when unauthenticated.
 fn Home() -> Element {
     rsx! {
-        ProtectedRoute {
-            components::home::Home {}
-        }
+        components::home::Home {}
     }
 }
 
 #[component]
 fn Store(name: String) -> Element {
     rsx! {
-        components::nav::Nav {}
+        components::nav::Nav { active: components::nav::NavPage::Stores }
         components::store_page::StorePage { name }
+        components::footer::Footer {}
     }
 }
 
 fn Login() -> Element {
     rsx! {
-        components::nav::Nav {}
         components::login::LoginPage {}
     }
 }
 
 fn Map() -> Element {
     rsx! {
-        components::nav::Nav {}
         components::directory::ShopDirectory {}
+    }
+}
+
+fn Rewards() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::rewards::RewardsPage {}
+        }
     }
 }
 
@@ -107,9 +119,6 @@ fn Details(product_id: usize) -> Element {
 
 // ─── Route guard ──────────────────────────────────────────────────────────────
 
-/// Wraps protected pages. Shows a loading indicator while auth is being
-/// rehydrated from localStorage, then either renders children or redirects
-/// to /login.
 #[component]
 fn ProtectedRoute(children: Element) -> Element {
     let auth = use_context::<Signal<AuthState>>();
@@ -124,7 +133,7 @@ fn ProtectedRoute(children: Element) -> Element {
     match auth() {
         AuthState::Loading => rsx! {
             div { class: "flex items-center justify-center min-h-64",
-                span { class: "text-gray-400 text-sm", "Loading…" }
+                span { class: "text-muted text-sm", "Loading\u{2026}" }
             }
         },
         AuthState::LoggedOut => rsx! {},
