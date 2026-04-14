@@ -1,10 +1,12 @@
 use std::{fmt::Display, str::FromStr};
 
 use crate::api::{fetch_product, Product};
+use crate::i18n::{Locale, translate};
 use dioxus::prelude::*;
 
 #[component]
 pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
+    let locale = use_context::<Signal<Locale>>();
     let mut quantity = use_signal(|| 1);
     let mut size = use_signal(Size::default);
     let product = use_loader(move || fetch_product(product_id()))?;
@@ -61,7 +63,7 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                             div { class: "flex mb-12",
                                 div { class: "mr-6",
                                     span { class: "block mb-4 font-bold font-heading text-gray-400 uppercase",
-                                        "QTY"
+                                        {translate(locale(), "product.qty")}
                                     }
                                     div { class: "inline-flex items-center px-4 font-semibold font-heading text-gray-500 border border-gray-200 focus:ring-blue-300 focus:border-blue-300 rounded-md",
                                         button { class: "py-2 hover:text-gray-700",
@@ -82,7 +84,7 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                                 }
                                 div {
                                     span { class: "block mb-4 font-bold font-heading text-gray-400 uppercase",
-                                        "Size"
+                                        {translate(locale(), "product.size")}
                                     }
                                     select { class: "pl-6 pr-10 py-4 font-semibold font-heading text-gray-500 border border-gray-200 focus:ring-blue-300 focus:border-blue-300 rounded-md",
                                         id: "",
@@ -94,15 +96,15 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                                         },
                                         option {
                                             value: "1",
-                                            "Medium"
+                                            {translate(locale(), "product.size.medium")}
                                         }
                                         option {
                                             value: "2",
-                                            "Small"
+                                            {translate(locale(), "product.size.small")}
                                         }
                                         option {
                                             value: "3",
-                                            "Large"
+                                            {translate(locale(), "product.size.large")}
                                         }
                                     }
                                 }
@@ -111,13 +113,13 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                                 div { class: "w-full xl:w-2/3 px-4 mb-4 xl:mb-0",
                                     a { class: "block bg-orange-300 hover:bg-orange-400 text-center text-white font-bold font-heading py-5 px-8 rounded-md uppercase transition duration-200",
                                         href: "#",
-                                        "Add to cart"
+                                        {translate(locale(), "product.add_to_cart")}
                                     }
                                 }
                             }
                             div { class: "flex items-center",
                                 span { class: "mr-8 text-gray-500 font-bold font-heading uppercase",
-                                    "SHARE IT"
+                                    {translate(locale(), "product.share")}
                                 }
                                 a { class: "mr-1 w-8 h-8",
                                     href: "#",
@@ -149,25 +151,25 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                         li { class: "w-1/2 md:w-auto",
                             a { class: "inline-block py-6 px-10 bg-white text-gray-500 font-bold font-heading shadow-2xl",
                                 href: "#",
-                                "Description"
+                                {translate(locale(), "product.tab.description")}
                             }
                         }
                         li { class: "w-1/2 md:w-auto",
                             a { class: "inline-block py-6 px-10 text-gray-500 font-bold font-heading",
                                 href: "#",
-                                "Customer reviews"
+                                {translate(locale(), "product.tab.reviews")}
                             }
                         }
                         li { class: "w-1/2 md:w-auto",
                             a { class: "inline-block py-6 px-10 text-gray-500 font-bold font-heading",
                                 href: "#",
-                                "Shipping &amp; returns"
+                                {translate(locale(), "product.tab.shipping")}
                             }
                         }
                         li { class: "w-1/2 md:w-auto",
                             a { class: "inline-block py-6 px-10 text-gray-500 font-bold font-heading",
                                 href: "#",
-                                "Brand"
+                                {translate(locale(), "product.tab.brand")}
                             }
                         }
                     }

@@ -2,8 +2,11 @@
 
 use context::auth::{AuthProvider, AuthState};
 use dioxus::prelude::*;
+use i18n::{translate, I18nProvider, Locale};
 
 mod components {
+    pub mod cookie_banner;
+    pub mod contact;
     pub mod directory;
     pub mod error;
     pub mod footer;
@@ -13,12 +16,17 @@ mod components {
     pub mod nav;
     pub mod product_item;
     pub mod product_page;
+    pub mod not_found;
+    pub mod privacy;
     pub mod rewards;
     pub mod store_page;
+    pub mod terms;
 }
 mod context {
     pub mod auth;
 }
+mod cookies;
+mod i18n;
 mod api;
 mod db;
 pub mod auth;
@@ -41,8 +49,11 @@ fn main() {
             }
 
             components::loading::ChildrenOrLoading {
-                AuthProvider {
-                    Router::<Route> {}
+                I18nProvider {
+                    AuthProvider {
+                        Router::<Route> {}
+                        components::cookie_banner::CookieBanner {}
+                    }
                 }
             }
         }
@@ -68,6 +79,18 @@ pub enum Route {
 
     #[route("/login")]
     Login {},
+
+    #[route("/contact")]
+    Contact {},
+
+    #[route("/privacy")]
+    Privacy {},
+
+    #[route("/terms")]
+    Terms {},
+
+    #[route("/:..segments")]
+    NotFound { segments: Vec<String> },
 }
 
 // ─── Route components ─────────────────────────────────────────────────────────
@@ -117,11 +140,45 @@ fn Details(product_id: usize) -> Element {
     }
 }
 
+fn Contact() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::contact::ContactPage {}
+        components::footer::Footer {}
+    }
+}
+
+#[component]
+fn NotFound(segments: Vec<String>) -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::not_found::NotFoundPage { segments }
+        components::footer::Footer {}
+    }
+}
+
+fn Privacy() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::privacy::PrivacyPage {}
+        components::footer::Footer {}
+    }
+}
+
+fn Terms() -> Element {
+    rsx! {
+        components::nav::Nav {}
+        components::terms::TermsPage {}
+        components::footer::Footer {}
+    }
+}
+
 // ─── Route guard ──────────────────────────────────────────────────────────────
 
 #[component]
 fn ProtectedRoute(children: Element) -> Element {
     let auth = use_context::<Signal<AuthState>>();
+    let locale = use_context::<Signal<Locale>>();
     let nav = use_navigator();
 
     use_effect(move || {
@@ -133,7 +190,7 @@ fn ProtectedRoute(children: Element) -> Element {
     match auth() {
         AuthState::Loading => rsx! {
             div { class: "flex items-center justify-center min-h-64",
-                span { class: "text-muted text-sm", "Loading\u{2026}" }
+                span { class: "text-muted text-sm", {translate(locale(), "common.loading")} }
             }
         },
         AuthState::LoggedOut => rsx! {},

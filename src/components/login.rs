@@ -1,7 +1,10 @@
 use crate::auth::{login, me, register};
 use crate::context::auth::{write_token, AuthState};
+use crate::i18n::{Locale, translate};
 use crate::Route;
 use dioxus::prelude::*;
+
+const LOGIN_FOOTER_LINK_HREFS: [&str; 4] = ["/contact", "/map", "/privacy", "/terms"];
 
 #[derive(Clone, Copy, PartialEq)]
 enum Tab {
@@ -10,6 +13,7 @@ enum Tab {
 }
 
 pub fn LoginPage() -> Element {
+    let locale = use_context::<Signal<Locale>>();
     let mut tab = use_signal(|| Tab::SignIn);
     let mut username = use_signal(String::new);
     let mut email = use_signal(String::new);
@@ -39,10 +43,10 @@ pub fn LoginPage() -> Element {
                     // Branding content
                     div { class: "relative z-10 p-12 pb-16 w-full",
                         h1 { class: "text-5xl font-extrabold tracking-widest text-white mb-6",
-                            "FOXTOWN"
+                            {translate(locale(), "nav.logo")}
                         }
                         p { class: "text-white/80 text-lg leading-relaxed max-w-md",
-                            "Access the world\u{2019}s most exclusive luxury outlets. Your curated shopping experience starts here."
+                            {translate(locale(), "login.hero")}
                         }
                     }
                 }
@@ -54,13 +58,13 @@ pub fn LoginPage() -> Element {
 
                             // Header
                             h2 { class: "text-2xl font-bold text-dark mb-2",
-                                if tab() == Tab::SignIn { "Welcome Back" } else { "Create Account" }
+                                {if tab() == Tab::SignIn { translate(locale(), "login.welcome") } else { translate(locale(), "login.create_account") }}
                             }
                             p { class: "text-sm text-body mb-8",
                                 if tab() == Tab::SignIn {
-                                    "Sign in to your member account."
+                                    {translate(locale(), "login.signin_subtitle")}
                                 } else {
-                                    "Create your FoxTown rewards account."
+                                    {translate(locale(), "login.signup_subtitle")}
                                 }
                             }
 
@@ -77,7 +81,7 @@ pub fn LoginPage() -> Element {
                                 // Email / Username field
                                 div {
                                     label { class: "block text-sm font-medium text-body mb-1.5",
-                                        if tab() == Tab::SignIn { "Email Address" } else { "Username" }
+                                        {if tab() == Tab::SignIn { translate(locale(), "login.email_address") } else { translate(locale(), "login.username") }}
                                     }
                                     input {
                                         class: "{input_class}",
@@ -91,7 +95,7 @@ pub fn LoginPage() -> Element {
                                 // Email (sign-up only)
                                 if tab() == Tab::SignUp {
                                     div {
-                                        label { class: "block text-sm font-medium text-body mb-1.5", "Email" }
+                                        label { class: "block text-sm font-medium text-body mb-1.5", {translate(locale(), "login.email")} }
                                         input {
                                             class: "{input_class}",
                                             r#type: "email",
@@ -105,10 +109,15 @@ pub fn LoginPage() -> Element {
                                 // Password field
                                 div {
                                     div { class: "flex items-center justify-between mb-1.5",
-                                        label { class: "text-sm font-medium text-body", "Password" }
+                                        label { class: "text-sm font-medium text-body", {translate(locale(), "login.password")} }
                                         if tab() == Tab::SignIn {
-                                            a { class: "text-sm font-medium text-accent hover:underline", href: "#",
-                                                "Forgot Password?"
+                                            button {
+                                                class: "text-sm font-medium text-accent hover:underline",
+                                                r#type: "button",
+                                                onclick: move |_| {
+                                                    nav.push(Route::Contact {});
+                                                },
+                                                {translate(locale(), "login.forgot_password")}
                                             }
                                         }
                                     }
@@ -124,7 +133,7 @@ pub fn LoginPage() -> Element {
                                 // Confirm password (sign-up only)
                                 if tab() == Tab::SignUp {
                                     div {
-                                        label { class: "block text-sm font-medium text-body mb-1.5", "Confirm Password" }
+                                        label { class: "block text-sm font-medium text-body mb-1.5", {translate(locale(), "login.confirm_password")} }
                                         input {
                                             class: "{input_class}",
                                             r#type: "password",
@@ -161,11 +170,11 @@ pub fn LoginPage() -> Element {
                                                 }
                                                 Tab::SignUp => {
                                                     if p != c {
-                                                        error.set(Some("Passwords do not match.".into()));
+                                                        error.set(Some(translate(locale(), "login.error.password_mismatch")));
                                                         return;
                                                     }
                                                     if u.is_empty() || em.is_empty() || p.is_empty() {
-                                                        error.set(Some("All fields are required.".into()));
+                                                        error.set(Some(translate(locale(), "login.error.required")));
                                                         return;
                                                     }
                                                     match register(u, em, p).await {
@@ -182,7 +191,7 @@ pub fn LoginPage() -> Element {
                                             }
                                         }
                                     },
-                                    if tab() == Tab::SignIn { "Login" } else { "Create Account" }
+                                    {if tab() == Tab::SignIn { translate(locale(), "login.login_button") } else { translate(locale(), "login.create_button") }}
                                 }
 
                                 // Divider
@@ -192,7 +201,7 @@ pub fn LoginPage() -> Element {
                                             div { class: "w-full border-t border-gray-200" }
                                         }
                                         div { class: "relative flex justify-center",
-                                            span { class: "px-3 bg-white text-sm text-body", "Or continue with" }
+                                            span { class: "px-3 bg-white text-sm text-body", {translate(locale(), "login.or_continue")} }
                                         }
                                     }
 
@@ -221,9 +230,9 @@ pub fn LoginPage() -> Element {
                             // Switch tab
                             p { class: "mt-8 text-center text-sm text-body",
                                 if tab() == Tab::SignIn {
-                                    "Don\u{2019}t have an account? "
+                                    {format!("{} ", translate(locale(), "login.dont_have"))}
                                 } else {
-                                    "Already have an account? "
+                                    {format!("{} ", translate(locale(), "login.already_have"))}
                                 }
                                 button {
                                     class: "font-semibold text-accent hover:underline",
@@ -231,7 +240,7 @@ pub fn LoginPage() -> Element {
                                         error.set(None);
                                         if tab() == Tab::SignIn { tab.set(Tab::SignUp) } else { tab.set(Tab::SignIn) }
                                     },
-                                    if tab() == Tab::SignIn { "Sign Up" } else { "Sign In" }
+                                    {if tab() == Tab::SignIn { translate(locale(), "login.sign_up") } else { translate(locale(), "login.sign_in") }}
                                 }
                             }
                         }
@@ -240,20 +249,33 @@ pub fn LoginPage() -> Element {
                     // Login page footer
                     div { class: "px-6 py-8 border-t border-gray-100",
                         div { class: "max-w-sm mx-auto",
-                            p { class: "text-sm font-bold tracking-widest text-dark mb-3", "FOXTOWN" }
+                            p { class: "text-sm font-bold tracking-widest text-dark mb-3", {translate(locale(), "nav.logo")} }
                             div { class: "flex flex-wrap gap-4 mb-4",
-                                a { class: "text-xs text-body hover:text-dark", href: "#", "Contact" }
-                                a { class: "text-xs text-body hover:text-dark", href: "#", "Directions" }
-                                a { class: "text-xs text-body hover:text-dark", href: "#", "Privacy" }
-                                a { class: "text-xs text-body hover:text-dark", href: "#", "Terms" }
+                                a { class: "text-xs text-body hover:text-dark", href: LOGIN_FOOTER_LINK_HREFS[0], {translate(locale(), "footer.contact")} }
+                                a { class: "text-xs text-body hover:text-dark", href: LOGIN_FOOTER_LINK_HREFS[1], {translate(locale(), "footer.directions")} }
+                                a { class: "text-xs text-body hover:text-dark", href: LOGIN_FOOTER_LINK_HREFS[2], {translate(locale(), "footer.privacy")} }
+                                a { class: "text-xs text-body hover:text-dark", href: LOGIN_FOOTER_LINK_HREFS[3], {translate(locale(), "footer.terms")} }
                             }
                             p { class: "text-xs text-body",
-                                "\u{00A9} 2024 FOXTOWN FACTORY STORES. ALL RIGHTS RESERVED."
+                                {translate(locale(), "footer.copyright")}
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LOGIN_FOOTER_LINK_HREFS;
+
+    #[test]
+    fn login_footer_links_are_real_routes() {
+        for href in LOGIN_FOOTER_LINK_HREFS {
+            assert_ne!(href, "#");
+            assert!(href.starts_with('/'));
         }
     }
 }

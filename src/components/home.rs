@@ -1,5 +1,6 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
+use crate::i18n::{Locale, translate, translate_fmt};
 use crate::stores::{get_stores, slugify, Category, Store};
 use crate::Route;
 use dioxus::prelude::*;
@@ -16,14 +17,14 @@ enum FilterGroup {
 }
 
 impl FilterGroup {
-    fn label(&self) -> &'static str {
+    fn label_key(&self) -> &'static str {
         match self {
-            Self::All => "ALL BRANDS",
-            Self::Luxury => "LUXURY",
-            Self::FashionAccessories => "FASHION & ACCESSORIES",
-            Self::SportOutdoor => "SPORT & OUTDOOR",
-            Self::HomeLifestyle => "HOME & LIFESTYLE",
-            Self::Kids => "KIDS",
+            Self::All => "home.filter.all",
+            Self::Luxury => "home.filter.luxury",
+            Self::FashionAccessories => "home.filter.fashion",
+            Self::SportOutdoor => "home.filter.sport",
+            Self::HomeLifestyle => "home.filter.home",
+            Self::Kids => "home.filter.kids",
         }
     }
 
@@ -59,40 +60,246 @@ impl FilterGroup {
     }
 }
 
-fn brand_image(name: &str) -> Option<&'static str> {
-    match name.to_lowercase().as_str() {
-        n if n.contains("gucci") => Some("/brands/gucci.png"),
-        n if n.contains("prada") => Some("/brands/prada.png"),
-        n if n.contains("armani") => Some("/brands/armani.png"),
-        n if n.contains("burberry") => Some("/brands/burberry.png"),
-        n if n.contains("nike") => Some("/brands/nike.png"),
-        n if n.contains("adidas") => Some("/brands/adidas.png"),
-        n if n.contains("dolce") || n.contains("gabbana") => Some("/brands/dolce-gabbana.png"),
-        n if n.contains("valentino") => Some("/brands/valentino.png"),
-        _ => None,
+fn brand_image(name: &str) -> Option<String> {
+    let normalized = name.trim().to_lowercase();
+    let file_name = match normalized.as_str() {
+        "swatch"
+        | "mantero"
+        | "christmas store"
+        | "chalet suisse"
+        | "fashion bar"
+        | "gelateria"
+        | "il caffè"
+        | "maui poke"
+        | "pizzeria"
+        | "the place"
+        | "wood avenue - italian restaurant"
+        | "casinò admiral"
+        | "infopoint / guest services"
+        | "tax & exchange services"
+        | "cloakroom / tailor's store"
+        | "vantaviaggi"
+        | "the sense gallery" => return None,
+        "kate spade new york" => "kate_spade.jpg".to_string(),
+        "philipp plein" => "philipp_plein_men.jpg".to_string(),
+        "polo ralph lauren" => "polo.jpg".to_string(),
+        "7 for all mankind" => "7.jpg".to_string(),
+        "andré maurice" => "andre_maurice.jpg".to_string(),
+        "boggi milano" => "boggi.jpg".to_string(),
+        "elena mirò" => "elena_miro.jpg".to_string(),
+        "gaudì" => "gaudi.jpg".to_string(),
+        "hackett london" => "hackett.jpg".to_string(),
+        "human couture" => "0_sbs.jpg".to_string(),
+        "paul & shark" => "paul_shark.jpg".to_string(),
+        "aeronautica militare" => "aventurx.jpg".to_string(),
+        "c.p. company" => "cp_company.jpg".to_string(),
+        "diesel factory outlet" => "diesel.jpg".to_string(),
+        "k·way" => "kway.jpg".to_string(),
+        "k-way" => "kway.jpg".to_string(),
+        "jack & jones" => "jack_jones.jpg".to_string(),
+        "lee - wrangler" => "lee.jpg".to_string(),
+        "levi's & dockers" => "levis.jpg".to_string(),
+        "quiksilver" => "quicksilver.jpg".to_string(),
+        "nike factory store" => "nike.jpg".to_string(),
+        "rh+" => "rh_plus.jpg".to_string(),
+        "harmont & blaine junior" => "harmont_&_blaine.jpg".to_string(),
+        "jacadi paris" => "jacadi.jpg".to_string(),
+        "church's" => "churchs.jpg".to_string(),
+        "tod's - hogan" => "tods.jpg".to_string(),
+        "calzedonia - intimissimi" => "calzedonia.jpg".to_string(),
+        "belotti otticaudito" => "belotti.jpg".to_string(),
+        "blitz for eyes" => "blitz.jpg".to_string(),
+        "bric's" => "brics.jpg".to_string(),
+        "sbs" => "0_sbs.jpg".to_string(),
+        "kiko milano" => "kiko.jpg".to_string(),
+        "millefiori store" => "millefiori.jpg".to_string(),
+        "villeroy & boch" => "villeroy_et_boch.jpg".to_string(),
+        "free shop" => "free2shop.jpg".to_string(),
+        "dolce & gabbana" => "dolce_gabana.jpg".to_string(),
+        "loro piana" => "Loro_piana.jpg".to_string(),
+        "marc o'polo" => "marc_O_polo.jpg".to_string(),
+        "harmont & blaine" => "harmont_&_blaine.jpg".to_string(),
+        "zadig & voltaire" => "zadig_&_voltaire.jpg".to_string(),
+        "salvatore ferragamo" => "salvatorre_ferragamo.jpg".to_string(),
+        _ => {
+            let mut slug = String::with_capacity(normalized.len());
+            let mut prev_underscore = false;
+
+            for ch in normalized.chars() {
+                let mapped = if ch.is_ascii_alphanumeric() {
+                    Some(ch)
+                } else if ch == '&' {
+                    Some('&')
+                } else {
+                    Some('_')
+                };
+
+                if let Some(c) = mapped {
+                    if c == '_' {
+                        if !prev_underscore {
+                            slug.push('_');
+                            prev_underscore = true;
+                        }
+                    } else {
+                        slug.push(c);
+                        prev_underscore = false;
+                    }
+                }
+            }
+
+            let slug = slug.trim_matches('_');
+            format!("{slug}.jpg")
+        }
+    };
+
+    Some(format!("/brands/{file_name}"))
+}
+
+#[component]
+fn StoreCardImage(name: String) -> Element {
+    let mut image_failed = use_signal(|| false);
+    let image_src = brand_image(&name);
+    let image_src_value = image_src.as_deref().unwrap_or_default();
+
+    rsx! {
+        div { class: "h-40 w-full bg-gray-100 rounded-lg mb-4 overflow-hidden flex items-center justify-center",
+            if image_failed() || image_src.is_none() {
+                span { class: "text-2xl font-extrabold text-gray-300 tracking-wider group-hover:text-accent transition-colors",
+                    "{name}"
+                }
+            } else {
+                img {
+                    src: "{image_src_value}",
+                    class: "w-full h-full object-cover",
+                    alt: "{name}",
+                    onerror: move |_| image_failed.set(true),
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{FilterGroup, brand_image, category_label};
+    use crate::stores::Category;
+
+    #[test]
+    fn brand_image_uses_known_overrides() {
+        assert_eq!(
+            brand_image("Dolce & Gabbana"),
+            Some("/brands/dolce_gabana.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Loro Piana"),
+            Some("/brands/Loro_piana.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Marc O'Polo"),
+            Some("/brands/marc_O_polo.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Harmont & Blaine"),
+            Some("/brands/harmont_&_blaine.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Zadig & Voltaire"),
+            Some("/brands/zadig_&_voltaire.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Salvatore Ferragamo"),
+            Some("/brands/salvatorre_ferragamo.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn brand_image_normalizes_generic_names() {
+        assert_eq!(
+            brand_image("New Balance"),
+            Some("/brands/new_balance.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("  Tommy   Hilfiger  "),
+            Some("/brands/tommy_hilfiger.jpg".to_string())
+        );
+        assert_eq!(
+            brand_image("Paul&Shark"),
+            Some("/brands/paul&shark.jpg".to_string())
+        );
+    }
+
+    #[test]
+    fn brand_image_collapses_separator_runs() {
+        assert_eq!(brand_image("A---B"), Some("/brands/a_b.jpg".to_string()));
+        assert_eq!(brand_image("A   B"), Some("/brands/a_b.jpg".to_string()));
+        assert_eq!(brand_image("__A__B__"), Some("/brands/a_b.jpg".to_string()));
+    }
+
+    #[test]
+    fn brand_image_skips_known_missing_files() {
+        assert_eq!(brand_image("Swatch"), None);
+        assert_eq!(brand_image("The Sense Gallery"), None);
+    }
+
+    #[test]
+    fn filter_group_label_keys_are_stable_and_complete() {
+        assert!(FilterGroup::all() == &[
+            FilterGroup::All,
+            FilterGroup::Luxury,
+            FilterGroup::FashionAccessories,
+            FilterGroup::SportOutdoor,
+            FilterGroup::HomeLifestyle,
+            FilterGroup::Kids,
+        ]);
+        assert_eq!(FilterGroup::All.label_key(), "home.filter.all");
+        assert_eq!(FilterGroup::Kids.label_key(), "home.filter.kids");
+    }
+
+    #[test]
+    fn filter_group_matching_rules_cover_expected_categories() {
+        assert!(FilterGroup::All.matches(&Category::Services));
+        assert!(FilterGroup::Luxury.matches(&Category::HighFashion));
+        assert!(FilterGroup::Luxury.matches(&Category::WatchesJewellery));
+        assert!(!FilterGroup::Luxury.matches(&Category::SportswearEquipment));
+
+        assert!(FilterGroup::FashionAccessories.matches(&Category::Accessories));
+        assert!(FilterGroup::FashionAccessories.matches(&Category::Footwear));
+        assert!(!FilterGroup::FashionAccessories.matches(&Category::Beauty));
+
+        assert!(FilterGroup::HomeLifestyle.matches(&Category::Home));
+        assert!(FilterGroup::HomeLifestyle.matches(&Category::Electronics));
+        assert!(!FilterGroup::HomeLifestyle.matches(&Category::Childrenswear));
+    }
+
+    #[test]
+    fn category_label_maps_to_expected_translation_keys() {
+        assert_eq!(category_label(&Category::HighFashion), "home.category.luxury_fashion");
+        assert_eq!(category_label(&Category::Accessories), "home.category.accessories");
+        assert_eq!(category_label(&Category::Services), "home.category.services");
     }
 }
 
 fn category_label(cat: &Category) -> &'static str {
     match cat {
-        Category::HighFashion => "LUXURY FASHION",
-        Category::LadiesMenswear => "FASHION",
-        Category::Casualwear => "CASUALWEAR",
-        Category::SportswearEquipment => "SPORT & PERFORMANCE",
-        Category::Childrenswear => "KIDSWEAR",
-        Category::Footwear => "FOOTWEAR",
-        Category::Underwear => "UNDERWEAR",
-        Category::WatchesJewellery => "LUXURY HERITAGE",
-        Category::Accessories => "ACCESSORIES",
-        Category::Electronics => "ELECTRONICS",
-        Category::Beauty => "BEAUTY",
-        Category::Home => "HOME & LIFESTYLE",
-        Category::FoodDrinks => "FOOD & DRINKS",
-        Category::Services => "SERVICES",
+        Category::HighFashion => "home.category.luxury_fashion",
+        Category::LadiesMenswear => "home.category.fashion",
+        Category::Casualwear => "home.category.casualwear",
+        Category::SportswearEquipment => "home.category.sport_performance",
+        Category::Childrenswear => "home.category.kidswear",
+        Category::Footwear => "home.category.footwear",
+        Category::Underwear => "home.category.underwear",
+        Category::WatchesJewellery => "home.category.luxury_heritage",
+        Category::Accessories => "home.category.accessories",
+        Category::Electronics => "home.category.electronics",
+        Category::Beauty => "home.category.beauty",
+        Category::Home => "home.category.home_lifestyle",
+        Category::FoodDrinks => "home.category.food_drinks",
+        Category::Services => "home.category.services",
     }
 }
 
 pub(crate) fn Home() -> Element {
+    let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut filter = use_signal(FilterGroup::default);
 
@@ -117,13 +324,13 @@ pub(crate) fn Home() -> Element {
             section { class: "max-w-7xl mx-auto px-6 pt-16 pb-12",
                 div { class: "max-w-2xl",
                     p { class: "text-sm font-semibold tracking-widest text-accent mb-4",
-                        "STORE DIRECTORY"
+                        {translate(locale(), "home.directory")}
                     }
                     h1 { class: "text-4xl md:text-5xl font-extrabold text-dark leading-tight mb-6",
-                        "THE ARCHIVE OF\nEXCELLENCE."
+                        {translate(locale(), "home.title")}
                     }
                     p { class: "text-body leading-relaxed mb-8",
-                        "Discover over 160 stores from the most prestigious international brands with discounts from 30% to 70% all year round."
+                        {translate(locale(), "home.subtitle")}
                     }
                 }
 
@@ -133,7 +340,7 @@ pub(crate) fn Home() -> Element {
                         input {
                             class: "w-full py-3.5 pl-4 pr-12 text-sm border border-gray-200 rounded-l-lg placeholder-muted focus:ring-accent focus:border-accent focus:outline-none",
                             r#type: "text",
-                            placeholder: "FIND A BRAND...",
+                            placeholder: {translate(locale(), "home.search_placeholder")},
                             value: "{search}",
                             oninput: move |e| search.set(e.value()),
                         }
@@ -162,14 +369,14 @@ pub(crate) fn Home() -> Element {
                     div { class: "flex gap-1 overflow-x-auto py-3 -mx-1",
                         for &group in FilterGroup::all() {
                             button {
-                                key: "{group.label()}",
+                                key: "{group.label_key()}",
                                 class: if filter() == group {
                                     "shrink-0 px-5 py-2.5 text-xs font-bold tracking-wider rounded-full bg-dark text-white"
                                 } else {
                                     "shrink-0 px-5 py-2.5 text-xs font-bold tracking-wider rounded-full text-body hover:bg-gray-100 transition-colors"
                                 },
                                 onclick: move |_| filter.set(group),
-                                "{group.label()}"
+                                {translate(locale(), group.label_key())}
                             }
                         }
                     }
@@ -177,10 +384,11 @@ pub(crate) fn Home() -> Element {
             }
 
             // ─── Store grid ─────────────────────────────────────────
-            section { class: "max-w-7xl mx-auto px-6 py-12",
+            section { class: "w-full",
+                div { class: "max-w-7xl mx-auto px-6 py-12",
                 if filtered.is_empty() {
                     div { class: "text-center py-20 text-muted font-semibold",
-                        "No stores match your search."
+                        {translate(locale(), "home.empty")}
                     }
                 } else {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6",
@@ -190,36 +398,28 @@ pub(crate) fn Home() -> Element {
                                 to: Route::Store { name: slugify(&store.name) },
                                 class: "group block",
 
-                                // Store image
-                                div { class: "h-40 w-full bg-gray-100 rounded-lg mb-4 overflow-hidden flex items-center justify-center",
-                                    if let Some(img) = brand_image(&store.name) {
-                                        img { src: "{img}", class: "w-full h-full object-cover", alt: "{store.name}" }
-                                    } else {
-                                        span { class: "text-2xl font-extrabold text-gray-300 tracking-wider group-hover:text-accent transition-colors",
-                                            "{store.name}"
-                                        }
-                                    }
-                                }
+                                StoreCardImage { name: store.name.clone() }
 
                                 // Info
                                 h3 { class: "text-sm font-bold text-dark tracking-wide mb-1",
                                     "{store.name}"
                                 }
                                 p { class: "text-xs font-semibold text-accent tracking-wider mb-1",
-                                    "{category_label(&store.category)}"
+                                    {translate(locale(), category_label(&store.category))}
                                 }
                                 if let Some(level) = store.level {
                                     p { class: "text-xs text-muted tracking-wider",
                                         if let Some(ref num) = store.store_number {
-                                            "LEVEL {level} \u{2022} UNIT {num}"
+                                            {translate_fmt(locale(), "home.level_unit", &[("level", level.to_string()), ("unit", num.clone())])}
                                         } else {
-                                            "LEVEL {level}"
+                                            {translate_fmt(locale(), "home.level_only", &[("level", level.to_string())])}
                                         }
                                     }
                                 }
                             }
                         }
                     }
+                }
                 }
             }
 
@@ -228,19 +428,19 @@ pub(crate) fn Home() -> Element {
                 div { class: "max-w-7xl mx-auto px-6 py-16 flex flex-col lg:flex-row items-center gap-12",
                     div { class: "flex-1",
                         h2 { class: "text-3xl md:text-4xl font-extrabold text-white leading-tight mb-4",
-                            "NEVER MISS AN\nEXCLUSIVE DROP."
+                            {translate(locale(), "home.newsletter.title")}
                         }
                         p { class: "text-muted leading-relaxed mb-8 max-w-md",
-                            "Join our private list to receive early access to seasonal sales, limited events, and new store openings at FoxTown."
+                            {translate(locale(), "home.newsletter.subtitle")}
                         }
                         div { class: "flex max-w-md",
                             input {
                                 class: "flex-1 py-3.5 px-4 text-sm bg-gray-800 border border-gray-700 rounded-l-lg placeholder-surface text-white focus:ring-accent focus:border-accent focus:outline-none",
                                 r#type: "email",
-                                placeholder: "YOUR EMAIL ADDRESS",
+                                placeholder: {translate(locale(), "home.newsletter.placeholder")},
                             }
                             button { class: "px-6 py-3.5 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-r-lg transition-colors",
-                                "SUBSCRIBE"
+                                {translate(locale(), "home.newsletter.button")}
                             }
                         }
                     }
