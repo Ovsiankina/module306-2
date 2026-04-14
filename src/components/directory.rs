@@ -1,157 +1,202 @@
-use crate::stores::{get_stores, slugify, Category, Store};
-use crate::Route;
+use crate::components::footer::Footer;
+use crate::components::nav::{Nav, NavPage};
+use crate::stores::{get_stores, Store};
 use dioxus::prelude::*;
 
-#[derive(Clone, Copy, PartialEq, Default)]
-enum SortOrder {
-    #[default]
-    NameAZ,
-    NameZA,
-    LevelAsc,
-    LevelDesc,
-}
-
-fn level_badge_class(level: u8) -> &'static str {
-    match level {
-        0 => "bg-yellow-100 text-yellow-700 border border-yellow-200",
-        1 => "bg-red-100 text-red-700 border border-red-200",
-        2 => "bg-blue-100 text-blue-700 border border-blue-200",
-        _ => "bg-green-100 text-green-700 border border-green-200",
-    }
-}
-
-fn level_label(level: u8) -> &'static str {
-    match level {
-        0 => "Floor 0",
-        1 => "Floor 1",
-        2 => "Floor 2",
-        _ => "Floor 3",
-    }
-}
-
 pub fn ShopDirectory() -> Element {
-    let mut name_query = use_signal(|| String::new());
-    let mut cat_filter = use_signal(|| String::new());
-    let mut lvl_filter = use_signal(|| String::new());
-    let mut sort_order = use_signal(SortOrder::default);
+    let mut search = use_signal(String::new);
+    let mut active_floor = use_signal(|| 0u8);
 
     let stores = use_loader(|| get_stores())?;
 
-    let q = name_query().to_lowercase();
-    let ck = cat_filter();
-    let lv = lvl_filter();
+    let q = search().to_lowercase();
+    let search_results: Vec<Store> = if q.is_empty() {
+        vec![]
+    } else {
+        stores
+            .iter()
+            .filter(|s| s.name.to_lowercase().contains(&q))
+            .take(5)
+            .map(|s| (*s).clone())
+            .collect()
+    };
 
-    let mut filtered: Vec<Store> = stores
-        .iter()
-        .filter(|s| {
-            (q.is_empty() || s.name.to_lowercase().contains(&q))
-                && (ck.is_empty() || s.category.key() == ck.as_str())
-                && (lv.is_empty() || s.level.map(|l| l.to_string()).as_deref() == Some(lv.as_str()))
-        })
-        .map(|s| (*s).clone())
-        .collect();
-
-    match sort_order() {
-        SortOrder::NameAZ => filtered.sort_by(|a, b| a.name.cmp(&b.name)),
-        SortOrder::NameZA => filtered.sort_by(|a, b| b.name.cmp(&a.name)),
-        SortOrder::LevelAsc => filtered.sort_by(|a, b| a.level.cmp(&b.level).then(a.name.cmp(&b.name))),
-        SortOrder::LevelDesc => filtered.sort_by(|a, b| b.level.cmp(&a.level).then(a.name.cmp(&b.name))),
-    }
-
-    let count = filtered.len();
-    let count_label = if count == 1 { "store" } else { "stores" };
-
-    let select_class = "py-3 px-4 text-xs uppercase font-semibold font-heading bg-gray-50 border border-gray-200 rounded-md focus:ring-blue-300 focus:border-blue-300 focus:outline-none cursor-pointer";
+    let floor_btn_class = |floor: u8| {
+        if active_floor() == floor {
+            "px-6 py-2.5 text-xs font-bold tracking-wider text-white bg-dark rounded-full"
+        } else {
+            "px-6 py-2.5 text-xs font-bold tracking-wider text-muted hover:text-dark rounded-full transition-colors"
+        }
+    };
 
     rsx! {
-        section { class: "max-w-7xl mx-auto px-6 py-10",
-            div { class: "mb-6",
-                h1 { class: "text-3xl font-bold font-heading mb-1", "Shop Directory" }
-                p { class: "text-sm text-gray-500", "{count} {count_label} found" }
-            }
+        div { class: "min-h-screen flex flex-col bg-white font-heading",
+            Nav { active: NavPage::Map }
 
-            // Filter bar
-            div { class: "flex flex-wrap gap-3 mb-8",
-                input {
-                    class: "flex-1 min-w-48 py-3 px-4 text-xs uppercase font-semibold font-heading bg-gray-50 border border-gray-200 rounded-md placeholder-gray-400 focus:ring-blue-300 focus:border-blue-300 focus:outline-none",
-                    r#type: "text",
-                    placeholder: "Search by name...",
-                    oninput: move |e| name_query.set(e.value()),
+            // ─── Hero ───────────────────────────────────────────────
+            section { class: "max-w-7xl mx-auto px-6 pt-16 pb-8",
+                h1 { class: "text-4xl md:text-5xl font-extrabold text-dark leading-tight mb-4",
+                    "Navigate Luxury."
                 }
-                select {
-                    class: "{select_class}",
-                    onchange: move |e| cat_filter.set(e.value()),
-                    option { value: "", "All categories" }
-                    for cat in Category::all() {
-                        option { value: "{cat.key()}", "{cat.label()}" }
-                    }
-                }
-                select {
-                    class: "{select_class}",
-                    onchange: move |e| lvl_filter.set(e.value()),
-                    option { value: "", "All floors" }
-                    option { value: "0", "Floor 0 (Yellow)" }
-                    option { value: "1", "Floor 1 (Red)" }
-                    option { value: "2", "Floor 2 (Blue)" }
-                    option { value: "3", "Floor 3 (Green)" }
-                }
-                select {
-                    class: "{select_class}",
-                    onchange: move |e| {
-                        sort_order.set(match e.value().as_str() {
-                            "name_za"    => SortOrder::NameZA,
-                            "level_asc"  => SortOrder::LevelAsc,
-                            "level_desc" => SortOrder::LevelDesc,
-                            _            => SortOrder::NameAZ,
-                        });
-                    },
-                    option { value: "name_az",    "Name A \u{2192} Z" }
-                    option { value: "name_za",    "Name Z \u{2192} A" }
-                    option { value: "level_asc",  "Floor 0 \u{2192} 3" }
-                    option { value: "level_desc", "Floor 3 \u{2192} 0" }
+                p { class: "text-body leading-relaxed max-w-2xl",
+                    "Explore three floors of premium outlet shopping. Locate your favorite boutiques, find exclusive dining, and plan your journey through FoxTown."
                 }
             }
 
-            // Results
-            if filtered.is_empty() {
-                div { class: "text-center py-20 text-gray-400 font-semibold font-heading",
-                    "No stores match your filters."
-                }
-            } else {
-                div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4",
-                    for store in filtered {
-                        Link {
-                            to: Route::Store { name: slugify(&store.name) },
-                            class: "bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 hover:shadow-md transition-shadow",
+            // ─── Main content ───────────────────────────────────────
+            section { class: "max-w-7xl mx-auto px-6 pb-16",
+                div { class: "flex flex-col lg:flex-row gap-8",
 
-                            // Name + floor badge
-                            div { class: "flex items-start justify-between gap-2",
-                                h3 { class: "font-bold font-heading text-gray-900 leading-tight", "{store.name}" }
-                                if let Some(level) = store.level {
-                                    span {
-                                        class: "shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full {level_badge_class(level)}",
-                                        "{level_label(level)}"
+                    // ── Sidebar ─────────────────────────────────────
+                    div { class: "w-full lg:w-80 shrink-0 space-y-8",
+
+                        // Store search
+                        div {
+                            h3 { class: "text-lg font-bold text-accent mb-4", "Find a Store" }
+                            div { class: "flex border border-gray-200 rounded-lg overflow-hidden",
+                                input {
+                                    class: "flex-1 py-3 px-4 text-sm placeholder-muted focus:outline-none",
+                                    r#type: "text",
+                                    placeholder: "Search brands...",
+                                    value: "{search}",
+                                    oninput: move |e| search.set(e.value()),
+                                }
+                                button { class: "px-4 text-muted hover:text-dark transition-colors",
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg",
+                                        width: "16",
+                                        height: "16",
+                                        view_box: "0 0 24 24",
+                                        fill: "none",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        circle { cx: "11", cy: "11", r: "8" }
+                                        line { x1: "21", y1: "21", x2: "16.65", y2: "16.65" }
                                     }
                                 }
                             }
 
-                            // Category badge
-                            span { class: "text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 self-start",
-                                "{store.category.label()}"
+                            // Search results
+                            if !search_results.is_empty() {
+                                div { class: "mt-2 border border-gray-100 rounded-lg divide-y divide-gray-50",
+                                    for store in search_results {
+                                        div { class: "px-4 py-3 hover:bg-gray-50 cursor-pointer",
+                                            p { class: "text-sm font-bold text-dark", "{store.name}" }
+                                            if let Some(level) = store.level {
+                                                p { class: "text-xs text-muted",
+                                                    if let Some(ref num) = store.store_number {
+                                                        "L{level} \u{2022} {num}"
+                                                    } else {
+                                                        "L{level}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Facilities legend
+                        div {
+                            h3 { class: "text-lg font-bold text-dark mb-4", "Facilities" }
+                            div { class: "space-y-3",
+                                FacilityItem { label: "Restrooms" }
+                                FacilityItem { label: "Elevators" }
+                                div { class: "flex items-center gap-3",
+                                    div { class: "w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-muted text-xs", "\u{1F37D}" }
+                                    div {
+                                        p { class: "text-sm text-dark", "Food Court" }
+                                        p { class: "text-xs text-accent", "Level 2" }
+                                    }
+                                }
+                                FacilityItem { label: "Parking Access" }
+                                FacilityItem { label: "First Aid" }
+                            }
+                        }
+                    }
+
+                    // ── Map area ────────────────────────────────────
+                    div { class: "flex-1",
+
+                        // Floor level selector
+                        div { class: "flex items-center gap-2 mb-6 bg-gray-50 rounded-full p-1 w-fit",
+                            for floor in 0u8..4 {
+                                button {
+                                    key: "floor-{floor}",
+                                    class: floor_btn_class(floor),
+                                    onclick: move |_| active_floor.set(floor),
+                                    "Level {floor}"
+                                }
+                            }
+                        }
+
+                        // Map canvas
+                        div { class: "relative bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden",
+                            // Floor plan image
+                            img {
+                                src: "/floor-plan.png",
+                                class: "w-full object-cover",
+                                alt: "Level {active_floor()} Floor Plan",
                             }
 
-                            div { class: "mt-auto pt-1 flex flex-col gap-1 text-xs text-gray-400",
-                                if let Some(ref num) = store.store_number {
-                                    p { "Store #{num}" }
+                            // Zoom controls
+                            div { class: "absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2",
+                                button { class: "w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-dark hover:bg-gray-50",
+                                    "+"
                                 }
-                                if let Some(ref phone) = store.phone {
-                                    p { "{phone}" }
+                                button { class: "w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-dark hover:bg-gray-50",
+                                    "\u{2212}"
+                                }
+                                button { class: "w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-dark hover:bg-gray-50",
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg",
+                                        width: "16",
+                                        height: "16",
+                                        view_box: "0 0 24 24",
+                                        fill: "none",
+                                        stroke: "currentColor",
+                                        stroke_width: "2",
+                                        // Crosshair / location icon
+                                        circle { cx: "12", cy: "12", r: "3" }
+                                        path { d: "M12 2v4M12 18v4M2 12h4M18 12h4" }
+                                    }
+                                }
+                            }
+
+                            // Wing label
+                            div { class: "absolute top-4 left-4",
+                                span { class: "px-3 py-1.5 bg-dark/80 text-white text-xs font-bold tracking-wider rounded-full",
+                                    "NORTH WING"
                                 }
                             }
                         }
                     }
                 }
             }
+
+            Footer { dark: false }
+        }
+    }
+}
+
+#[component]
+fn FacilityItem(label: &'static str) -> Element {
+    rsx! {
+        div { class: "flex items-center gap-3",
+            div { class: "w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center",
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg",
+                    width: "14",
+                    height: "14",
+                    view_box: "0 0 24 24",
+                    fill: "none",
+                    stroke: "currentColor",
+                    stroke_width: "2",
+                    circle { cx: "12", cy: "12", r: "10" }
+                }
+            }
+            p { class: "text-sm text-dark", "{label}" }
         }
     }
 }
