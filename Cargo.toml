@@ -12,7 +12,7 @@ serde_json = "1"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }
-web-sys = { version = "0.3", features = ["Window", "Storage"] }
+web-sys = { version = "0.3", features = ["Window", "Storage", "Document", "HtmlDocument"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 chrono = { version = "0.4", features = ["serde"] }

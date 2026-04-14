@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
 
 // Embedded at compile time — no file I/O at runtime
-#[cfg(feature = "server")]
 const STORES_JSON: &str = include_str!("../data/stores.json");
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -94,17 +94,28 @@ impl Category {
     }
 }
 
-#[cfg(feature = "server")]
 #[derive(Deserialize)]
 struct StoresData {
     shops: Vec<Store>,
 }
 
-#[cfg(feature = "server")]
 fn load_stores() -> Vec<Store> {
     serde_json::from_str::<StoresData>(STORES_JSON)
         .expect("stores.json is invalid")
         .shops
+}
+
+static STORES_CACHE: LazyLock<Vec<Store>> = LazyLock::new(load_stores);
+
+fn cached_stores() -> &'static [Store] {
+    STORES_CACHE.as_slice()
+}
+
+pub fn get_store_local(slug: &str) -> Option<Store> {
+    cached_stores()
+        .iter()
+        .find(|s| slugify(&s.name) == slug)
+        .cloned()
 }
 
 // --- Slug ---
@@ -117,34 +128,93 @@ pub fn slugify(name: &str) -> String {
     raw.split('-').filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{Category, get_store_local, slugify};
+    use std::collections::HashSet;
+
+    #[test]
+    fn slugify_normalizes_common_store_names() {
+        assert_eq!(slugify("Tommy Hilfiger"), "tommy-hilfiger");
+        assert_eq!(slugify("Dolce & Gabbana"), "dolce-gabbana");
+        assert_eq!(slugify("Marc O'Polo"), "marc-o-polo");
+    }
+
+    #[test]
+    fn slugify_collapses_non_alnum_runs() {
+        assert_eq!(slugify("  New   Balance  "), "new-balance");
+        assert_eq!(slugify("A---B"), "a-b");
+        assert_eq!(slugify("__A__B__"), "a-b");
+    }
+
+    #[test]
+    fn slugify_preserves_numbers_and_unicode_letters() {
+        assert_eq!(slugify("7 For All Mankind"), "7-for-all-mankind");
+        assert_eq!(slugify("Été 2026"), "été-2026");
+    }
+
+    #[test]
+    fn category_all_has_unique_and_complete_keys() {
+        let all = Category::all();
+        assert_eq!(all.len(), 14);
+
+        let keys: HashSet<&'static str> = all.iter().map(Category::key).collect();
+        assert_eq!(keys.len(), all.len());
+        assert!(keys.contains("HIGH_FASHION"));
+        assert!(keys.contains("SERVICES"));
+    }
+
+    #[test]
+    fn category_labels_match_expected_copy() {
+        assert_eq!(Category::HighFashion.label(), "High Fashion");
+        assert_eq!(Category::LadiesMenswear.label(), "Ladies & Menswear");
+        assert_eq!(Category::FoodDrinks.label(), "Food & Drinks");
+    }
+
+    #[test]
+    fn get_store_local_returns_known_store_from_slug() {
+        let store = get_store_local("akris");
+        assert!(store.is_some());
+        assert_eq!(store.expect("store should exist").name, "Akris");
+    }
+
+    #[test]
+    fn get_store_local_returns_none_for_unknown_slug() {
+        assert!(get_store_local("this-store-does-not-exist").is_none());
+    }
+}
+
 // --- Server functions ---
 
 #[server]
 pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
-    load_stores()
-        .into_iter()
+    cached_stores()
+        .iter()
         .find(|s| slugify(&s.name) == slug)
+        .cloned()
         .ok_or_else(|| ServerFnError::new(format!("Store '{}' not found", slug)))
 }
 
 
 #[server]
 pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
-    Ok(load_stores())
+    Ok(cached_stores().to_vec())
 }
 
 #[server]
 pub async fn get_stores_by_category(category: Category) -> Result<Vec<Store>, ServerFnError> {
-    Ok(load_stores()
-        .into_iter()
+    Ok(cached_stores()
+        .iter()
         .filter(|s| s.category == category)
+        .cloned()
         .collect())
 }
 
 #[server]
 pub async fn get_stores_by_level(level: u8) -> Result<Vec<Store>, ServerFnError> {
-    Ok(load_stores()
-        .into_iter()
+    Ok(cached_stores()
+        .iter()
         .filter(|s| s.level == Some(level))
+        .cloned()
         .collect())
 }
