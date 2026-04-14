@@ -1,10 +1,8 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "server")]
 use std::sync::LazyLock;
 
 // Embedded at compile time — no file I/O at runtime
-#[cfg(feature = "server")]
 const STORES_JSON: &str = include_str!("../data/stores.json");
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -96,25 +94,28 @@ impl Category {
     }
 }
 
-#[cfg(feature = "server")]
 #[derive(Deserialize)]
 struct StoresData {
     shops: Vec<Store>,
 }
 
-#[cfg(feature = "server")]
 fn load_stores() -> Vec<Store> {
     serde_json::from_str::<StoresData>(STORES_JSON)
         .expect("stores.json is invalid")
         .shops
 }
 
-#[cfg(feature = "server")]
 static STORES_CACHE: LazyLock<Vec<Store>> = LazyLock::new(load_stores);
 
-#[cfg(feature = "server")]
 fn cached_stores() -> &'static [Store] {
     STORES_CACHE.as_slice()
+}
+
+pub fn get_store_local(slug: &str) -> Option<Store> {
+    cached_stores()
+        .iter()
+        .find(|s| slugify(&s.name) == slug)
+        .cloned()
 }
 
 // --- Slug ---
@@ -129,7 +130,7 @@ pub fn slugify(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{Category, slugify};
+    use super::{Category, get_store_local, slugify};
     use std::collections::HashSet;
 
     #[test]
@@ -168,6 +169,18 @@ mod tests {
         assert_eq!(Category::HighFashion.label(), "High Fashion");
         assert_eq!(Category::LadiesMenswear.label(), "Ladies & Menswear");
         assert_eq!(Category::FoodDrinks.label(), "Food & Drinks");
+    }
+
+    #[test]
+    fn get_store_local_returns_known_store_from_slug() {
+        let store = get_store_local("akris");
+        assert!(store.is_some());
+        assert_eq!(store.expect("store should exist").name, "Akris");
+    }
+
+    #[test]
+    fn get_store_local_returns_none_for_unknown_slug() {
+        assert!(get_store_local("this-store-does-not-exist").is_none());
     }
 }
 

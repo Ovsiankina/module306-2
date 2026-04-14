@@ -1,12 +1,16 @@
 use std::{fmt::Display, str::FromStr};
 
 use crate::api::{fetch_product, Product};
+use crate::context::cart::CartState;
 use crate::i18n::{Locale, translate};
+use crate::Route;
 use dioxus::prelude::*;
 
 #[component]
 pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
     let locale = use_context::<Signal<Locale>>();
+    let mut cart = use_context::<Signal<CartState>>();
+    let nav = use_navigator();
     let mut quantity = use_signal(|| 1);
     let mut size = use_signal(Size::default);
     let product = use_loader(move || fetch_product(product_id()))?;
@@ -111,8 +115,13 @@ pub fn ProductPage(product_id: ReadSignal<usize>) -> Element {
                             }
                             div { class: "flex flex-wrap -mx-4 mb-14 items-center",
                                 div { class: "w-full xl:w-2/3 px-4 mb-4 xl:mb-0",
-                                    a { class: "block bg-orange-300 hover:bg-orange-400 text-center text-white font-bold font-heading py-5 px-8 rounded-md uppercase transition duration-200",
-                                        href: "#",
+                                    button {
+                                        class: "w-full block bg-orange-300 hover:bg-orange-400 text-center text-white font-bold font-heading py-5 px-8 rounded-md uppercase transition duration-200",
+                                        onclick: move |_| {
+                                            let qty = quantity().max(1) as u32;
+                                            cart.write().add_item(product_id(), title.clone(), price, qty);
+                                            nav.push(Route::Cart {});
+                                        },
                                         {translate(locale(), "product.add_to_cart")}
                                     }
                                 }
@@ -214,6 +223,38 @@ impl FromStr for Size {
             "large" => Ok(Large),
             _ => Err(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Size;
+    use std::str::FromStr;
+
+    #[test]
+    fn size_display_outputs_expected_labels() {
+        assert_eq!(Size::Small.to_string(), "small");
+        assert_eq!(Size::Medium.to_string(), "medium");
+        assert_eq!(Size::Large.to_string(), "large");
+    }
+
+    #[test]
+    fn size_from_str_accepts_case_insensitive_values() {
+        assert!(matches!(Size::from_str("small"), Ok(Size::Small)));
+        assert!(matches!(Size::from_str("MEDIUM"), Ok(Size::Medium)));
+        assert!(matches!(Size::from_str("LaRgE"), Ok(Size::Large)));
+    }
+
+    #[test]
+    fn size_from_str_rejects_unknown_values() {
+        assert!(Size::from_str("xl").is_err());
+        assert!(Size::from_str("1").is_err());
+        assert!(Size::from_str("").is_err());
+    }
+
+    #[test]
+    fn default_size_is_medium() {
+        assert!(matches!(Size::default(), Size::Medium));
     }
 }
 

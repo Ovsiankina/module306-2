@@ -52,9 +52,9 @@ This is a work in progress. The following features are currently implemented:
 
 - [x] A homepage with a list of products dynamically fetched from the FakeStoreAPI (rendered using SSR)
 - [x] A product detail page with details about a product (rendered using LiveView)
-- [ ] A cart page
-- [ ] A checkout page
-- [ ] A login page
+- [x] A cart page
+- [x] A checkout page
+- [x] A login page
 
 ---
 
@@ -87,6 +87,10 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
   - [x] User registration (`register` server fn)
   - [x] User login/logout (`login`, `logout` server fns)
   - [x] Session management (in-memory token store — TODO: persist to DB)
+  - [ ] Implement Sign Up flow properly in the UI (validation, error states, and success path)
+  - [ ] Implement Forgot Password flow properly (request reset + reset confirmation UX)
+  - [ ] Add Google sign up / sign in integration
+  - [ ] Add Apple sign up / sign in integration
 - [ ] **Game rules implementation**
   - [ ] One game per day per user
   - [ ] Second chance if user loses first round
@@ -240,3 +244,38 @@ Based on `documentation/Directives_v2.pdf`:
 ---
 
 **Note**: This project requires a significant pivot from a generic e-commerce demo to a specific shopping center information and engagement platform. Priority should be given to core client requirements: shop directory, interactive game, map integration, and CMS functionality.
+
+---
+
+## 🔴 PRIORITY TODO - Exigences client (`documentation/306-DEVA.pdf`)
+
+Liste separee et prioritaire basee sur le vrai cahier des charges client.
+
+- [x] **Repertorier toutes les boutiques du centre**
+  - [x] Donnees boutiques integrees
+  - [x] Listing des boutiques avec filtres/recherche
+- [x] **Ajouter un lien vers le site officiel de chaque magasin**
+  - [x] Lien present sur la page detail magasin
+- [ ] **Mettre un petit jeu en page d'accueil pour gagner des bons d'achat**
+  - [ ] Choisir et implementer le jeu
+  - [ ] Integrer le jeu sur la home
+- [ ] **Appliquer les regles du jeu**
+  - [ ] Compte utilisateur obligatoire pour participer
+  - [ ] Limite a une participation par jour
+  - [ ] Deuxieme chance si echec au premier tour
+  - [ ] Limite de 10 cadeaux par jour
+- [ ] **Afficher le plan du centre**
+  - [ ] Carte interactive complete (niveaux, position des boutiques)
+- [ ] **Permettre aux collaborateurs de faire des mises a jour facilement**
+  - [ ] Interface admin simple (sans connaissances techniques)
+- [ ] **Afficher le nombre de places disponibles dans les parkings**
+  - [ ] Source de donnees + affichage des disponibilites
+- [ ] **Enregistrer et exploiter les statistiques visiteurs**
+  - [ ] Comptage visiteurs
+  - [ ] Statistiques journalieres, mensuelles et annuelles
+- [ ] **Respecter le budget serre et rester legal**
+  - [x] Prioriser des solutions open source / faible cout
+    - Stack retenue: Dioxus + Rust + Tailwind CSS (open source), hebergement Linux low-cost, SQLite pour demarrage puis migration PostgreSQL si necessaire.
+    - Integrations payantes reportees tant qu'elles ne sont pas indispensables au MVP.
+  - [ ] Verifier conformite legale (donnees, cookies, tracking)
+

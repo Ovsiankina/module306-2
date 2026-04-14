@@ -1,12 +1,12 @@
 use dioxus::prelude::*;
-use crate::i18n::{translate, Locale};
+use crate::i18n::{persist_locale, translate, Locale};
 
 const DESKTOP_ACTIVE_LANG_BTN_CLASS: &str = "text-xs font-bold tracking-wider text-accent";
 const DESKTOP_INACTIVE_LANG_BTN_CLASS: &str =
     "text-xs font-bold tracking-wider text-nav hover:text-dark transition-colors";
-const MOBILE_ACTIVE_LANG_BTN_CLASS: &str = "text-xs font-bold tracking-wider text-white";
+const MOBILE_ACTIVE_LANG_BTN_CLASS: &str = "text-xs font-bold tracking-wider text-dark";
 const MOBILE_INACTIVE_LANG_BTN_CLASS: &str =
-    "text-xs font-bold tracking-wider text-white/80 hover:text-white transition-colors";
+    "text-xs font-bold tracking-wider text-nav hover:text-dark transition-colors";
 const LANGUAGE_BUTTONS: &[(Locale, &str)] = &[
     (Locale::It, "IT"),
     (Locale::De, "DE"),
@@ -35,7 +35,6 @@ pub enum NavPage {
     Stores,
     Map,
     Rewards,
-    Visit,
     #[default]
     None,
 }
@@ -67,7 +66,7 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                     a { class: link_class(NavPage::Stores), href: "/", {translate(locale(), "nav.stores")} }
                     a { class: link_class(NavPage::Map), href: "/map", {translate(locale(), "nav.map")} }
                     a { class: link_class(NavPage::Rewards), href: "/rewards", {translate(locale(), "nav.rewards")} }
-                    a { class: link_class(NavPage::Visit), href: "/map", {translate(locale(), "nav.visit")} }
+                    a { class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors", href: "/cart", "CART" }
                 }
 
                 // Right actions
@@ -76,7 +75,10 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                         for (idx, &(target_locale, label)) in LANGUAGE_BUTTONS.iter().enumerate() {
                             button {
                                 class: desktop_language_button_class(locale(), target_locale),
-                                onclick: move |_| locale.set(target_locale),
+                                onclick: move |_| {
+                                    locale.set(target_locale);
+                                    persist_locale(target_locale);
+                                },
                                 "{label}"
                             }
                             if idx < LANGUAGE_BUTTONS.len() - 1 {
@@ -143,14 +145,11 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                     }
 
                     div { class: "absolute top-0 right-0 h-full w-72 shadow-2xl overflow-y-auto",
-                        // Force a solid panel background behind all content.
-                        div { class: "absolute inset-0", style: "background-color: #ED8606;" }
-
-                        div { class: "relative z-10 p-6 flex flex-col h-full",
+                        div { class: "min-h-full bg-accent p-6 flex flex-col",
                             div { class: "flex items-center justify-between mb-8",
-                                p { class: "text-sm font-bold tracking-widest text-white", {translate(locale(), "nav.logo")} }
+                                p { class: "text-sm font-bold tracking-widest text-dark", {translate(locale(), "nav.logo")} }
                                 button {
-                                    class: "p-2 text-white",
+                                    class: "p-2 text-dark hover:text-accent transition-colors",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     "✕"
                                 }
@@ -158,48 +157,51 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
 
                             div { class: "flex flex-col gap-5",
                                 a {
-                                    class: if active == NavPage::Stores { "text-sm font-semibold tracking-widest text-white" } else { "text-sm font-semibold tracking-widest text-white/80 hover:text-white transition-colors" },
+                                    class: if active == NavPage::Stores { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
                                     href: "/",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.stores")}
                                 }
                                 a {
-                                    class: if active == NavPage::Map { "text-sm font-semibold tracking-widest text-white" } else { "text-sm font-semibold tracking-widest text-white/80 hover:text-white transition-colors" },
+                                    class: if active == NavPage::Map { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
                                     href: "/map",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.map")}
                                 }
                                 a {
-                                    class: if active == NavPage::Rewards { "text-sm font-semibold tracking-widest text-white" } else { "text-sm font-semibold tracking-widest text-white/80 hover:text-white transition-colors" },
+                                    class: if active == NavPage::Rewards { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
                                     href: "/rewards",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.rewards")}
                                 }
                                 a {
-                                    class: if active == NavPage::Visit { "text-sm font-semibold tracking-widest text-white" } else { "text-sm font-semibold tracking-widest text-white/80 hover:text-white transition-colors" },
-                                    href: "/map",
-                                    onclick: move |_| mobile_menu_open.set(false),
-                                    {translate(locale(), "nav.visit")}
-                                }
-                                a {
-                                    class: "text-sm font-semibold tracking-widest text-white/80 hover:text-white transition-colors",
+                                    class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
                                     href: "/login",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.login")}
                                 }
+                                a {
+                                    class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
+                                    href: "/cart",
+                                    onclick: move |_| mobile_menu_open.set(false),
+                                    "CART"
+                                }
                             }
 
-                            div { class: "mt-auto pt-8 border-t border-white/30",
-                                p { class: "text-xs font-semibold tracking-wider text-white/80 mb-3", {translate(locale(), "nav.language")} }
+                            div { class: "mt-auto pt-8 border-t border-gray-200",
+                                p { class: "text-xs font-semibold tracking-wider text-muted mb-3", {translate(locale(), "nav.language")} }
                                 div { class: "flex items-center gap-2",
                                     for (idx, &(target_locale, label)) in LANGUAGE_BUTTONS.iter().enumerate() {
                                         button {
                                             class: mobile_language_button_class(locale(), target_locale),
-                                            onclick: move |_| locale.set(target_locale),
+                                            onclick: move |_| {
+                                                locale.set(target_locale);
+                                                persist_locale(target_locale);
+                                            },
                                             "{label}"
                                         }
                                         if idx < LANGUAGE_BUTTONS.len() - 1 {
-                                            span { class: "text-xs text-white/60", "|" }
+                                            span { class: "text-xs text-muted", "|" }
                                         }
                                     }
                                 }

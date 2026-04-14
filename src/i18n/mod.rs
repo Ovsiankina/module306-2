@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::LazyLock;
 #[cfg(target_family = "wasm")]
-use crate::cookies::{build_cookie_header, parse_cookie_value};
-#[cfg(target_family = "wasm")]
 use web_sys::wasm_bindgen::JsCast;
 
 #[cfg(target_family = "wasm")]
@@ -82,17 +80,17 @@ pub fn translate_fmt(locale: Locale, key: &str, vars: &[(&str, String)]) -> Stri
 fn read_locale() -> Locale {
     #[cfg(target_family = "wasm")]
     {
-        if let Some(code) = read_cookie(LOCALE_COOKIE) {
-            if let Some(locale) = Locale::from_code(&code) {
-                return locale;
-            }
-        }
-
         if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
             if let Ok(Some(code)) = storage.get_item(LOCALE_KEY) {
                 if let Some(locale) = Locale::from_code(&code) {
                     return locale;
                 }
+            }
+        }
+
+        if let Some(code) = read_cookie(LOCALE_COOKIE) {
+            if let Some(locale) = Locale::from_code(&code) {
+                return locale;
             }
         }
     }
@@ -112,12 +110,27 @@ fn write_locale(locale: Locale) {
     let _ = locale;
 }
 
+pub fn persist_locale(locale: Locale) {
+    write_locale(locale);
+}
+
 #[cfg(target_family = "wasm")]
 fn read_cookie(name: &str) -> Option<String> {
     let document = web_sys::window()?.document()?;
     let html_document = document.dyn_into::<web_sys::HtmlDocument>().ok()?;
     let cookie_string = html_document.cookie().ok()?;
-    parse_cookie_value(&cookie_string, name)
+    cookie_string
+        .split(';')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .find_map(|part| {
+            let (key, value) = part.split_once('=').unwrap_or((part, ""));
+            if key == name {
+                Some(value.to_string())
+            } else {
+                None
+            }
+        })
 }
 
 #[cfg(target_family = "wasm")]
@@ -126,7 +139,8 @@ fn write_cookie(name: &str, value: &str, days: i32) {
         let Ok(html_document) = document.dyn_into::<web_sys::HtmlDocument>() else {
             return;
         };
-        let cookie = build_cookie_header(name, value, days);
+        let max_age = days.saturating_mul(24 * 60 * 60);
+        let cookie = format!("{name}={value}; path=/; max-age={max_age}");
         let _ = html_document.set_cookie(&cookie);
     }
 }
@@ -165,5 +179,23 @@ mod tests {
     fn translate_fmt_replaces_named_placeholders() {
         let out = translate_fmt(Locale::En, "directory.floor_button", &[("level", "2".to_string())]);
         assert_eq!(out, "Level 2");
+    }
+
+    #[test]
+    fn translate_falls_back_to_english_when_key_missing_in_selected_locale() {
+        // This key exists in EN and is intentionally missing in FR in current assets.
+        let fr_value = translate(Locale::Fr, "home.search");
+        let en_value = translate(Locale::En, "home.search");
+        assert_eq!(fr_value, en_value);
+    }
+
+    #[test]
+    fn translate_fmt_keeps_unknown_placeholders_intact() {
+        let out = translate_fmt(
+            Locale::En,
+            "directory.floor_button",
+            &[("missing", "x".to_string())],
+        );
+        assert_eq!(out, "Level {level}");
     }
 }

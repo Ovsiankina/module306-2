@@ -157,6 +157,8 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
     let mut pan_offset = use_signal(|| (0.0f32, 0.0f32));
     let mut is_dragging = use_signal(|| false);
     let mut drag_origin = use_signal(|| (0.0f32, 0.0f32));
+    let mut pinch_start_distance = use_signal(|| None::<f32>);
+    let mut pinch_start_zoom = use_signal(|| 1.0f32);
     let zoom_step = 0.2f32;
     let min_zoom = 0.6f32;
     let max_zoom = 2.4f32;
@@ -177,31 +179,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
     rsx! {
         div {
             class: "relative bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden",
-            onmousedown: move |evt| {
-                is_dragging.set(true);
-                let coords = evt.client_coordinates();
-                drag_origin.set((
-                    coords.x as f32 - pan_offset().0,
-                    coords.y as f32 - pan_offset().1,
-                ));
-            },
-            onmousemove: move |evt| {
-                if !is_dragging() {
-                    return;
-                }
-
-                let coords = evt.client_coordinates();
-                pan_offset.set((
-                    coords.x as f32 - drag_origin().0,
-                    coords.y as f32 - drag_origin().1,
-                ));
-            },
-            onmouseup: move |_| {
-                is_dragging.set(false);
-            },
-            onmouseleave: move |_| {
-                is_dragging.set(false);
-            },
             // Floor plan image
             img {
                 src: floor_plan_src,
@@ -212,8 +189,117 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                 },
                 alt: {translate_fmt(locale(), "directory.floor_plan_alt", &[("level", active_floor().to_string())])},
                 draggable: false,
+                onmousedown: move |evt| {
+                    is_dragging.set(true);
+                    let coords = evt.client_coordinates();
+                    drag_origin.set((
+                        coords.x as f32 - pan_offset().0,
+                        coords.y as f32 - pan_offset().1,
+                    ));
+                },
+                onmousemove: move |evt| {
+                    if !is_dragging() {
+                        return;
+                    }
+
+                    let coords = evt.client_coordinates();
+                    pan_offset.set((
+                        coords.x as f32 - drag_origin().0,
+                        coords.y as f32 - drag_origin().1,
+                    ));
+                },
+                onmouseup: move |_| {
+                    is_dragging.set(false);
+                },
+                onmouseleave: move |_| {
+                    is_dragging.set(false);
+                },
+                onwheel: move |evt| {
+                    evt.prevent_default();
+                    let delta_y = evt.delta().strip_units().y as f32;
+                    if delta_y.abs() <= f32::EPSILON {
+                        return;
+                    }
+
+                    let direction = if delta_y < 0.0 { 1.0 } else { -1.0 };
+                    let wheel_multiplier = (delta_y.abs() / 120.0).clamp(0.5, 4.0);
+                    let next_zoom =
+                        (zoom_level() + direction * zoom_step * wheel_multiplier).clamp(min_zoom, max_zoom);
+                    zoom_level.set(next_zoom);
+                },
+                ontouchstart: move |evt| {
+                    evt.prevent_default();
+                    let touches = evt.touches();
+
+                    if touches.len() >= 2 {
+                        is_dragging.set(false);
+                        let p1 = touches[0].client_coordinates();
+                        let p2 = touches[1].client_coordinates();
+                        let dx = (p1.x - p2.x) as f32;
+                        let dy = (p1.y - p2.y) as f32;
+                        let distance = (dx * dx + dy * dy).sqrt();
+                        pinch_start_distance.set(Some(distance));
+                        pinch_start_zoom.set(zoom_level());
+                    } else if let Some(touch) = touches.first() {
+                        is_dragging.set(true);
+                        pinch_start_distance.set(None);
+                        let coords = touch.client_coordinates();
+                        drag_origin.set((
+                            coords.x as f32 - pan_offset().0,
+                            coords.y as f32 - pan_offset().1,
+                        ));
+                    }
+                },
+                ontouchmove: move |evt| {
+                    evt.prevent_default();
+                    let touches = evt.touches();
+
+                    if touches.len() >= 2 {
+                        is_dragging.set(false);
+
+                        let p1 = touches[0].client_coordinates();
+                        let p2 = touches[1].client_coordinates();
+                        let dx = (p1.x - p2.x) as f32;
+                        let dy = (p1.y - p2.y) as f32;
+                        let distance = (dx * dx + dy * dy).sqrt();
+
+                        if let Some(start_distance) = pinch_start_distance() {
+                            if start_distance > f32::EPSILON {
+                                let scale = distance / start_distance;
+                                let next_zoom = (pinch_start_zoom() * scale).clamp(min_zoom, max_zoom);
+                                zoom_level.set(next_zoom);
+                            }
+                        } else {
+                            pinch_start_distance.set(Some(distance));
+                            pinch_start_zoom.set(zoom_level());
+                        }
+                    } else if touches.len() == 1 && is_dragging() {
+                        let coords = touches[0].client_coordinates();
+                        pan_offset.set((
+                            coords.x as f32 - drag_origin().0,
+                            coords.y as f32 - drag_origin().1,
+                        ));
+                    }
+                },
+                ontouchend: move |evt| {
+                    let touches = evt.touches();
+                    if touches.len() < 2 {
+                        pinch_start_distance.set(None);
+                    }
+
+                    if touches.is_empty() {
+                        is_dragging.set(false);
+                    } else if touches.len() == 1 {
+                        let coords = touches[0].client_coordinates();
+                        drag_origin.set((
+                            coords.x as f32 - pan_offset().0,
+                            coords.y as f32 - pan_offset().1,
+                        ));
+                        is_dragging.set(true);
+                    }
+                },
                 style: format!(
-                    "transform: translate({}px, {}px) scale({}); transform-origin: center center;",
+                    "transform: translate({}px, {}px) scale({}); transform-origin: center center; touch-action: none;",
                     pan_offset().0,
                     pan_offset().1,
                     zoom_level()
@@ -221,7 +307,7 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
             }
 
             // Zoom controls
-            div { class: "absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2",
+            div { class: "absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10",
                 button {
                     class: "w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-dark hover:bg-gray-50",
                     onclick: move |_| {

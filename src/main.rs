@@ -1,11 +1,15 @@
 #![allow(non_snake_case)]
 
-use context::auth::{AuthProvider, AuthState};
+use context::{
+    auth::{AuthProvider, AuthState},
+    cart::CartProvider,
+};
 use dioxus::prelude::*;
 use i18n::{translate, I18nProvider, Locale};
 
 mod components {
-    pub mod cookie_banner;
+    pub mod cart;
+    pub mod checkout;
     pub mod contact;
     pub mod directory;
     pub mod error;
@@ -24,8 +28,8 @@ mod components {
 }
 mod context {
     pub mod auth;
+    pub mod cart;
 }
-mod cookies;
 mod i18n;
 mod api;
 mod db;
@@ -51,8 +55,9 @@ fn main() {
             components::loading::ChildrenOrLoading {
                 I18nProvider {
                     AuthProvider {
-                        Router::<Route> {}
-                        components::cookie_banner::CookieBanner {}
+                        CartProvider {
+                            Router::<Route> {}
+                        }
                     }
                 }
             }
@@ -79,6 +84,12 @@ pub enum Route {
 
     #[route("/login")]
     Login {},
+
+    #[route("/cart")]
+    Cart {},
+
+    #[route("/checkout")]
+    Checkout {},
 
     #[route("/contact")]
     Contact {},
@@ -113,6 +124,18 @@ fn Store(name: String) -> Element {
 fn Login() -> Element {
     rsx! {
         components::login::LoginPage {}
+    }
+}
+
+fn Cart() -> Element {
+    rsx! {
+        components::cart::CartPage {}
+    }
+}
+
+fn Checkout() -> Element {
+    rsx! {
+        components::checkout::CheckoutPage {}
     }
 }
 
