@@ -14,6 +14,38 @@ dx serve
 
 Note that in Dioxus 0.7, the Tailwind watcher is initialized automatically if a `tailwind.css` file is find in your app's root.
 
+# Performance TODOs
+
+- [ ] Memoize home-directory filtering results in `src/components/home.rs` so search/filter changes avoid repeated lowercasing and full-list allocations on every render.
+- [ ] Introduce drag update throttling in `src/components/directory.rs` (e.g. requestAnimationFrame batching) to reduce state writes during pointer movement.
+- [ ] Add a fast slug index map in `src/stores.rs` for `get_store()` to avoid linear scans across all stores.
+
+# Brand Images (Store Cards)
+
+Store cards on the home page use logo images from `public/brands`.
+
+- **Served path**: `/brands/<file>`
+- **Source path in repo**: `public/brands/<file>`
+- **Preferred format**: `.jpg` (existing legacy `.png` files are still used where present)
+
+## Naming and Mapping Rules
+
+- By default, store names are normalized into filenames (lowercase, separators to `_`, `.jpg` suffix).
+- Some stores use explicit overrides in `src/components/home.rs` (for accented names, combined brands, or special naming).
+- If a store image file is known to be missing, the app intentionally skips the image request and shows a text placeholder card instead.
+
+## Adding New Store Logos
+
+1. Add image files to `public/brands`.
+2. If the store name does not map automatically, add an explicit override in `brand_image()` in `src/components/home.rs`.
+3. If no image exists yet and you want to avoid 404 noise, add the store to the "known missing" list in `brand_image()` (returns `None`).
+
+## Debugging Missing Logos
+
+- Check server logs for `404 /brands/...` entries.
+- Each 404 means the requested file is missing in `public/brands`.
+- Once the file is added (or override corrected), the card will load the image; otherwise it falls back to the text placeholder.
+
 # Status
 
 This is a work in progress. The following features are currently implemented:
