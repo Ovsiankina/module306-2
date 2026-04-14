@@ -1,5 +1,7 @@
 # Rust / Cargo
 /target
+.cargo-bin/
+.cargo-home/
 
 # Dioxus
 /dist
