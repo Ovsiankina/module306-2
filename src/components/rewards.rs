@@ -1,23 +1,37 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
+use crate::components::rewards_draw::{RewardsDraw, WinnerEvent};
 use crate::i18n::{Locale, translate};
-use chrono::Utc;
 use dioxus::prelude::*;
+
+#[derive(Clone, Debug, PartialEq)]
+struct WinnerFeedItem {
+    name: String,
+    prize: String,
+    time: String,
+}
 
 pub fn RewardsPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
-    const PRIZE_KEYS: [&str; 6] = [
-        "rewards.prize_10",
-        "rewards.prize_15",
-        "rewards.prize_20",
-        "rewards.prize_voucher",
-        "rewards.prize_free_coffee",
-        "rewards.prize_try_again",
-    ];
-
-    let mut remaining_spins = use_signal(|| 1_u8);
-    let mut wheel_rotation = use_signal(|| 0_i32);
-    let mut last_prize = use_signal(|| None::<usize>);
+    let mut winners = use_signal(|| {
+        vec![
+            WinnerFeedItem {
+                name: "MARCO R.".to_string(),
+                prize: "20% OFF ARMANI".to_string(),
+                time: "2M AGO".to_string(),
+            },
+            WinnerFeedItem {
+                name: "ELENA S.".to_string(),
+                prize: "35% OFF BURBERRY".to_string(),
+                time: "15M AGO".to_string(),
+            },
+            WinnerFeedItem {
+                name: "JULIAN B.".to_string(),
+                prize: "15% OFF PRADA".to_string(),
+                time: "37M AGO".to_string(),
+            },
+        ]
+    });
 
     rsx! {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
@@ -83,79 +97,34 @@ pub fn RewardsPage() -> Element {
                                 }
 
                                 div { class: "space-y-4",
-                                    WinnerRow {
-                                        name: "MARCO R.",
-                                        prize: translate(locale(), "rewards.winner_1_prize"),
-                                        time: translate(locale(), "rewards.winner_1_time"),
-                                    }
-                                    WinnerRow {
-                                        name: "ELENA S.",
-                                        prize: translate(locale(), "rewards.winner_2_prize"),
-                                        time: translate(locale(), "rewards.winner_2_time"),
-                                    }
-                                    WinnerRow {
-                                        name: "JULIAN B.",
-                                        prize: translate(locale(), "rewards.winner_3_prize"),
-                                        time: translate(locale(), "rewards.winner_3_time"),
+                                    for entry in winners() {
+                                        WinnerRow {
+                                            name: entry.name.clone(),
+                                            prize: entry.prize.clone(),
+                                            time: entry.time.clone(),
+                                        }
                                     }
                                 }
                             }
                         }
 
-                        // Right: Spin wheel area
-                        div { class: "flex flex-col items-center gap-6",
-                            // Wheel placeholder
-                            div {
-                                class: "w-72 h-72 md:w-80 md:h-80 rounded-full bg-gradient-to-br from-accent/20 via-amber-100 to-accent/10 border-4 border-accent/30 flex items-center justify-center shadow-xl",
-                                style: format!(
-                                    "transform: rotate({}deg); transition: transform 1400ms cubic-bezier(0.2, 0.8, 0.2, 1);",
-                                    wheel_rotation()
-                                ),
-                                div { class: "w-56 h-56 md:w-64 md:h-64 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center",
-                                    span { class: "text-4xl font-extrabold text-accent", {translate(locale(), "rewards.spin")} }
-                                }
-                            }
-
-                            // Spin button + counter
-                            div { class: "text-center",
-                                button {
-                                    class: if remaining_spins() > 0 {
-                                        "px-10 py-4 text-sm font-bold tracking-widest text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30 mb-3"
-                                    } else {
-                                        "px-10 py-4 text-sm font-bold tracking-widest text-white bg-gray-300 rounded-lg transition-colors shadow-lg mb-3 cursor-not-allowed"
-                                    },
-                                    disabled: remaining_spins() == 0,
-                                    onclick: move |_| {
-                                        if remaining_spins() == 0 {
-                                            return;
-                                        }
-
-                                        let seed = Utc::now()
-                                            .timestamp_nanos_opt()
-                                            .unwrap_or_default()
-                                            .unsigned_abs() as usize;
-                                        let prize_index = seed % PRIZE_KEYS.len();
-                                        wheel_rotation
-                                            .set(wheel_rotation() + 1440 + (prize_index as i32 * 60));
-                                        remaining_spins.set(0);
-                                        last_prize.set(Some(prize_index));
-                                    },
-                                    {translate(locale(), "rewards.spin_button")}
-                                }
-                                p { class: "text-xs text-muted tracking-wider",
-                                    if remaining_spins() > 0 {
-                                        {translate(locale(), "rewards.remaining")}
-                                    } else {
-                                        {translate(locale(), "rewards.remaining_zero")}
-                                    }
-                                }
-                                p { class: "text-xs text-muted mt-2",
-                                    if let Some(prize_index) = last_prize() {
-                                        {translate(locale(), PRIZE_KEYS[prize_index])}
-                                    } else {
-                                        {translate(locale(), "rewards.disclaimer_game")}
-                                    }
-                                }
+                        // Right: Ball draw game (from game-promo service)
+                        RewardsDraw {
+                            on_win: move |win: WinnerEvent| {
+                                let display_name = format!("{}.", win.user_name.to_uppercase());
+                                let prize = format!(
+                                    "{}% OFF {}",
+                                    win.discount_percent,
+                                    win.shop_name.to_uppercase()
+                                );
+                                let mut next = winners();
+                                next.insert(0, WinnerFeedItem {
+                                    name: display_name,
+                                    prize,
+                                    time: "JUST NOW".to_string(),
+                                });
+                                next.truncate(8);
+                                winners.set(next);
                             }
                         }
                     }
@@ -204,7 +173,7 @@ fn StepCard(number: &'static str, title: String, description: String) -> Element
 }
 
 #[component]
-fn WinnerRow(name: &'static str, prize: String, time: String) -> Element {
+fn WinnerRow(name: String, prize: String, time: String) -> Element {
     rsx! {
         div { class: "flex items-center gap-4",
             div { class: "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center shrink-0",

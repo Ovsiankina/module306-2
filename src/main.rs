@@ -22,6 +22,7 @@ mod components {
     pub mod product_page;
     pub mod not_found;
     pub mod privacy;
+    pub mod rewards_draw;
     pub mod rewards;
     pub mod store_page;
     pub mod terms;
@@ -33,6 +34,7 @@ mod context {
 mod i18n;
 mod api;
 mod db;
+mod services;
 pub mod auth;
 pub mod admin;
 pub mod stores;
