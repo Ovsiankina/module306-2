@@ -24,6 +24,7 @@ mod components {
     pub mod privacy;
     pub mod rewards_draw;
     pub mod rewards;
+    pub mod voucher_list;
     pub mod store_page;
     pub mod terms;
 }
@@ -80,6 +81,9 @@ pub enum Route {
 
     #[route("/rewards")]
     Rewards {},
+
+    #[route("/admin/vouchers")]
+    VoucherList {},
 
     #[route("/store/:name")]
     Store { name: String },
@@ -151,6 +155,14 @@ fn Rewards() -> Element {
     rsx! {
         ProtectedRoute {
             components::rewards::RewardsPage {}
+        }
+    }
+}
+
+fn VoucherList() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::voucher_list::VoucherListPage {}
         }
     }
 }

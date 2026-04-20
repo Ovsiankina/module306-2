@@ -1,15 +1,18 @@
 use crate::context::auth::AuthState;
 use crate::context::auth::read_token;
 use crate::i18n::{translate, translate_fmt, Locale};
+use chrono::{DateTime, Utc};
 use crate::services::game::{
     all_categories,
-    can_award_prize_today,
-    can_start_game_today,
-    choose_distributed_shop,
     delay_ms,
+    format_daily_prize_reset_countdown_hms,
+    game_server_can_award_prize_today,
+    game_server_can_start_today,
+    game_server_choose_distributed_shop,
+    game_server_register_session_finished,
+    game_server_try_register_prize_award,
+    get_daily_prize_pool_snapshot,
     random_index,
-    register_game_start,
-    register_prize_award,
     shops_by_category_keys,
     ShopInfo,
 };
@@ -35,6 +38,38 @@ const BALL_RADIUS: f64 = 16.0;
 const PHYSICS_DT_MS: u64 = 16;
 const STORE_DRAW_STEPS: usize = 460;
 const DISCOUNT_DRAW_STEPS: usize = 520;
+
+/// Aligné sur `services/game.rs` : la « journée » des 10 cadeaux change à minuit UTC.
+fn next_utc_midnight() -> DateTime<Utc> {
+    let now = Utc::now();
+    let next_day = now.date_naive().succ_opt().expect("date");
+    next_day
+        .and_hms_opt(0, 0, 0)
+        .expect("midnight")
+        .and_utc()
+}
+
+#[cfg(target_family = "wasm")]
+fn format_next_reset_local(locale: Locale, next_utc: DateTime<Utc>) -> String {
+    use js_sys::Date;
+    use web_sys::wasm_bindgen::JsValue;
+    let ms = next_utc.timestamp_millis() as f64;
+    let d = Date::new(&JsValue::from_f64(ms));
+    let bcp = match locale {
+        Locale::Fr => "fr-CH",
+        Locale::De => "de-CH",
+        Locale::It => "it-CH",
+        Locale::En => "en-GB",
+    };
+    let s = d.to_locale_string(bcp, &JsValue::undefined());
+    s.as_string()
+        .unwrap_or_else(|| next_utc.format("%Y-%m-%d %H:%M UTC").to_string())
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn format_next_reset_local(_locale: Locale, next_utc: DateTime<Utc>) -> String {
+    next_utc.format("%Y-%m-%d %H:%M UTC").to_string()
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct WinnerEvent {
@@ -476,6 +511,34 @@ fn render_machine(
 pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
+    let mut daily_reset_countdown =
+        use_signal(|| format_daily_prize_reset_countdown_hms());
+    let mut daily_reset_at = use_signal(|| format_next_reset_local(locale(), next_utc_midnight()));
+
+    use_effect(move || {
+        let locale_sig = locale;
+        spawn(async move {
+            loop {
+                let loc = locale_sig();
+                daily_reset_countdown.set(format_daily_prize_reset_countdown_hms());
+                daily_reset_at.set(format_next_reset_local(loc, next_utc_midnight()));
+                delay_ms(1000).await;
+            }
+        });
+    });
+
+    let mut quota_exhausted = use_signal(|| false);
+    use_effect(move || {
+        spawn(async move {
+            loop {
+                if let Ok(s) = get_daily_prize_pool_snapshot().await {
+                    quota_exhausted.set(s.distributed >= s.max);
+                }
+                delay_ms(5_000).await;
+            }
+        });
+    });
+
     let mut phase = use_signal(|| DrawPhase::SelectCategories);
     let categories = all_categories();
     let mut selected_categories = use_signal(Vec::<String>::new);
@@ -490,13 +553,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let mut second_chance_used = use_signal(|| false);
     let mut discount_stamp_visible = use_signal(|| false);
     let mut discount_stamp_ink_progress = use_signal(|| 0.0_f64);
-    let mut status_message =
-        use_signal(|| translate(locale(), "rewards_draw.status.pick_categories"));
+    let mut status_message = use_signal(String::new);
     let mut qr_email_status = use_signal(String::new);
     let mut simulated_email = use_signal(|| None::<SimulatedEmail>);
 
     let mut toggle_category = move |key: String| {
-        if drawing() {
+        if drawing() || quota_exhausted() {
             return;
         }
 
@@ -510,62 +572,86 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     };
 
     let build_store_draw = move |_| {
-        if drawing() {
+        if drawing() || quota_exhausted() {
             return;
         }
-        let player_key = match auth() {
-            AuthState::LoggedIn(user) => format!("user:{}", user.id),
-            _ => "guest".to_string(),
-        };
-        if !can_start_game_today(&player_key) {
-            status_message.set(translate(
-                locale(),
-                "rewards_draw.status.one_game_per_day_limit",
+        let locale_sig = locale;
+        let auth_sig = auth;
+        spawn(async move {
+            let loc = locale_sig();
+            let player_key = match auth_sig() {
+                AuthState::LoggedIn(user) => format!("user:{}", user.id),
+                _ => "guest".to_string(),
+            };
+
+            match get_daily_prize_pool_snapshot().await {
+                Ok(s) if s.distributed >= s.max => {
+                    status_message.set(translate(
+                        loc,
+                        "rewards_draw.status.game_closed_daily_quota",
+                    ));
+                    return;
+                }
+                _ => {}
+            }
+
+            match game_server_can_start_today(player_key.clone()).await {
+                Ok(false) => {
+                    status_message.set(translate(
+                        loc,
+                        "rewards_draw.status.one_game_per_day_limit",
+                    ));
+                    return;
+                }
+                Err(_) => {
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    return;
+                }
+                Ok(true) => {}
+            }
+
+            let selected = selected_categories();
+            if selected.is_empty() {
+                status_message.set(translate(loc, "rewards_draw.status.min_one_category"));
+                return;
+            }
+            if selected.len() > 3 {
+                status_message.set(translate(loc, "rewards_draw.status.max_three_categories"));
+                return;
+            }
+
+            let available_shops = shops_by_category_keys(&selected);
+            if available_shops.is_empty() {
+                status_message.set(translate(loc, "rewards_draw.status.no_store_for_selection"));
+                return;
+            }
+
+            shops.set(available_shops.clone());
+            store_balls.set(init_store_balls(&selected, &available_shops));
+            discount_balls.set(init_discount_balls());
+            extracted_store_ball.set(None);
+            extracted_discount_ball.set(None);
+            extracted_store.set(None);
+            second_chance_used.set(false);
+            qr_email_status.set(String::new());
+            simulated_email.set(None);
+            phase.set(DrawPhase::DrawStore);
+            status_message.set(translate_fmt(
+                loc,
+                "rewards_draw.status.store_draw_ready",
+                &[
+                    ("stores", available_shops.len().to_string()),
+                    ("black", 9_usize.max(selected.len()).to_string()),
+                ],
             ));
-            return;
-        }
-        let selected = selected_categories();
-        if selected.is_empty() {
-            status_message.set(translate(locale(), "rewards_draw.status.min_one_category"));
-            return;
-        }
-        if selected.len() > 3 {
-            status_message.set(translate(locale(), "rewards_draw.status.max_three_categories"));
-            return;
-        }
-
-        let available_shops = shops_by_category_keys(&selected);
-        if available_shops.is_empty() {
-            status_message.set(translate(locale(), "rewards_draw.status.no_store_for_selection"));
-            return;
-        }
-
-        shops.set(available_shops.clone());
-        store_balls.set(init_store_balls(&selected, &available_shops));
-        discount_balls.set(init_discount_balls());
-        extracted_store_ball.set(None);
-        extracted_discount_ball.set(None);
-        extracted_store.set(None);
-        second_chance_used.set(false);
-        qr_email_status.set(String::new());
-        simulated_email.set(None);
-        phase.set(DrawPhase::DrawStore);
-        status_message.set(translate_fmt(
-            locale(),
-            "rewards_draw.status.store_draw_ready",
-            &[
-                ("stores", available_shops.len().to_string()),
-                ("black", 9_usize.max(selected.len()).to_string()),
-            ],
-        ));
+        });
     };
 
-    let mut draw_store = move |_| {
+    let draw_store = move |_| {
         if drawing() || phase() != DrawPhase::DrawStore {
             return;
         }
 
-        drawing.set(true);
         extracted_store_ball.set(None);
         let tries_used = second_chance_used();
         let player_key = match auth() {
@@ -574,8 +660,28 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         };
         let active_balls = store_balls();
         let active_shops = shops();
+        let locale_sig = locale;
 
         spawn(async move {
+            let loc = locale_sig();
+            match game_server_can_award_prize_today().await {
+                Ok(false) => {
+                    status_message.set(translate(
+                        loc,
+                        "rewards_draw.status.daily_prize_limit_reached",
+                    ));
+                    phase.set(DrawPhase::Completed);
+                    return;
+                }
+                Err(_) => {
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    return;
+                }
+                Ok(true) => {}
+            }
+
+            drawing.set(true);
+
             for step in 0..STORE_DRAW_STEPS {
                 let mut next = store_balls();
                 let pulse_period = 20;
@@ -602,30 +708,33 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 extracted_store_ball.set(Some(ball.value));
                 if ball.is_black {
                     if tries_used {
-                        register_game_start(&player_key);
-                        status_message.set(translate(locale(), "rewards_draw.status.no_promo"));
+                        let _ = game_server_register_session_finished(player_key.clone()).await;
+                        status_message.set(translate(loc, "rewards_draw.status.no_promo"));
                         phase.set(DrawPhase::Completed);
                     } else {
                         second_chance_used.set(true);
                         status_message
-                            .set(translate(locale(), "rewards_draw.status.second_chance"));
+                            .set(translate(loc, "rewards_draw.status.second_chance"));
                     }
                 } else {
                     let store_index = (ball.value as usize).saturating_sub(1);
                     let selected_shop = active_shops
                         .get(store_index)
                         .map(|shop| shop.name.clone())
-                        .unwrap_or_else(|| {
-                            translate(locale(), "rewards_draw.store.unknown")
-                        });
-                    let distributed_shop = choose_distributed_shop(&active_shops)
-                        .map(|shop| shop.name)
-                        .unwrap_or(selected_shop);
+                        .unwrap_or_else(|| translate(loc, "rewards_draw.store.unknown"));
+                    let distributed_shop = match game_server_choose_distributed_shop(
+                        active_shops.iter().map(|s| s.name.clone()).collect(),
+                    )
+                    .await
+                    {
+                        Ok(Some(n)) => n,
+                        Ok(None) | Err(_) => selected_shop,
+                    };
                     extracted_store.set(Some(distributed_shop.clone()));
                     phase.set(DrawPhase::DrawDiscount);
                     extracted_discount_ball.set(None);
                     status_message.set(translate_fmt(
-                        locale(),
+                        loc,
                         "rewards_draw.status.store_targeted",
                         &[("store", distributed_shop)],
                     ));
@@ -636,7 +745,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         });
     };
 
-    let mut draw_discount = move |_| {
+    let draw_discount = move |_| {
         if drawing() || phase() != DrawPhase::DrawDiscount {
             return;
         }
@@ -644,21 +753,32 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             AuthState::LoggedIn(user) => format!("user:{}", user.id),
             _ => "guest".to_string(),
         };
-        if !can_award_prize_today() {
-            status_message.set(translate(
-                locale(),
-                "rewards_draw.status.daily_prize_limit_reached",
-            ));
-            phase.set(DrawPhase::Completed);
-            return;
-        }
-
-        drawing.set(true);
-        extracted_discount_ball.set(None);
-        discount_stamp_visible.set(false);
-        discount_stamp_ink_progress.set(0.0);
+        let locale_sig = locale;
+        let auth_sig = auth;
 
         spawn(async move {
+            let loc = locale_sig();
+            match game_server_can_award_prize_today().await {
+                Ok(false) => {
+                    status_message.set(translate(
+                        loc,
+                        "rewards_draw.status.daily_prize_limit_reached",
+                    ));
+                    phase.set(DrawPhase::Completed);
+                    return;
+                }
+                Err(_) => {
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    return;
+                }
+                Ok(true) => {}
+            }
+
+            drawing.set(true);
+            extracted_discount_ball.set(None);
+            discount_stamp_visible.set(false);
+            discount_stamp_ink_progress.set(0.0);
+
             for step in 0..DISCOUNT_DRAW_STEPS {
                 let mut next = discount_balls();
                 let pulse_period = 20;
@@ -681,8 +801,8 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             phase.set(DrawPhase::Completed);
 
             if picked_ball.map(|ball| ball.is_black).unwrap_or(false) {
-                register_game_start(&player_key);
-                status_message.set(translate(locale(), "rewards_draw.status.no_promo"));
+                let _ = game_server_register_session_finished(player_key.clone()).await;
+                status_message.set(translate(loc, "rewards_draw.status.no_promo"));
                 qr_email_status.set(String::new());
                 drawing.set(false);
                 return;
@@ -698,19 +818,29 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             });
 
             let store_name = extracted_store()
-                .unwrap_or_else(|| translate(locale(), "rewards_draw.store.unknown"));
-            register_game_start(&player_key);
-            if !register_prize_award(&store_name) {
-                extracted_discount_ball.set(Some(0));
-                status_message.set(translate(
-                    locale(),
-                    "rewards_draw.status.daily_prize_limit_just_reached",
-                ));
-                qr_email_status.set(String::new());
-                drawing.set(false);
-                return;
+                .unwrap_or_else(|| translate(loc, "rewards_draw.store.unknown"));
+            let _ = game_server_register_session_finished(player_key.clone()).await;
+            match game_server_try_register_prize_award(store_name.clone()).await {
+                Ok(false) => {
+                    extracted_discount_ball.set(Some(0));
+                    status_message.set(translate(
+                        loc,
+                        "rewards_draw.status.daily_prize_limit_just_reached",
+                    ));
+                    qr_email_status.set(String::new());
+                    drawing.set(false);
+                    return;
+                }
+                Err(_) => {
+                    extracted_discount_ball.set(Some(0));
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    qr_email_status.set(String::new());
+                    drawing.set(false);
+                    return;
+                }
+                Ok(true) => {}
             }
-            let (user_name, user_email) = match auth() {
+            let (user_name, user_email) = match auth_sig() {
                 AuthState::LoggedIn(user) => (user.username, user.email),
                 _ => ("Guest".to_string(), "guest@example.com".to_string()),
             };
@@ -733,9 +863,9 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     Ok(voucher) => {
                         let email_preview = SimulatedEmail {
                             to: voucher.email.clone(),
-                            subject: translate(locale(), "rewards_draw.email.subject"),
+                            subject: translate(loc, "rewards_draw.email.subject"),
                             body_preview: translate_fmt(
-                                locale(),
+                                loc,
                                 "rewards_draw.email.body",
                                 &[
                                     ("user", user_name.clone()),
@@ -748,7 +878,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         };
                         simulated_email.set(Some(email_preview));
                         qr_email_status.set(translate_fmt(
-                            locale(),
+                            loc,
                             "rewards_draw.status.email_ready",
                             &[("email", user_email.clone())],
                         ));
@@ -760,7 +890,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 }
             }
             status_message.set(translate_fmt(
-                locale(),
+                loc,
                 "rewards_draw.status.win",
                 &[("discount", picked.to_string()), ("store", store_name.clone())],
             ));
@@ -792,7 +922,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         discount_stamp_ink_progress.set(0.0);
         qr_email_status.set(String::new());
         simulated_email.set(None);
-        status_message.set(translate(locale(), "rewards_draw.status.pick_categories"));
+        status_message.set(String::new());
         phase.set(DrawPhase::SelectCategories);
     };
 
@@ -809,6 +939,44 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
 
     rsx! {
         div { class: "relative flex flex-col items-center gap-6",
+            if quota_exhausted() {
+                div { class: "w-full max-w-lg rounded-xl border-2 border-amber-300 bg-amber-50 px-6 py-8 text-center shadow-sm",
+                    h2 { class: "text-lg font-extrabold tracking-widest text-amber-900 mb-3",
+                        {translate(locale(), "rewards_draw.game_closed.title")}
+                    }
+                    p { class: "font-mono text-3xl font-bold tabular-nums text-dark mb-3",
+                        "{daily_reset_countdown()}"
+                    }
+                    p { class: "text-sm text-amber-900/90 leading-relaxed",
+                        {translate(locale(), "rewards_draw.game_closed.body")}
+                    }
+                    p { class: "mt-2 text-xs text-amber-800/80",
+                        {translate_fmt(
+                            locale(),
+                            "rewards_draw.daily_reset.resets_at",
+                            &[("time", daily_reset_at())],
+                        )}
+                    }
+                }
+            } else {
+            div { class: "w-full max-w-3xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm",
+                p { class: "text-xs font-bold tracking-widest text-slate-600 text-center",
+                    {translate(locale(), "rewards_draw.daily_reset.heading")}
+                }
+                p { class: "mt-2 text-center font-mono text-2xl font-bold tabular-nums text-dark tracking-tight",
+                    "{daily_reset_countdown()}"
+                }
+                p { class: "mt-2 text-center text-xs text-slate-600 leading-relaxed",
+                    {translate_fmt(
+                        locale(),
+                        "rewards_draw.daily_reset.resets_at",
+                        &[("time", daily_reset_at())],
+                    )}
+                }
+                p { class: "mt-1 text-center text-[10px] text-slate-400",
+                    {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
+                }
+            }
             if can_show_machine {
                 p {
                     class: "text-xs text-muted tracking-wider",
@@ -841,7 +1009,9 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                             } else {
                                 "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-dark hover:bg-gray-200"
                             },
-                            disabled: !selected_categories().contains(&category.key) && selected_categories().len() >= 3,
+                            disabled: quota_exhausted()
+                                || (!selected_categories().contains(&category.key)
+                                    && selected_categories().len() >= 3),
                             onclick: {
                                 let key = category.key.clone();
                                 move |_| toggle_category(key.clone())
@@ -863,11 +1033,14 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 }
                 button {
                     class: "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white disabled:bg-gray-300",
-                    disabled: drawing() || selected_categories().is_empty() || phase() != DrawPhase::SelectCategories,
+                    disabled: quota_exhausted()
+                        || drawing()
+                        || selected_categories().is_empty()
+                        || phase() != DrawPhase::SelectCategories,
                     onclick: build_store_draw,
                     {translate(locale(), "rewards_draw.button.validate_categories")}
                 }
-                if phase() == DrawPhase::SelectCategories {
+                if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
                     p { class: "mt-3 text-xs font-semibold text-amber-700",
                         "{status_message()}"
                     }
@@ -981,6 +1154,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
                 }
+            }
             }
         }
     }

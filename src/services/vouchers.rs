@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
+/// Plafond de bons émis par période UTC (minuit → minuit), aligné sur `data/vouchers.json`.
+pub const MAX_VOUCHERS_PER_UTC_DAY: u32 = 10;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VoucherIssueResult {
     pub email: String,
@@ -53,6 +56,32 @@ fn vouchers_path() -> std::path::PathBuf {
     std::env::var("VOUCHERS_JSON_PATH")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::path::PathBuf::from("data/vouchers.json"))
+}
+
+#[cfg(feature = "server")]
+pub(crate) fn voucher_count_for_current_utc_day() -> u32 {
+    let Ok(vouchers) = load_vouchers() else {
+        return 0;
+    };
+    let now = chrono::Utc::now();
+    let start = now
+        .date_naive()
+        .and_hms_opt(0, 0, 0)
+        .expect("midnight")
+        .and_utc();
+    let end = start + chrono::Duration::days(1);
+    vouchers
+        .iter()
+        .filter(|v| {
+            chrono::DateTime::parse_from_rfc3339(v.created_at.trim())
+                .ok()
+                .map(|dt| {
+                    let t = dt.with_timezone(&chrono::Utc);
+                    t >= start && t < end
+                })
+                .unwrap_or(false)
+        })
+        .count() as u32
 }
 
 #[cfg(feature = "server")]
@@ -180,6 +209,11 @@ pub async fn create_voucher_and_send_email(
 
     #[cfg(feature = "server")]
     {
+        if voucher_count_for_current_utc_day() >= MAX_VOUCHERS_PER_UTC_DAY {
+            return Err(ServerFnError::new(
+                "Quota journalier de bons atteint (minuit UTC).".to_string(),
+            ));
+        }
         let mut vouchers = load_vouchers()?;
         let next_id = vouchers.iter().map(|v| v.id).max().unwrap_or(0) + 1;
         let qr_token = uuid::Uuid::new_v4().to_string();

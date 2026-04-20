@@ -1,4 +1,5 @@
-use serde::Deserialize;
+use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
@@ -138,13 +139,12 @@ pub async fn delay_ms(ms: u64) {
     }
 }
 
-const MAX_DAILY_PRIZES: u32 = 10;
+pub const MAX_DAILY_PRIZES: u32 = crate::services::vouchers::MAX_VOUCHERS_PER_UTC_DAY;
 
 #[derive(Debug, Default)]
 struct DailyRulesState {
     day_key: String,
     players_who_played: HashSet<String>,
-    distributed_prizes: u32,
     prize_count_by_shop: HashMap<String, u32>,
 }
 
@@ -163,7 +163,6 @@ fn ensure_current_day(state: &mut DailyRulesState) {
     if state.day_key != today {
         state.day_key = today;
         state.players_who_played.clear();
-        state.distributed_prizes = 0;
         state.prize_count_by_shop.clear();
     }
 }
@@ -185,11 +184,14 @@ pub fn register_game_start(player_key: &str) {
 }
 
 pub fn can_award_prize_today() -> bool {
-    let mut state = daily_rules()
-        .lock()
-        .expect("daily rules mutex poisoned");
-    ensure_current_day(&mut state);
-    state.distributed_prizes < MAX_DAILY_PRIZES
+    #[cfg(feature = "server")]
+    {
+        crate::services::vouchers::voucher_count_for_current_utc_day() < MAX_DAILY_PRIZES
+    }
+    #[cfg(not(feature = "server"))]
+    {
+        true
+    }
 }
 
 pub fn choose_distributed_shop(candidates: &[ShopInfo]) -> Option<ShopInfo> {
@@ -218,18 +220,116 @@ pub fn choose_distributed_shop(candidates: &[ShopInfo]) -> Option<ShopInfo> {
 }
 
 pub fn register_prize_award(shop_name: &str) -> bool {
-    let mut state = daily_rules()
-        .lock()
-        .expect("daily rules mutex poisoned");
-    ensure_current_day(&mut state);
-    if state.distributed_prizes >= MAX_DAILY_PRIZES {
-        return false;
+    #[cfg(feature = "server")]
+    {
+        if crate::services::vouchers::voucher_count_for_current_utc_day() >= MAX_DAILY_PRIZES {
+            return false;
+        }
+        let mut state = daily_rules()
+            .lock()
+            .expect("daily rules mutex poisoned");
+        ensure_current_day(&mut state);
+        *state
+            .prize_count_by_shop
+            .entry(shop_name.to_string())
+            .or_insert(0) += 1;
+        true
     }
+    #[cfg(not(feature = "server"))]
+    {
+        let _ = shop_name;
+        true
+    }
+}
 
-    state.distributed_prizes += 1;
-    *state
-        .prize_count_by_shop
-        .entry(shop_name.to_string())
-        .or_insert(0) += 1;
-    true
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct DailyPrizePoolSnapshot {
+    pub distributed: u32,
+    pub max: u32,
+}
+
+pub fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
+    #[cfg(feature = "server")]
+    {
+        DailyPrizePoolSnapshot {
+            distributed: crate::services::vouchers::voucher_count_for_current_utc_day(),
+            max: MAX_DAILY_PRIZES,
+        }
+    }
+    #[cfg(not(feature = "server"))]
+    {
+        DailyPrizePoolSnapshot {
+            distributed: 0,
+            max: MAX_DAILY_PRIZES,
+        }
+    }
+}
+
+#[server]
+pub async fn get_daily_prize_pool_snapshot() -> Result<DailyPrizePoolSnapshot, ServerFnError> {
+    Ok(daily_prize_pool_snapshot())
+}
+
+/// Secondes jusqu'au prochain minuit UTC (réinitialisation quota / jeu).
+pub fn daily_prize_reset_countdown_secs() -> u64 {
+    let now = chrono::Utc::now();
+    let next_day = now
+        .date_naive()
+        .succ_opt()
+        .expect("date")
+        .and_hms_opt(0, 0, 0)
+        .expect("midnight")
+        .and_utc();
+    next_day
+        .signed_duration_since(now)
+        .num_seconds()
+        .max(0) as u64
+}
+
+pub fn format_daily_prize_reset_countdown_hms() -> String {
+    let total_secs = daily_prize_reset_countdown_secs();
+    let h = total_secs / 3600;
+    let m = (total_secs % 3600) / 60;
+    let s = total_secs % 60;
+    format!("{h:02}:{m:02}:{s:02}")
+}
+
+#[server]
+pub async fn game_server_can_award_prize_today() -> Result<bool, ServerFnError> {
+    Ok(can_award_prize_today())
+}
+
+#[server]
+pub async fn game_server_can_start_today(player_key: String) -> Result<bool, ServerFnError> {
+    Ok(can_start_game_today(&player_key))
+}
+
+#[server]
+pub async fn game_server_register_session_finished(player_key: String) -> Result<(), ServerFnError> {
+    register_game_start(&player_key);
+    Ok(())
+}
+
+#[server]
+pub async fn game_server_try_register_prize_award(shop_name: String) -> Result<bool, ServerFnError> {
+    Ok(register_prize_award(&shop_name))
+}
+
+#[server]
+pub async fn game_server_choose_distributed_shop(
+    candidate_names: Vec<String>,
+) -> Result<Option<String>, ServerFnError> {
+    if candidate_names.is_empty() {
+        return Ok(None);
+    }
+    let candidates: Vec<ShopInfo> = candidate_names
+        .into_iter()
+        .enumerate()
+        .map(|(i, name)| ShopInfo {
+            id: i as u32 + 1,
+            name,
+            category: String::new(),
+        })
+        .collect();
+    Ok(choose_distributed_shop(&candidates).map(|s| s.name))
 }

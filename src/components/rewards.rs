@@ -1,12 +1,8 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::components::rewards_draw::{RewardsDraw, WinnerEvent};
-use crate::context::auth::{read_token, AuthState};
 use crate::i18n::{Locale, translate};
-use crate::services::vouchers::{
-    list_active_vouchers, list_recent_vouchers, VoucherAdminSummary, VoucherRecentSummary,
-};
-use crate::auth::Role;
+use crate::services::vouchers::{list_recent_vouchers, VoucherRecentSummary};
 use dioxus::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -70,13 +66,9 @@ fn map_recent_winner(item: VoucherRecentSummary) -> WinnerFeedItem {
 }
 
 pub fn RewardsPage() -> Element {
-    let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
     let mut winners = use_signal(Vec::<WinnerFeedItem>::new);
     let mut winners_loaded = use_signal(|| false);
-    let mut admin_vouchers = use_signal(Vec::<VoucherAdminSummary>::new);
-    let mut admin_vouchers_error = use_signal(String::new);
-    let mut admin_vouchers_loaded = use_signal(|| false);
 
     use_effect(move || {
         if winners_loaded() {
@@ -87,24 +79,6 @@ pub fn RewardsPage() -> Element {
             match list_recent_vouchers(8).await {
                 Ok(items) => winners.set(items.into_iter().map(map_recent_winner).collect()),
                 Err(_) => winners.set(Vec::new()),
-            }
-        });
-    });
-
-    use_effect(move || {
-        let is_admin = matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin);
-        if !is_admin || admin_vouchers_loaded() {
-            return;
-        }
-        admin_vouchers_loaded.set(true);
-        spawn(async move {
-            let Some(token) = read_token() else {
-                admin_vouchers_error.set("Cannot load vouchers: missing auth token.".to_string());
-                return;
-            };
-            match list_active_vouchers(token).await {
-                Ok(items) => admin_vouchers.set(items),
-                Err(err) => admin_vouchers_error.set(format!("Cannot load vouchers: {err}")),
             }
         });
     });
@@ -168,9 +142,6 @@ pub fn RewardsPage() -> Element {
                                         span { class: "text-xs font-bold text-accent", {translate(locale(), "rewards.live")} }
                                     }
                                 }
-                                p { class: "text-xs text-muted mb-4",
-                                    {translate(locale(), "rewards.disclaimer_live")}
-                                }
 
                                 div { class: "space-y-4",
                                     for entry in winners() {
@@ -183,26 +154,6 @@ pub fn RewardsPage() -> Element {
                                 }
                             }
 
-                            if matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin) {
-                                div { class: "bg-white rounded-xl border border-gray-100 p-6 mt-6",
-                                    h3 { class: "text-lg font-bold text-dark mb-4",
-                                        "Active Vouchers (Admin)"
-                                    }
-                                    if !admin_vouchers_error().is_empty() {
-                                        p { class: "text-xs text-red-600", "{admin_vouchers_error()}" }
-                                    } else if admin_vouchers().is_empty() {
-                                        p { class: "text-xs text-muted", "No active vouchers for now." }
-                                    } else {
-                                        div { class: "space-y-2",
-                                            for voucher in admin_vouchers() {
-                                                div { class: "text-xs border border-gray-200 rounded-lg px-3 py-2 bg-gray-50",
-                                                    "{voucher.username} / {voucher.store} / -{voucher.discount}% / {voucher.valid_until}"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
                         }
 
                         // Right: Ball draw game (from game-promo service)
@@ -273,7 +224,7 @@ fn StepCard(number: &'static str, title: String, description: String) -> Element
 fn WinnerRow(name: String, prize: String, time: String) -> Element {
     rsx! {
         div { class: "flex items-center gap-4",
-            div { class: "w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center shrink-0",
+            div { class: "w-10 h-10 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center shrink-0",
                 svg {
                     xmlns: "http://www.w3.org/2000/svg",
                     width: "16",

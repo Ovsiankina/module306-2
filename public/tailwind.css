@@ -1720,6 +1720,24 @@
   syntax: "*";
   inherits: false;
 }
+@keyframes ft-home-ticker-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ft-home-ticker-track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  align-items: center;
+  animation: ft-home-ticker-marquee 50s linear infinite;
+}
+.ft-home-ticker-track:hover {
+  animation-play-state: paused;
+}
 @keyframes pulse {
   50% {
     opacity: 0.5;
