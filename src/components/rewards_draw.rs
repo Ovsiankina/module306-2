@@ -1,6 +1,17 @@
 use crate::context::auth::AuthState;
 use crate::i18n::{translate, translate_fmt, Locale};
-use crate::services::game::{all_categories, delay_ms, random_index, shops_by_category_keys, ShopInfo};
+use crate::services::game::{
+    all_categories,
+    can_award_prize_today,
+    can_start_game_today,
+    choose_distributed_shop,
+    delay_ms,
+    random_index,
+    register_game_start,
+    register_prize_award,
+    shops_by_category_keys,
+    ShopInfo,
+};
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
@@ -500,6 +511,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         if drawing() {
             return;
         }
+        let player_key = match auth() {
+            AuthState::LoggedIn(user) => format!("user:{}", user.id),
+            _ => "guest".to_string(),
+        };
+        if !can_start_game_today(&player_key) {
+            status_message.set(translate(
+                locale(),
+                "rewards_draw.status.one_game_per_day_limit",
+            ));
+            return;
+        }
         let selected = selected_categories();
         if selected.is_empty() {
             status_message.set(translate(locale(), "rewards_draw.status.min_one_category"));
@@ -544,6 +566,10 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         drawing.set(true);
         extracted_store_ball.set(None);
         let tries_used = second_chance_used();
+        let player_key = match auth() {
+            AuthState::LoggedIn(user) => format!("user:{}", user.id),
+            _ => "guest".to_string(),
+        };
         let active_balls = store_balls();
         let active_shops = shops();
 
@@ -574,6 +600,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 extracted_store_ball.set(Some(ball.value));
                 if ball.is_black {
                     if tries_used {
+                        register_game_start(&player_key);
                         status_message.set(translate(locale(), "rewards_draw.status.no_promo"));
                         phase.set(DrawPhase::Completed);
                     } else {
@@ -589,13 +616,16 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         .unwrap_or_else(|| {
                             translate(locale(), "rewards_draw.store.unknown")
                         });
-                    extracted_store.set(Some(selected_shop.clone()));
+                    let distributed_shop = choose_distributed_shop(&active_shops)
+                        .map(|shop| shop.name)
+                        .unwrap_or(selected_shop);
+                    extracted_store.set(Some(distributed_shop.clone()));
                     phase.set(DrawPhase::DrawDiscount);
                     extracted_discount_ball.set(None);
                     status_message.set(translate_fmt(
                         locale(),
                         "rewards_draw.status.store_targeted",
-                        &[("store", selected_shop)],
+                        &[("store", distributed_shop)],
                     ));
                 }
             }
@@ -606,6 +636,18 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
 
     let mut draw_discount = move |_| {
         if drawing() || phase() != DrawPhase::DrawDiscount {
+            return;
+        }
+        let player_key = match auth() {
+            AuthState::LoggedIn(user) => format!("user:{}", user.id),
+            _ => "guest".to_string(),
+        };
+        if !can_award_prize_today() {
+            status_message.set(translate(
+                locale(),
+                "rewards_draw.status.daily_prize_limit_reached",
+            ));
+            phase.set(DrawPhase::Completed);
             return;
         }
 
@@ -637,6 +679,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             phase.set(DrawPhase::Completed);
 
             if picked_ball.map(|ball| ball.is_black).unwrap_or(false) {
+                register_game_start(&player_key);
                 status_message.set(translate(locale(), "rewards_draw.status.no_promo"));
                 qr_email_status.set(String::new());
                 drawing.set(false);
@@ -654,6 +697,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
 
             let store_name = extracted_store()
                 .unwrap_or_else(|| translate(locale(), "rewards_draw.store.unknown"));
+            register_game_start(&player_key);
+            if !register_prize_award(&store_name) {
+                extracted_discount_ball.set(Some(0));
+                status_message.set(translate(
+                    locale(),
+                    "rewards_draw.status.daily_prize_limit_just_reached",
+                ));
+                qr_email_status.set(String::new());
+                drawing.set(false);
+                return;
+            }
             let (user_name, user_email) = match auth() {
                 AuthState::LoggedIn(user) => (user.username, user.email),
                 _ => ("Guest".to_string(), "guest@example.com".to_string()),
@@ -789,6 +843,11 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     disabled: drawing() || selected_categories().is_empty() || phase() != DrawPhase::SelectCategories,
                     onclick: build_store_draw,
                     {translate(locale(), "rewards_draw.button.validate_categories")}
+                }
+                if phase() == DrawPhase::SelectCategories {
+                    p { class: "mt-3 text-xs font-semibold text-amber-700",
+                        "{status_message()}"
+                    }
                 }
             }
 

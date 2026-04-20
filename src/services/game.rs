@@ -1,6 +1,6 @@
 use serde::Deserialize;
-use std::collections::{BTreeMap, HashSet};
-use std::sync::OnceLock;
+use std::collections::{BTreeMap, HashMap, HashSet};
+use std::sync::{Mutex, OnceLock};
 
 #[derive(Clone, Debug)]
 pub struct StoreCategory {
@@ -136,4 +136,100 @@ pub async fn delay_ms(ms: u64) {
     {
         std::thread::sleep(std::time::Duration::from_millis(ms));
     }
+}
+
+const MAX_DAILY_PRIZES: u32 = 10;
+
+#[derive(Debug, Default)]
+struct DailyRulesState {
+    day_key: String,
+    players_who_played: HashSet<String>,
+    distributed_prizes: u32,
+    prize_count_by_shop: HashMap<String, u32>,
+}
+
+static DAILY_RULES: OnceLock<Mutex<DailyRulesState>> = OnceLock::new();
+
+fn daily_rules() -> &'static Mutex<DailyRulesState> {
+    DAILY_RULES.get_or_init(|| Mutex::new(DailyRulesState::default()))
+}
+
+fn current_day_key() -> String {
+    chrono::Utc::now().date_naive().to_string()
+}
+
+fn ensure_current_day(state: &mut DailyRulesState) {
+    let today = current_day_key();
+    if state.day_key != today {
+        state.day_key = today;
+        state.players_who_played.clear();
+        state.distributed_prizes = 0;
+        state.prize_count_by_shop.clear();
+    }
+}
+
+pub fn can_start_game_today(player_key: &str) -> bool {
+    let mut state = daily_rules()
+        .lock()
+        .expect("daily rules mutex poisoned");
+    ensure_current_day(&mut state);
+    !state.players_who_played.contains(player_key)
+}
+
+pub fn register_game_start(player_key: &str) {
+    let mut state = daily_rules()
+        .lock()
+        .expect("daily rules mutex poisoned");
+    ensure_current_day(&mut state);
+    state.players_who_played.insert(player_key.to_string());
+}
+
+pub fn can_award_prize_today() -> bool {
+    let mut state = daily_rules()
+        .lock()
+        .expect("daily rules mutex poisoned");
+    ensure_current_day(&mut state);
+    state.distributed_prizes < MAX_DAILY_PRIZES
+}
+
+pub fn choose_distributed_shop(candidates: &[ShopInfo]) -> Option<ShopInfo> {
+    if candidates.is_empty() {
+        return None;
+    }
+
+    let mut state = daily_rules()
+        .lock()
+        .expect("daily rules mutex poisoned");
+    ensure_current_day(&mut state);
+
+    let min_count = candidates
+        .iter()
+        .map(|shop| state.prize_count_by_shop.get(&shop.name).copied().unwrap_or(0))
+        .min()
+        .unwrap_or(0);
+
+    let best: Vec<ShopInfo> = candidates
+        .iter()
+        .filter(|shop| state.prize_count_by_shop.get(&shop.name).copied().unwrap_or(0) == min_count)
+        .cloned()
+        .collect();
+
+    best.get(random_index(best.len())).cloned()
+}
+
+pub fn register_prize_award(shop_name: &str) -> bool {
+    let mut state = daily_rules()
+        .lock()
+        .expect("daily rules mutex poisoned");
+    ensure_current_day(&mut state);
+    if state.distributed_prizes >= MAX_DAILY_PRIZES {
+        return false;
+    }
+
+    state.distributed_prizes += 1;
+    *state
+        .prize_count_by_shop
+        .entry(shop_name.to_string())
+        .or_insert(0) += 1;
+    true
 }

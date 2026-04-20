@@ -16,6 +16,7 @@
     --color-orange-400: oklch(75% 0.183 55.934);
     --color-amber-100: oklch(96.2% 0.059 95.617);
     --color-amber-600: oklch(66.6% 0.179 58.318);
+    --color-amber-700: oklch(55.5% 0.163 48.998);
     --color-yellow-100: oklch(97.3% 0.071 103.193);
     --color-yellow-200: oklch(94.5% 0.129 101.54);
     --color-yellow-700: oklch(55.4% 0.135 66.442);
@@ -1222,6 +1223,9 @@
   }
   .text-accent {
     color: var(--color-accent);
+  }
+  .text-amber-700 {
+    color: var(--color-amber-700);
   }
   .text-blue-300 {
     color: var(--color-blue-300);
