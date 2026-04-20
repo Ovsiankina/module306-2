@@ -152,15 +152,18 @@ pub async fn register(
     encode_jwt(&user).map_err(ServerFnError::new)
 }
 
-/// Authenticate with username + password and return a JWT.
+/// Authenticate with username OR email + password and return a JWT.
 /// POST /api/login — body: { username, password }
 #[server]
 pub async fn login(username: String, password: String) -> Result<String, ServerFnError> {
     let pool = crate::db::pool().await;
 
     let row: Option<(i64, String, String, String, String)> = sqlx::query_as(
-        "SELECT id, username, email, password_hash, role FROM users WHERE username = ?",
+        "SELECT id, username, email, password_hash, role
+         FROM users
+         WHERE username = ? OR email = ?",
     )
+    .bind(&username)
     .bind(&username)
     .fetch_optional(pool)
     .await

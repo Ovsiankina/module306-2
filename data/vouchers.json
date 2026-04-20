@@ -1,0 +1,68 @@
+[
+  {
+    "id": 1,
+    "qr_token": "3d647e8c-93df-4d7a-97f8-89a0bdf57248",
+    "email": "ad.wavelet@gmail.com",
+    "username": "adrien",
+    "store": "Coach",
+    "discount": 35,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T13:18:55.417765200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 2,
+    "qr_token": "014bb3b2-71ed-4fd6-b1a0-d83842443ee1",
+    "email": "ad.wavelet@gmail.com",
+    "username": "adrien",
+    "store": "Fay",
+    "discount": 25,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T13:35:03.222768100+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 3,
+    "qr_token": "cb143e68-01fe-45f7-8e72-f438b07d0937",
+    "email": "admin@foxtown.local",
+    "username": "admin",
+    "store": "Damiani",
+    "discount": 15,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T13:41:55.844356200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 4,
+    "qr_token": "5ed4178f-31bf-4884-a435-e54871f52a62",
+    "email": "ad.wavelet@gmail.com",
+    "username": "adrien",
+    "store": "Borbonese",
+    "discount": 25,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T13:44:15.472414200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 5,
+    "qr_token": "ecd72910-6286-4a91-a43d-75f808e7cc4f",
+    "email": "ad.wavelet@gmail.com",
+    "username": "adrien",
+    "store": "Kate Spade New York",
+    "discount": 35,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T13:53:58.939365200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 6,
+    "qr_token": "b516f554-574f-441a-83f9-e62a345d99fd",
+    "email": "admin@foxtown.local",
+    "username": "admin",
+    "store": "Patrizia Pepe",
+    "discount": 20,
+    "valid_until": "2026-05-20",
+    "created_at": "2026-04-20T14:07:39.527755900+00:00",
+    "redeemed": false
+  }
+]

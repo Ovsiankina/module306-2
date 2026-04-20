@@ -1,4 +1,5 @@
 use crate::context::auth::AuthState;
+use crate::context::auth::read_token;
 use crate::i18n::{translate, translate_fmt, Locale};
 use crate::services::game::{
     all_categories,
@@ -12,6 +13,7 @@ use crate::services::game::{
     shops_by_category_keys,
     ShopInfo,
 };
+use crate::services::vouchers::create_voucher_and_send_email;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
@@ -57,7 +59,7 @@ struct SimulatedEmail {
     to: String,
     subject: String,
     body_preview: String,
-    qr_payload: String,
+    qr_code_data_url: String,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -714,43 +716,64 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             };
             let valid_until = (chrono::Utc::now() + chrono::Duration::days(30)).date_naive();
             let valid_until_iso = valid_until.to_string();
-            let qr_payload = format!(
-                "user={};store={};discount={}%;valid_until={}",
-                user_name, store_name, picked, valid_until_iso
-            );
-            let email_preview = SimulatedEmail {
-                to: user_email.clone(),
-                subject: translate(locale(), "rewards_draw.email.subject"),
-                body_preview: translate_fmt(
-                    locale(),
-                    "rewards_draw.email.body",
-                    &[
-                        ("user", user_name.clone()),
-                        ("discount", picked.to_string()),
-                        ("store", store_name.clone()),
-                        ("date", valid_until_iso.clone()),
-                    ],
-                ),
-                qr_payload: qr_payload.clone(),
-            };
-            simulated_email.set(Some(email_preview));
-            qr_email_status.set(translate_fmt(
-                locale(),
-                "rewards_draw.status.email_ready",
-                &[("email", user_email.clone())],
-            ));
+            let auth_token = read_token().unwrap_or_default();
+            if auth_token.is_empty() {
+                qr_email_status.set("Email delivery failed: missing auth token.".to_string());
+            } else {
+                match create_voucher_and_send_email(
+                    auth_token,
+                    user_email.clone(),
+                    user_name.clone(),
+                    store_name.clone(),
+                    picked,
+                    valid_until_iso.clone(),
+                )
+                .await
+                {
+                    Ok(voucher) => {
+                        let email_preview = SimulatedEmail {
+                            to: voucher.email.clone(),
+                            subject: translate(locale(), "rewards_draw.email.subject"),
+                            body_preview: translate_fmt(
+                                locale(),
+                                "rewards_draw.email.body",
+                                &[
+                                    ("user", user_name.clone()),
+                                    ("discount", picked.to_string()),
+                                    ("store", store_name.clone()),
+                                    ("date", valid_until_iso.clone()),
+                                ],
+                            ),
+                            qr_code_data_url: voucher.qr_code_data_url,
+                        };
+                        simulated_email.set(Some(email_preview));
+                        qr_email_status.set(translate_fmt(
+                            locale(),
+                            "rewards_draw.status.email_ready",
+                            &[("email", user_email.clone())],
+                        ));
+                    }
+                    Err(err) => {
+                        qr_email_status.set(format!("Email delivery failed: {err}"));
+                        simulated_email.set(None);
+                    }
+                }
+            }
             status_message.set(translate_fmt(
                 locale(),
                 "rewards_draw.status.win",
                 &[("discount", picked.to_string()), ("store", store_name.clone())],
             ));
             on_win.call(WinnerEvent {
-                user_name,
+                user_name: user_name.clone(),
                 user_email,
-                shop_name: store_name,
+                shop_name: store_name.clone(),
                 discount_percent: picked,
-                valid_until_iso,
-                qr_payload,
+                valid_until_iso: valid_until_iso.clone(),
+                qr_payload: format!(
+                    "user={};store={};discount={}%;valid_until={}",
+                    user_name, store_name, picked, valid_until_iso
+                ),
             });
             drawing.set(false);
         });
@@ -943,8 +966,10 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         p { class: "text-xs text-muted", "To: {email.to}" }
                         p { class: "text-xs text-muted", "Subject: {email.subject}" }
                         p { class: "text-xs text-muted mt-1", "{email.body_preview}" }
-                        p { class: "text-[11px] text-accent mt-2 break-all",
-                            {translate_fmt(locale(), "rewards_draw.email.qr_payload", &[("payload", email.qr_payload)])}
+                        img {
+                            class: "mt-3 mx-auto bg-white border border-gray-200 rounded p-2",
+                            src: "{email.qr_code_data_url}",
+                            alt: "Voucher QR code",
                         }
                     }
                 }

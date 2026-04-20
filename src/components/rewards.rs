@@ -1,7 +1,12 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::components::rewards_draw::{RewardsDraw, WinnerEvent};
+use crate::context::auth::{read_token, AuthState};
 use crate::i18n::{Locale, translate};
+use crate::services::vouchers::{
+    list_active_vouchers, list_recent_vouchers, VoucherAdminSummary, VoucherRecentSummary,
+};
+use crate::auth::Role;
 use dioxus::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -11,26 +16,97 @@ struct WinnerFeedItem {
     time: String,
 }
 
+fn format_relative_time(created_at: &str) -> String {
+    let Ok(created) = chrono::DateTime::parse_from_rfc3339(created_at) else {
+        return "RECENTLY".to_string();
+    };
+    let now = chrono::Utc::now();
+    let delta = now.signed_duration_since(created.with_timezone(&chrono::Utc));
+
+    if delta.num_minutes() <= 0 {
+        return "JUST NOW".to_string();
+    }
+    if delta.num_minutes() < 60 {
+        return format!("{}M AGO", delta.num_minutes());
+    }
+    if delta.num_hours() < 24 {
+        return format!("{}H AGO", delta.num_hours());
+    }
+    format!("{}D AGO", delta.num_days())
+}
+
+fn map_recent_winner(item: VoucherRecentSummary) -> WinnerFeedItem {
+    let trimmed = item.username.trim();
+    let display_name = if trimmed.is_empty() {
+        "User U.".to_string()
+    } else {
+        let mut words = trimmed.split_whitespace();
+        let first_name_raw = words.next().unwrap_or(trimmed);
+        let first_name = first_name_raw
+            .chars()
+            .enumerate()
+            .map(|(i, c)| {
+                if i == 0 {
+                    c.to_uppercase().to_string()
+                } else {
+                    c.to_lowercase().to_string()
+                }
+            })
+            .collect::<String>();
+        let initial_source = words.next().unwrap_or(first_name_raw);
+        let initial = initial_source
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_else(|| "U".to_string());
+        format!("{first_name} {initial}.")
+    };
+
+    WinnerFeedItem {
+        name: display_name,
+        prize: format!("{}% OFF {}", item.discount, item.store.to_uppercase()),
+        time: format_relative_time(&item.created_at),
+    }
+}
+
 pub fn RewardsPage() -> Element {
+    let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
-    let mut winners = use_signal(|| {
-        vec![
-            WinnerFeedItem {
-                name: "MARCO R.".to_string(),
-                prize: "20% OFF ARMANI".to_string(),
-                time: "2M AGO".to_string(),
-            },
-            WinnerFeedItem {
-                name: "ELENA S.".to_string(),
-                prize: "35% OFF BURBERRY".to_string(),
-                time: "15M AGO".to_string(),
-            },
-            WinnerFeedItem {
-                name: "JULIAN B.".to_string(),
-                prize: "15% OFF PRADA".to_string(),
-                time: "37M AGO".to_string(),
-            },
-        ]
+    let mut winners = use_signal(Vec::<WinnerFeedItem>::new);
+    let mut winners_loaded = use_signal(|| false);
+    let mut admin_vouchers = use_signal(Vec::<VoucherAdminSummary>::new);
+    let mut admin_vouchers_error = use_signal(String::new);
+    let mut admin_vouchers_loaded = use_signal(|| false);
+
+    use_effect(move || {
+        if winners_loaded() {
+            return;
+        }
+        winners_loaded.set(true);
+        spawn(async move {
+            match list_recent_vouchers(8).await {
+                Ok(items) => winners.set(items.into_iter().map(map_recent_winner).collect()),
+                Err(_) => winners.set(Vec::new()),
+            }
+        });
+    });
+
+    use_effect(move || {
+        let is_admin = matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin);
+        if !is_admin || admin_vouchers_loaded() {
+            return;
+        }
+        admin_vouchers_loaded.set(true);
+        spawn(async move {
+            let Some(token) = read_token() else {
+                admin_vouchers_error.set("Cannot load vouchers: missing auth token.".to_string());
+                return;
+            };
+            match list_active_vouchers(token).await {
+                Ok(items) => admin_vouchers.set(items),
+                Err(err) => admin_vouchers_error.set(format!("Cannot load vouchers: {err}")),
+            }
+        });
     });
 
     rsx! {
@@ -102,6 +178,27 @@ pub fn RewardsPage() -> Element {
                                             name: entry.name.clone(),
                                             prize: entry.prize.clone(),
                                             time: entry.time.clone(),
+                                        }
+                                    }
+                                }
+                            }
+
+                            if matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin) {
+                                div { class: "bg-white rounded-xl border border-gray-100 p-6 mt-6",
+                                    h3 { class: "text-lg font-bold text-dark mb-4",
+                                        "Active Vouchers (Admin)"
+                                    }
+                                    if !admin_vouchers_error().is_empty() {
+                                        p { class: "text-xs text-red-600", "{admin_vouchers_error()}" }
+                                    } else if admin_vouchers().is_empty() {
+                                        p { class: "text-xs text-muted", "No active vouchers for now." }
+                                    } else {
+                                        div { class: "space-y-2",
+                                            for voucher in admin_vouchers() {
+                                                div { class: "text-xs border border-gray-200 rounded-lg px-3 py-2 bg-gray-50",
+                                                    "{voucher.username} / {voucher.store} / -{voucher.discount}% / {voucher.valid_until}"
+                                                }
+                                            }
                                         }
                                     }
                                 }
