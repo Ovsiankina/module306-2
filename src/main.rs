@@ -74,6 +74,9 @@ pub enum Route {
     #[route("/")]
     Home {},
 
+    #[route("/stores")]
+    Stores {},
+
     #[route("/details/:product_id")]
     Details { product_id: usize },
 
@@ -116,6 +119,12 @@ pub enum Route {
 fn Home() -> Element {
     rsx! {
         components::parking::ParkingPage {}
+    }
+}
+
+fn Stores() -> Element {
+    rsx! {
+        components::home::Home {}
     }
 }
 
