@@ -35,6 +35,7 @@ fn mobile_language_button_class(current: Locale, target: Locale) -> &'static str
 
 #[derive(Clone, Copy, PartialEq, Default)]
 pub enum NavPage {
+    Parking,
     Stores,
     Map,
     Rewards,
@@ -73,10 +74,10 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
 
                 // Center nav links (desktop)
                 div { class: "hidden md:flex items-center gap-8",
-                    a { class: link_class(NavPage::Stores), href: "/", {translate(locale(), "nav.stores")} }
+                    a { class: link_class(NavPage::Parking), href: "/", "PARKING" }
+                    a { class: link_class(NavPage::Stores), href: "/map", {translate(locale(), "nav.stores")} }
                     a { class: link_class(NavPage::Map), href: "/map", {translate(locale(), "nav.map")} }
                     a { class: link_class(NavPage::Rewards), href: "/rewards", {translate(locale(), "nav.rewards")} }
-                    a { class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors", href: "/cart", "CART" }
                 }
 
                 // Right actions
@@ -237,8 +238,14 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
 
                             div { class: "flex flex-col gap-5",
                                 a {
-                                    class: if active == NavPage::Stores { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
+                                    class: if active == NavPage::Parking { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
                                     href: "/",
+                                    onclick: move |_| mobile_menu_open.set(false),
+                                    "PARKING"
+                                }
+                                a {
+                                    class: if active == NavPage::Stores { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
+                                    href: "/map",
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.stores")}
                                 }
@@ -286,12 +293,6 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                         onclick: move |_| mobile_menu_open.set(false),
                                         {translate(locale(), "nav.login")}
                                     }
-                                }
-                                a {
-                                    class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                    href: "/cart",
-                                    onclick: move |_| mobile_menu_open.set(false),
-                                    "CART"
                                 }
                             }
 

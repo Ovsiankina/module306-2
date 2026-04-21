@@ -1,0 +1,137 @@
+{
+  "max_total_capacity": 1800,
+  "lots": [
+    {
+      "id": "p1",
+      "name": "Parking P1",
+      "kind": "indoor",
+      "level": "L0",
+      "capacity": 220,
+      "occupied": 120,
+      "reserved_accessible": 8,
+      "reserved_family": 10,
+      "ev_capacity": 0,
+      "ev_occupied": 0,
+      "charging_stations": []
+    },
+    {
+      "id": "p2",
+      "name": "Parking P2",
+      "kind": "indoor",
+      "level": "L-1",
+      "capacity": 280,
+      "occupied": 170,
+      "reserved_accessible": 10,
+      "reserved_family": 12,
+      "ev_capacity": 0,
+      "ev_occupied": 0,
+      "charging_stations": []
+    },
+    {
+      "id": "p3",
+      "name": "Parking P3",
+      "kind": "outdoor",
+      "level": "L1",
+      "capacity": 300,
+      "occupied": 210,
+      "reserved_accessible": 10,
+      "reserved_family": 12,
+      "ev_capacity": 0,
+      "ev_occupied": 0,
+      "charging_stations": []
+    },
+    {
+      "id": "p4",
+      "name": "FoxPark",
+      "kind": "outdoor",
+      "level": null,
+      "capacity": 180,
+      "occupied": 108,
+      "reserved_accessible": 6,
+      "reserved_family": 8,
+      "ev_capacity": 4,
+      "ev_occupied": 2,
+      "charging_stations": [
+        {
+          "network": "eCarUp",
+          "station_type": "AC Type 2",
+          "power_kw": 22,
+          "connectors": [
+            "Type 2"
+          ],
+          "ports": 4,
+          "paid": true,
+          "availability": "OPEN_7_7_11_19",
+          "notes": "4 bornes publiques lentes"
+        }
+      ]
+    },
+    {
+      "id": "p5",
+      "name": "Parking P5",
+      "kind": "outdoor",
+      "level": "L0",
+      "capacity": 600,
+      "occupied": 360,
+      "reserved_accessible": 20,
+      "reserved_family": 24,
+      "ev_capacity": 2,
+      "ev_occupied": 1,
+      "charging_stations": [
+        {
+          "network": "GOFAST",
+          "station_type": "Ultra-fast",
+          "power_kw": 100,
+          "connectors": [
+            "CCS",
+            "CHAdeMO",
+            "Tesla"
+          ],
+          "ports": 1,
+          "paid": true,
+          "availability": "OPEN_7_7_11_19",
+          "notes": "Ideal pour les visites de moins d'une heure"
+        },
+        {
+          "network": "FoxTown",
+          "station_type": "AC Type 2",
+          "power_kw": 22,
+          "connectors": [
+            "Type 2"
+          ],
+          "ports": 1,
+          "paid": false,
+          "availability": "OPEN_7_7_11_19",
+          "notes": "Recharge lente gratuite"
+        }
+      ]
+    },
+    {
+      "id": "p6",
+      "name": "Parking P6",
+      "kind": "indoor",
+      "level": "L0",
+      "capacity": 220,
+      "occupied": 132,
+      "reserved_accessible": 8,
+      "reserved_family": 10,
+      "ev_capacity": 6,
+      "ev_occupied": 3,
+      "charging_stations": [
+        {
+          "network": "eCarUp",
+          "station_type": "AC Type 2",
+          "power_kw": 22,
+          "connectors": [
+            "Type 2"
+          ],
+          "ports": 6,
+          "paid": true,
+          "availability": "OPEN_7_7_11_19",
+          "notes": "6 bornes publiques lentes"
+        }
+      ]
+    }
+  ],
+  "updated_at": "2026-04-21T10:00:00Z"
+}

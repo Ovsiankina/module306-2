@@ -18,6 +18,7 @@ mod components {
     pub mod loading;
     pub mod login;
     pub mod nav;
+    pub mod parking;
     pub mod product_item;
     pub mod product_page;
     pub mod not_found;
@@ -114,7 +115,7 @@ pub enum Route {
 
 fn Home() -> Element {
     rsx! {
-        components::home::Home {}
+        components::parking::ParkingPage {}
     }
 }
 

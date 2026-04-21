@@ -6,8 +6,8 @@
     "username": "lucie",
     "store": "Coach",
     "discount": 35,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T13:18:55.417765200+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:18:55.417765200+00:00",
     "redeemed": false
   },
   {
@@ -17,8 +17,8 @@
     "username": "thomas",
     "store": "Fay",
     "discount": 25,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T13:35:03.222768100+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:35:03.222768100+00:00",
     "redeemed": false
   },
   {
@@ -28,8 +28,8 @@
     "username": "nina",
     "store": "Damiani",
     "discount": 15,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T13:41:55.844356200+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:41:55.844356200+00:00",
     "redeemed": false
   },
   {
@@ -39,8 +39,8 @@
     "username": "sophie",
     "store": "Borbonese",
     "discount": 25,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T13:44:15.472414200+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:44:15.472414200+00:00",
     "redeemed": false
   },
   {
@@ -50,8 +50,8 @@
     "username": "marc",
     "store": "Kate Spade New York",
     "discount": 35,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T13:53:58.939365200+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:53:58.939365200+00:00",
     "redeemed": false
   },
   {
@@ -61,8 +61,8 @@
     "username": "elena",
     "store": "Patrizia Pepe",
     "discount": 20,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T14:07:39.527755900+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T14:07:39.527755900+00:00",
     "redeemed": false
   },
   {
@@ -72,8 +72,8 @@
     "username": "jonas",
     "store": "Flavio Castellani",
     "discount": 15,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T17:21:49.528662900+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T17:21:49.528662900+00:00",
     "redeemed": false
   },
   {
@@ -83,8 +83,8 @@
     "username": "claire",
     "store": "Polo Ralph Lauren",
     "discount": 5,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T17:46:34.050732400+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T17:46:34.050732400+00:00",
     "redeemed": false
   },
   {
@@ -94,8 +94,8 @@
     "username": "victor",
     "store": "Armani",
     "discount": 30,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T18:02:10.000000000+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T18:02:10.000000000+00:00",
     "redeemed": false
   },
   {
@@ -105,8 +105,8 @@
     "username": "amelie",
     "store": "Versace",
     "discount": 25,
-    "valid_until": "2026-05-20",
-    "created_at": "2026-04-20T18:15:45.000000000+00:00",
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T18:15:45.000000000+00:00",
     "redeemed": false
   }
 ]
