@@ -5,10 +5,12 @@ use crate::context::auth::AuthState;
 use crate::i18n::{translate, translate_fmt, Locale};
 use crate::services::game::{
     default_game_rules, get_game_rules, total_unique_shops_count, update_game_rules,
-    GameRules,
+    DiscountRangeRule, GameRules,
 };
 use crate::Route;
 use dioxus::prelude::*;
+
+const MAX_DISCOUNT_RANGES: usize = 20;
 
 pub fn GameRulesPage() -> Element {
     let auth = use_context::<Signal<AuthState>>();
@@ -16,6 +18,8 @@ pub fn GameRulesPage() -> Element {
     let nav = use_navigator();
 
     let mut rules = use_signal(default_game_rules);
+    let mut discount_units_percent =
+        use_signal(|| vec![true; default_game_rules().discount_draw.ranges.len()]);
     let mut loading = use_signal(|| true);
     let mut saving = use_signal(|| false);
     let mut status = use_signal(String::new);
@@ -37,6 +41,8 @@ pub fn GameRulesPage() -> Element {
         spawn(async move {
             match get_game_rules().await {
                 Ok(server_rules) => {
+                    let n = server_rules.discount_draw.ranges.len();
+                    discount_units_percent.set(vec![true; n]);
                     rules.set(server_rules);
                     status.set(String::new());
                 }
@@ -55,6 +61,15 @@ pub fn GameRulesPage() -> Element {
         .store_draw
         .black_balls_current
         .clamp(store_min.min(store_max), store_min.max(store_max));
+
+    let discount_colored_balls_sum: u32 = current
+        .discount_draw
+        .ranges
+        .iter()
+        .map(|r| u32::from(r.balls_weight))
+        .sum();
+    let discount_total_balls =
+        discount_colored_balls_sum + u32::from(current.discount_draw.black_balls);
 
     rsx! {
         div { class: "min-h-screen bg-gray-50 font-heading",
@@ -75,8 +90,8 @@ pub fn GameRulesPage() -> Element {
                 if loading() {
                     p { class: "text-sm text-muted", {translate(locale(), "common.loading")} }
                 } else {
-                    div { class: "grid grid-cols-1 lg:grid-cols-2 gap-6",
-                        section { class: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm",
+                    div { class: "grid min-w-0 grid-cols-1 items-start gap-6 sm:grid-cols-2",
+                        section { class: "min-w-0 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm",
                             h2 { class: "text-lg font-extrabold text-dark mb-4",
                                 {translate(locale(), "game_rules.store.title")}
                             }
@@ -175,9 +190,32 @@ pub fn GameRulesPage() -> Element {
                                 },
                             }
                             p { class: "text-xs text-muted", "{current.store_draw.entropy_percent}%" }
+
+                            div { class: "mt-6 border-t border-gray-200 pt-6",
+                                h2 { class: "text-lg font-extrabold text-dark mb-2",
+                                    {translate(locale(), "game_rules.voucher.title")}
+                                }
+                                label { class: "block text-xs font-bold tracking-wider text-gray-600 mb-1",
+                                    {translate(locale(), "game_rules.voucher.validity_days")}
+                                }
+                                input {
+                                    class: "w-full max-w-sm rounded border border-gray-300 px-3 py-2 text-sm",
+                                    r#type: "number",
+                                    min: "1",
+                                    max: "365",
+                                    value: "{current.voucher.validity_days}",
+                                    oninput: move |evt| {
+                                        if let Ok(v) = evt.value().parse::<u16>() {
+                                            let mut next = rules();
+                                            next.voucher.validity_days = v.clamp(1, 365);
+                                            rules.set(next);
+                                        }
+                                    },
+                                }
+                            }
                         }
 
-                        section { class: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm",
+                        section { class: "min-w-0 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm",
                             h2 { class: "text-lg font-extrabold text-dark mb-4",
                                 {translate(locale(), "game_rules.discount.title")}
                             }
@@ -185,61 +223,199 @@ pub fn GameRulesPage() -> Element {
                                 {translate(locale(), "game_rules.discount.subtitle")}
                             }
 
-                            div { class: "space-y-2 mb-4",
+                            div { class: "mb-3 grid grid-cols-2 gap-4 text-center",
+                                p { class: "text-xs font-bold tracking-wider text-gray-600",
+                                    {translate(locale(), "game_rules.discount.amount_column")}
+                                }
+                                p { class: "text-xs font-bold tracking-wider text-gray-600",
+                                    {translate(locale(), "game_rules.discount.balls_column")}
+                                }
+                            }
+
+                            div { class: "mb-4 space-y-2",
                                 for (idx, range) in current.discount_draw.ranges.iter().enumerate() {
-                                    div { class: "grid grid-cols-2 gap-2",
-                                        input {
-                                            class: "rounded border border-gray-300 px-2 py-1 text-sm",
-                                            r#type: "number",
-                                            min: "1",
-                                            max: "100",
-                                            value: "{range.discount_percent}",
-                                            oninput: move |evt| {
-                                                if let Ok(v) = evt.value().parse::<u32>() {
+                                    div { class: "grid grid-cols-2 gap-4 items-center",
+                                        div { class: "flex min-w-0 flex-wrap items-center gap-2",
+                                            input {
+                                                class: "w-20 shrink-0 rounded border border-gray-300 px-2 py-1 text-sm",
+                                                r#type: "number",
+                                                min: "1",
+                                                max: "100",
+                                                value: "{range.discount_percent}",
+                                                oninput: move |evt| {
+                                                    if let Ok(v) = evt.value().parse::<u32>() {
+                                                        let mut next = rules();
+                                                        if let Some(item) = next.discount_draw.ranges.get_mut(idx) {
+                                                            item.discount_percent = v.clamp(1, 100);
+                                                        }
+                                                        rules.set(next);
+                                                    }
+                                                },
+                                            }
+                                            div { class: "flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap",
+                                                label { class: "inline-flex items-center gap-1",
+                                                    input {
+                                                        r#type: "radio",
+                                                        name: "discount-unit-{idx}",
+                                                        checked: discount_units_percent().get(idx).copied().unwrap_or(true),
+                                                        onchange: move |_| {
+                                                            let mut next_units = discount_units_percent();
+                                                            if next_units.len() <= idx {
+                                                                next_units.resize(idx + 1, true);
+                                                            }
+                                                            next_units[idx] = true;
+                                                            discount_units_percent.set(next_units);
+                                                        },
+                                                    }
+                                                    span { "%" }
+                                                }
+                                                label { class: "inline-flex items-center gap-1",
+                                                    input {
+                                                        r#type: "radio",
+                                                        name: "discount-unit-{idx}",
+                                                        checked: !discount_units_percent().get(idx).copied().unwrap_or(true),
+                                                        onchange: move |_| {
+                                                            let mut next_units = discount_units_percent();
+                                                            if next_units.len() <= idx {
+                                                                next_units.resize(idx + 1, true);
+                                                            }
+                                                            next_units[idx] = false;
+                                                            discount_units_percent.set(next_units);
+                                                        },
+                                                    }
+                                                    span { "CHF" }
+                                                }
+                                            }
+                                        }
+                                        div { class: "flex min-w-0 items-center justify-between gap-2",
+                                            div { class: "flex items-center gap-2",
+                                                input {
+                                                    class: "w-20 rounded border border-gray-300 px-2 py-1 text-sm",
+                                                    r#type: "number",
+                                                    min: "1",
+                                                    max: "200",
+                                                    value: "{range.balls_weight}",
+                                                    oninput: move |evt| {
+                                                        if let Ok(v) = evt.value().parse::<u16>() {
+                                                            let mut next = rules();
+                                                            if let Some(item) = next.discount_draw.ranges.get_mut(idx) {
+                                                                item.balls_weight = v.clamp(1, 200);
+                                                            }
+                                                            rules.set(next);
+                                                        }
+                                                    },
+                                                }
+                                                span { class: "text-xs text-gray-700 whitespace-nowrap",
+                                                    {translate(locale(), "game_rules.discount.ball_unit")}
+                                                }
+                                            }
+                                            button {
+                                                r#type: "button",
+                                                class: "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-gray-300 bg-white text-base font-bold leading-none text-gray-800 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40",
+                                                title: translate(locale(), "game_rules.discount.remove_range"),
+                                                disabled: current.discount_draw.ranges.len() <= 1,
+                                                onclick: move |_| {
+                                                    if rules().discount_draw.ranges.len() <= 1 {
+                                                        return;
+                                                    }
                                                     let mut next = rules();
-                                                    if let Some(item) = next.discount_draw.ranges.get_mut(idx) {
-                                                        item.discount_percent = v.clamp(1, 100);
+                                                    if idx < next.discount_draw.ranges.len() {
+                                                        next.discount_draw.ranges.remove(idx);
                                                     }
                                                     rules.set(next);
-                                                }
-                                            },
-                                        }
-                                        input {
-                                            class: "rounded border border-gray-300 px-2 py-1 text-sm",
-                                            r#type: "number",
-                                            min: "1",
-                                            max: "200",
-                                            value: "{range.balls_weight}",
-                                            oninput: move |evt| {
-                                                if let Ok(v) = evt.value().parse::<u16>() {
-                                                    let mut next = rules();
-                                                    if let Some(item) = next.discount_draw.ranges.get_mut(idx) {
-                                                        item.balls_weight = v.clamp(1, 200);
+                                                    let mut units = discount_units_percent();
+                                                    if idx < units.len() {
+                                                        units.remove(idx);
                                                     }
-                                                    rules.set(next);
-                                                }
-                                            },
+                                                    discount_units_percent.set(units);
+                                                },
+                                                "−"
+                                            }
                                         }
+                                    }
+                                }
+                                div { class: "flex justify-end pt-1",
+                                    button {
+                                        r#type: "button",
+                                        class: "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded border border-gray-300 bg-white text-base font-bold leading-none text-gray-800 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40",
+                                        title: translate(locale(), "game_rules.discount.add_range"),
+                                        disabled: current.discount_draw.ranges.len() >= MAX_DISCOUNT_RANGES,
+                                        onclick: move |_| {
+                                            if rules().discount_draw.ranges.len() >= MAX_DISCOUNT_RANGES {
+                                                return;
+                                            }
+                                            let mut next = rules();
+                                            next.discount_draw.ranges.push(DiscountRangeRule {
+                                                discount_percent: 10,
+                                                balls_weight: 1,
+                                            });
+                                            rules.set(next);
+                                            let mut units = discount_units_percent();
+                                            units.push(true);
+                                            discount_units_percent.set(units);
+                                        },
+                                        "+"
                                     }
                                 }
                             }
 
-                            label { class: "block text-xs font-bold tracking-wider text-gray-600 mb-1",
-                                {translate(locale(), "game_rules.discount.black_balls")}
-                            }
-                            input {
-                                class: "w-full mb-3 rounded border border-gray-300 px-3 py-2 text-sm",
-                                r#type: "number",
-                                min: "0",
-                                max: "120",
-                                value: "{current.discount_draw.black_balls}",
-                                oninput: move |evt| {
-                                    if let Ok(v) = evt.value().parse::<u16>() {
-                                        let mut next = rules();
-                                        next.discount_draw.black_balls = v.min(120);
-                                        rules.set(next);
+                            div { class: "mb-4 space-y-3 border-t border-gray-200 pt-4",
+                                div { class: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+                                    label { class: "text-xs font-bold tracking-wider text-gray-600",
+                                        {translate(locale(), "game_rules.discount.colored_balls")}
                                     }
-                                },
+                                    div { class: "flex items-center gap-2",
+                                        input {
+                                            class: "w-24 rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm text-gray-900",
+                                            r#type: "text",
+                                            readonly: true,
+                                            value: "{discount_colored_balls_sum}",
+                                        }
+                                        span { class: "text-xs text-gray-700 whitespace-nowrap",
+                                            {translate(locale(), "game_rules.discount.ball_unit")}
+                                        }
+                                    }
+                                }
+                                div { class: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+                                    label { class: "text-xs font-bold tracking-wider text-gray-600",
+                                        {translate(locale(), "game_rules.discount.black_balls")}
+                                    }
+                                    div { class: "flex items-center gap-2",
+                                        input {
+                                            class: "w-24 rounded border border-gray-300 px-2 py-1 text-sm",
+                                            r#type: "number",
+                                            min: "0",
+                                            max: "120",
+                                            value: "{current.discount_draw.black_balls}",
+                                            oninput: move |evt| {
+                                                if let Ok(v) = evt.value().parse::<u16>() {
+                                                    let mut next = rules();
+                                                    next.discount_draw.black_balls = v.min(120);
+                                                    rules.set(next);
+                                                }
+                                            },
+                                        }
+                                        span { class: "text-xs text-gray-700 whitespace-nowrap",
+                                            {translate(locale(), "game_rules.discount.ball_unit")}
+                                        }
+                                    }
+                                }
+                                div { class: "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+                                    label { class: "text-xs font-bold tracking-wider text-gray-600",
+                                        {translate(locale(), "game_rules.discount.sum_total_balls")}
+                                    }
+                                    div { class: "flex items-center gap-2",
+                                        input {
+                                            class: "w-24 rounded border border-gray-300 bg-gray-50 px-2 py-1 text-sm text-gray-900",
+                                            r#type: "text",
+                                            readonly: true,
+                                            value: "{discount_total_balls}",
+                                        }
+                                        span { class: "text-xs text-gray-700 whitespace-nowrap",
+                                            {translate(locale(), "game_rules.discount.ball_unit")}
+                                        }
+                                    }
+                                }
                             }
 
                             label { class: "block text-xs font-bold tracking-wider text-gray-600 mb-1",
@@ -279,29 +455,6 @@ pub fn GameRulesPage() -> Element {
                                 },
                             }
                             p { class: "text-xs text-muted", "{current.discount_draw.entropy_percent}%" }
-                        }
-                    }
-
-                    section { class: "rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mt-6",
-                        h2 { class: "text-lg font-extrabold text-dark mb-2",
-                            {translate(locale(), "game_rules.voucher.title")}
-                        }
-                        label { class: "block text-xs font-bold tracking-wider text-gray-600 mb-1",
-                            {translate(locale(), "game_rules.voucher.validity_days")}
-                        }
-                        input {
-                            class: "w-full max-w-sm rounded border border-gray-300 px-3 py-2 text-sm",
-                            r#type: "number",
-                            min: "1",
-                            max: "365",
-                            value: "{current.voucher.validity_days}",
-                            oninput: move |evt| {
-                                if let Ok(v) = evt.value().parse::<u16>() {
-                                    let mut next = rules();
-                                    next.voucher.validity_days = v.clamp(1, 365);
-                                    rules.set(next);
-                                }
-                            },
                         }
                     }
 
