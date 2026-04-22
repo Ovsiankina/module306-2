@@ -8,6 +8,7 @@ use crate::services::game::{
 use crate::services::vouchers::list_recent_vouchers;
 use crate::stores::{get_stores, slugify, Category, Store};
 use crate::Route;
+use chrono::Utc;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -361,12 +362,24 @@ fn ticker_relative_time(locale: Locale, created_at: &str) -> String {
     )
 }
 
+fn format_remaining_to_timestamp_hms(target_rfc3339: &str) -> Option<String> {
+    let target = chrono::DateTime::parse_from_rfc3339(target_rfc3339)
+        .ok()?
+        .with_timezone(&Utc);
+    let secs = target.signed_duration_since(Utc::now()).num_seconds().max(0) as u64;
+    let h = secs / 3600;
+    let m = (secs % 3600) / 60;
+    let s = secs % 60;
+    Some(format!("{h:02}:{m:02}:{s:02}"))
+}
+
 #[component]
-fn HomeWinnersTickerBar() -> Element {
+pub(crate) fn HomeWinnersTickerBar() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut pool = use_signal(|| None::<DailyPrizePoolSnapshot>);
     let mut winners = use_signal(Vec::<(String, String)>::new);
-    let mut cooldown_hms = use_signal(|| format_daily_prize_reset_countdown_hms());
+    let mut reset_hms = use_signal(|| format_daily_prize_reset_countdown_hms());
+    let mut cooldown_hms = use_signal(|| None::<String>);
 
     use_effect(move || {
         let locale_sig = locale;
@@ -399,20 +412,31 @@ fn HomeWinnersTickerBar() -> Element {
     use_effect(move || {
         spawn(async move {
             loop {
-                cooldown_hms.set(format_daily_prize_reset_countdown_hms());
+                reset_hms.set(format_daily_prize_reset_countdown_hms());
+                let cooldown_next = pool().and_then(|s| {
+                    s.cooldown_until_utc
+                        .as_deref()
+                        .and_then(format_remaining_to_timestamp_hms)
+                });
+                cooldown_hms.set(cooldown_next);
                 delay_ms(1_000).await;
             }
         });
     });
 
     let items = winners();
-    let (current_str, max_str, quota_full) = match pool() {
+    let (current_str, max_str, cooldown_active) = match pool() {
         Some(s) => {
-            let full = s.distributed >= s.max;
-            (s.distributed.to_string(), s.max.to_string(), full)
+            let displayed_current = if s.cooldown_active { s.max } else { s.distributed };
+            (
+                displayed_current.to_string(),
+                s.max.to_string(),
+                s.cooldown_active,
+            )
         }
         None => ("—".to_string(), "10".to_string(), false),
     };
+    let right_hms = cooldown_hms().unwrap_or_else(|| reset_hms());
 
     rsx! {
         div {
@@ -471,7 +495,7 @@ fn HomeWinnersTickerBar() -> Element {
                     class: "shrink-0 flex flex-col justify-center items-end gap-1 text-right",
                     style: "line-height: 1; min-width: 9rem;",
                     span { class: "text-xs font-bold tracking-widest text-accent uppercase",
-                        if quota_full {
+                        if cooldown_active {
                             {translate(locale(), "home.ticker.quota_full_label")}
                         } else {
                             {translate(locale(), "home.ticker.reset_in_label")}
@@ -480,7 +504,7 @@ fn HomeWinnersTickerBar() -> Element {
                     p {
                         class: "mt-0 text-lg font-bold text-white",
                         style: "font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -0.025em;",
-                        "{cooldown_hms()}"
+                        "{right_hms}"
                     }
                 }
             }
@@ -489,6 +513,48 @@ fn HomeWinnersTickerBar() -> Element {
 }
 
 pub(crate) fn Home() -> Element {
+    let locale = use_context::<Signal<Locale>>();
+
+    rsx! {
+        div { class: "min-h-screen flex flex-col bg-white font-heading",
+            Nav { active: NavPage::None }
+
+            div { class: "mt-auto",
+                // ─── Newsletter section ─────────────────────────────────
+                section { class: "bg-dark",
+                    div { class: "max-w-7xl mx-auto px-6 py-16 flex flex-col lg:flex-row items-center gap-12",
+                        div { class: "flex-1",
+                            h2 { class: "text-3xl md:text-4xl font-extrabold text-white leading-tight mb-4",
+                                {translate(locale(), "home.newsletter.title")}
+                            }
+                            p { class: "text-muted leading-relaxed mb-8 max-w-md",
+                                {translate(locale(), "home.newsletter.subtitle")}
+                            }
+                            div { class: "flex max-w-md",
+                                input {
+                                    class: "flex-1 py-3.5 px-4 text-sm bg-gray-800 border border-gray-700 rounded-l-lg placeholder-surface text-white focus:ring-accent focus:border-accent focus:outline-none",
+                                    r#type: "email",
+                                    placeholder: {translate(locale(), "home.newsletter.placeholder")},
+                                }
+                                button { class: "px-6 py-3.5 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-r-lg transition-colors",
+                                    {translate(locale(), "home.newsletter.button")}
+                                }
+                            }
+                        }
+                        // Decorative editorial image
+                        div { class: "w-full lg:w-80 h-64 rounded-lg overflow-hidden",
+                            img { src: "/editorial-fashion.png", class: "w-full h-full object-cover", alt: "" }
+                        }
+                    }
+                }
+
+                Footer { dark: false, stick_to_bottom: false }
+            }
+        }
+    }
+}
+
+pub(crate) fn StoresPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut filter = use_signal(FilterGroup::default);
@@ -509,7 +575,6 @@ pub(crate) fn Home() -> Element {
     rsx! {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
             Nav { active: NavPage::Stores }
-            HomeWinnersTickerBar {}
 
             // ─── Hero section ───────────────────────────────────────
             section { class: "max-w-7xl mx-auto px-6 pt-16 pb-12",
@@ -642,7 +707,7 @@ pub(crate) fn Home() -> Element {
                 }
             }
 
-            Footer { dark: false }
+            Footer { dark: false, stick_to_bottom: false }
         }
     }
 }

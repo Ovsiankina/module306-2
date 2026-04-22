@@ -1,4 +1,5 @@
 use crate::auth::{logout, Role};
+use crate::components::home::HomeWinnersTickerBar;
 use crate::context::auth::{clear_token, read_token, AuthState};
 use crate::i18n::{persist_locale, translate, Locale};
 use crate::Route;
@@ -35,6 +36,7 @@ fn mobile_language_button_class(current: Locale, target: Locale) -> &'static str
 
 #[derive(Clone, Copy, PartialEq, Default)]
 pub enum NavPage {
+    Home,
     Parking,
     Stores,
     Map,
@@ -74,7 +76,8 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
 
                 // Center nav links (desktop)
                 div { class: "hidden md:flex items-center gap-8",
-                    a { class: link_class(NavPage::Parking), href: "/", "PARKING" }
+                    a { class: link_class(NavPage::Home), href: "/", {translate(locale(), "common.home")} }
+                    a { class: link_class(NavPage::Parking), href: "/parking", {translate(locale(), "nav.parking")} }
                     a { class: link_class(NavPage::Stores), href: "/stores", {translate(locale(), "nav.stores")} }
                     a { class: link_class(NavPage::Map), href: "/map", {translate(locale(), "nav.map")} }
                     a { class: link_class(NavPage::Rewards), href: "/rewards", {translate(locale(), "nav.rewards")} }
@@ -160,7 +163,25 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
                                                 href: "/admin/vouchers",
                                                 onclick: move |_| account_menu_open.set(false),
-                                                "VOUCHER LIST"
+                                                {translate(locale(), "nav.admin.voucher_list")}
+                                            }
+                                            a {
+                                                class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                href: "/admin/visits",
+                                                onclick: move |_| account_menu_open.set(false),
+                                                {translate(locale(), "nav.admin.visits_stats")}
+                                            }
+                                            a {
+                                                class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                href: "/admin/parking-occupancy",
+                                                onclick: move |_| account_menu_open.set(false),
+                                                {translate(locale(), "nav.admin.parking_occupancy")}
+                                            }
+                                            a {
+                                                class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                href: "/admin/game-rules",
+                                                onclick: move |_| account_menu_open.set(false),
+                                                {translate(locale(), "nav.admin.game_rules")}
                                             }
                                         }
                                         // Logout: all logged-in roles (Editor + Admin)
@@ -238,10 +259,16 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
 
                             div { class: "flex flex-col gap-5",
                                 a {
-                                    class: if active == NavPage::Parking { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
+                                    class: if active == NavPage::Home { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
                                     href: "/",
                                     onclick: move |_| mobile_menu_open.set(false),
-                                    "PARKING"
+                                    {translate(locale(), "common.home")}
+                                }
+                                a {
+                                    class: if active == NavPage::Parking { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
+                                    href: "/parking",
+                                    onclick: move |_| mobile_menu_open.set(false),
+                                    {translate(locale(), "nav.parking")}
                                 }
                                 a {
                                     class: if active == NavPage::Stores { "text-sm font-semibold tracking-widest text-accent" } else { "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors" },
@@ -266,7 +293,25 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                         class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
                                         href: "/admin/vouchers",
                                         onclick: move |_| mobile_menu_open.set(false),
-                                        "VOUCHER LIST"
+                                        {translate(locale(), "nav.admin.voucher_list")}
+                                    }
+                                    a {
+                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
+                                        href: "/admin/visits",
+                                        onclick: move |_| mobile_menu_open.set(false),
+                                        {translate(locale(), "nav.admin.visits_stats")}
+                                    }
+                                    a {
+                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
+                                        href: "/admin/parking-occupancy",
+                                        onclick: move |_| mobile_menu_open.set(false),
+                                        {translate(locale(), "nav.admin.parking_occupancy")}
+                                    }
+                                    a {
+                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
+                                        href: "/admin/game-rules",
+                                        onclick: move |_| mobile_menu_open.set(false),
+                                        {translate(locale(), "nav.admin.game_rules")}
                                     }
                                 }
                                 if matches!(auth(), AuthState::LoggedIn(_)) {
@@ -319,6 +364,7 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                 }
             }
         }
+        HomeWinnersTickerBar {}
     }
 }
 

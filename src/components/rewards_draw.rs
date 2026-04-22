@@ -4,8 +4,12 @@ use crate::i18n::{translate, translate_fmt, Locale};
 use chrono::{DateTime, Utc};
 use crate::services::game::{
     all_categories,
+    default_game_rules,
     delay_ms,
+    DailyPrizePoolSnapshot,
     format_daily_prize_reset_countdown_hms,
+    GameRules,
+    get_game_rules,
     game_server_can_award_prize_today,
     game_server_can_start_today,
     game_server_choose_distributed_shop,
@@ -14,30 +18,24 @@ use crate::services::game::{
     get_daily_prize_pool_snapshot,
     random_index,
     shops_by_category_keys,
+    store_black_ball_count_for_shop_count,
     ShopInfo,
 };
 use crate::services::vouchers::create_voucher_and_send_email;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
-const DISCOUNT_BLACK_BALLS: usize = 15;
-const DISCOUNT_DISTRIBUTION: [(u32, usize); 10] = [
-    (50, 1),
-    (45, 2),
-    (40, 2),
-    (35, 2),
-    (30, 2),
-    (25, 3),
-    (20, 3),
-    (15, 5),
-    (10, 5),
-    (5, 10),
-];
 const CONTAINER_RADIUS: f64 = 120.0;
 const BALL_RADIUS: f64 = 16.0;
 const PHYSICS_DT_MS: u64 = 16;
-const STORE_DRAW_STEPS: usize = 460;
-const DISCOUNT_DRAW_STEPS: usize = 520;
+
+fn draw_steps_from_seconds(seconds: u8) -> usize {
+    (((seconds as u64) * 1000) / PHYSICS_DT_MS).max(1) as usize
+}
+
+fn entropy_multiplier(percent: u8) -> f64 {
+    0.5 + (f64::from(percent.clamp(0, 100)) / 100.0)
+}
 
 /// Aligné sur `services/game.rs` : la « journée » des 10 cadeaux change à minuit UTC.
 fn next_utc_midnight() -> DateTime<Utc> {
@@ -69,6 +67,17 @@ fn format_next_reset_local(locale: Locale, next_utc: DateTime<Utc>) -> String {
 #[cfg(not(target_family = "wasm"))]
 fn format_next_reset_local(_locale: Locale, next_utc: DateTime<Utc>) -> String {
     next_utc.format("%Y-%m-%d %H:%M UTC").to_string()
+}
+
+fn format_remaining_to_timestamp_hms(target_rfc3339: &str) -> Option<String> {
+    let target = chrono::DateTime::parse_from_rfc3339(target_rfc3339)
+        .ok()?
+        .with_timezone(&Utc);
+    let secs = target.signed_duration_since(Utc::now()).num_seconds().max(0) as u64;
+    let h = secs / 3600;
+    let m = (secs % 3600) / 60;
+    let s = secs % 60;
+    Some(format!("{h:02}:{m:02}:{s:02}"))
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -131,19 +140,22 @@ fn category_translation_key(key: &str) -> Option<&'static str> {
     }
 }
 
-fn init_discount_balls() -> Vec<Ball3D> {
+fn init_discount_balls(rules: &GameRules) -> Vec<Ball3D> {
+    let velocity_factor = entropy_multiplier(rules.discount_draw.entropy_percent);
     let mut color_values = Vec::with_capacity(35);
-    for (value, count) in DISCOUNT_DISTRIBUTION {
-        for _ in 0..count {
-            color_values.push(value);
+    for range in &rules.discount_draw.ranges {
+        for _ in 0..range.balls_weight {
+            color_values.push(range.discount_percent);
         }
     }
+    let color_values_len = color_values.len();
 
     let mut balls: Vec<Ball3D> = color_values
         .into_iter()
         .enumerate()
         .map(|(i, value)| {
-            let len = (35 + DISCOUNT_BLACK_BALLS) as f64;
+            let black_balls = usize::from(rules.discount_draw.black_balls);
+            let len = (color_values_len + black_balls.max(1)) as f64;
             let a = i as f64 / len * std::f64::consts::TAU;
             let ring = 55.0 + ((i % 3) as f64) * 10.0;
             let t = ((value as f64 - 5.0) / 45.0).clamp(0.0, 1.0);
@@ -154,18 +166,19 @@ fn init_discount_balls() -> Vec<Ball3D> {
                 x: a.cos() * ring * 0.75,
                 y: a.sin() * ring * 0.55,
                 z: ((i % 5) as f64 - 2.0) * 16.0,
-                vx: (((i * 37) % 11) as f64 - 5.0) * 14.0,
-                vy: (((i * 19) % 9) as f64 - 4.0) * 10.0,
-                vz: (((i * 29) % 13) as f64 - 6.0) * 12.0,
+                vx: ((((i * 37) % 11) as f64 - 5.0) * 14.0) * velocity_factor,
+                vy: ((((i * 19) % 9) as f64 - 4.0) * 10.0) * velocity_factor,
+                vz: ((((i * 29) % 13) as f64 - 6.0) * 12.0) * velocity_factor,
                 r: BALL_RADIUS,
             }
         })
         .collect();
 
     let offset = balls.len();
-    for i in 0..DISCOUNT_BLACK_BALLS {
+    let black_balls = usize::from(rules.discount_draw.black_balls);
+    for i in 0..black_balls {
         let idx = i + offset;
-        let len = (offset + DISCOUNT_BLACK_BALLS) as f64;
+        let len = (offset + black_balls.max(1)) as f64;
         let a = idx as f64 / len * std::f64::consts::TAU;
         let ring = 50.0 + ((i % 4) as f64) * 8.0;
         balls.push(Ball3D {
@@ -175,9 +188,9 @@ fn init_discount_balls() -> Vec<Ball3D> {
             x: a.cos() * ring * 0.76,
             y: a.sin() * ring * 0.54,
             z: ((i % 6) as f64 - 2.0) * 13.0,
-            vx: (((idx * 41) % 13) as f64 - 6.0) * 12.0,
-            vy: (((idx * 23) % 11) as f64 - 5.0) * 9.0,
-            vz: (((idx * 31) % 15) as f64 - 7.0) * 11.0,
+            vx: ((((idx * 41) % 13) as f64 - 6.0) * 12.0) * velocity_factor,
+            vy: ((((idx * 23) % 11) as f64 - 5.0) * 9.0) * velocity_factor,
+            vz: ((((idx * 31) % 15) as f64 - 7.0) * 11.0) * velocity_factor,
             r: BALL_RADIUS,
         });
     }
@@ -185,7 +198,13 @@ fn init_discount_balls() -> Vec<Ball3D> {
     balls
 }
 
-fn init_store_balls(active_categories: &[String], shops: &[ShopInfo]) -> Vec<Ball3D> {
+fn init_store_balls(
+    active_categories: &[String],
+    shops: &[ShopInfo],
+    black_ball_count: usize,
+    entropy_percent: u8,
+) -> Vec<Ball3D> {
+    let velocity_factor = entropy_multiplier(entropy_percent);
     let mut category_hues: HashMap<&str, f64> = HashMap::new();
     let total_categories = active_categories.len().max(1) as f64;
     for (i, category) in active_categories.iter().enumerate() {
@@ -209,15 +228,14 @@ fn init_store_balls(active_categories: &[String], shops: &[ShopInfo]) -> Vec<Bal
                 x: a.cos() * ring * 0.75,
                 y: a.sin() * ring * 0.55,
                 z: ((i % 6) as f64 - 2.0) * 15.0,
-                vx: (((i * 37) % 11) as f64 - 5.0) * 14.0,
-                vy: (((i * 19) % 9) as f64 - 4.0) * 10.0,
-                vz: (((i * 29) % 13) as f64 - 6.0) * 12.0,
+                vx: ((((i * 37) % 11) as f64 - 5.0) * 14.0) * velocity_factor,
+                vy: ((((i * 19) % 9) as f64 - 4.0) * 10.0) * velocity_factor,
+                vz: ((((i * 29) % 13) as f64 - 6.0) * 12.0) * velocity_factor,
                 r: BALL_RADIUS,
             }
         })
         .collect();
 
-    let black_ball_count = 9_usize.max(active_categories.len());
     let offset = balls.len();
     for i in 0..black_ball_count {
         let idx = i + offset;
@@ -231,9 +249,9 @@ fn init_store_balls(active_categories: &[String], shops: &[ShopInfo]) -> Vec<Bal
             x: a.cos() * ring * 0.78,
             y: a.sin() * ring * 0.52,
             z: ((i % 5) as f64 - 2.0) * 13.0,
-            vx: (((idx * 41) % 13) as f64 - 6.0) * 12.0,
-            vy: (((idx * 23) % 11) as f64 - 5.0) * 9.0,
-            vz: (((idx * 31) % 15) as f64 - 7.0) * 11.0,
+            vx: ((((idx * 41) % 13) as f64 - 6.0) * 12.0) * velocity_factor,
+            vy: ((((idx * 23) % 11) as f64 - 5.0) * 9.0) * velocity_factor,
+            vz: ((((idx * 31) % 15) as f64 - 7.0) * 11.0) * velocity_factor,
             r: BALL_RADIUS,
         });
     }
@@ -514,6 +532,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let mut daily_reset_countdown =
         use_signal(|| format_daily_prize_reset_countdown_hms());
     let mut daily_reset_at = use_signal(|| format_next_reset_local(locale(), next_utc_midnight()));
+    let mut cooldown_countdown = use_signal(|| None::<String>);
+    let mut pool_snapshot = use_signal(|| None::<DailyPrizePoolSnapshot>);
+    let mut game_rules = use_signal(default_game_rules);
+
+    use_effect(move || {
+        spawn(async move {
+            if let Ok(rules) = get_game_rules().await {
+                game_rules.set(rules);
+            }
+        });
+    });
 
     use_effect(move || {
         let locale_sig = locale;
@@ -522,6 +551,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 let loc = locale_sig();
                 daily_reset_countdown.set(format_daily_prize_reset_countdown_hms());
                 daily_reset_at.set(format_next_reset_local(loc, next_utc_midnight()));
+                let cooldown_next = pool_snapshot().and_then(|s| {
+                    s.cooldown_until_utc
+                        .as_deref()
+                        .and_then(format_remaining_to_timestamp_hms)
+                });
+                cooldown_countdown.set(cooldown_next);
                 delay_ms(1000).await;
             }
         });
@@ -532,7 +567,8 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         spawn(async move {
             loop {
                 if let Ok(s) = get_daily_prize_pool_snapshot().await {
-                    quota_exhausted.set(s.distributed >= s.max);
+                    quota_exhausted.set(s.distributed >= s.max || s.cooldown_active);
+                    pool_snapshot.set(Some(s));
                 }
                 delay_ms(5_000).await;
             }
@@ -545,7 +581,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let mut shops = use_signal(Vec::<ShopInfo>::new);
 
     let mut store_balls = use_signal(Vec::<Ball3D>::new);
-    let mut discount_balls = use_signal(init_discount_balls);
+    let mut discount_balls = use_signal(|| init_discount_balls(&game_rules()));
     let mut drawing = use_signal(|| false);
     let mut extracted_store_ball = use_signal(|| None::<u32>);
     let mut extracted_discount_ball = use_signal(|| None::<u32>);
@@ -585,7 +621,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             };
 
             match get_daily_prize_pool_snapshot().await {
-                Ok(s) if s.distributed >= s.max => {
+                Ok(s) if s.distributed >= s.max || s.cooldown_active => {
                     status_message.set(translate(
                         loc,
                         "rewards_draw.status.game_closed_daily_quota",
@@ -627,8 +663,16 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             }
 
             shops.set(available_shops.clone());
-            store_balls.set(init_store_balls(&selected, &available_shops));
-            discount_balls.set(init_discount_balls());
+            let rules_snapshot = game_rules();
+            let black_balls =
+                store_black_ball_count_for_shop_count(available_shops.len(), &rules_snapshot);
+            store_balls.set(init_store_balls(
+                &selected,
+                &available_shops,
+                black_balls,
+                rules_snapshot.store_draw.entropy_percent,
+            ));
+            discount_balls.set(init_discount_balls(&rules_snapshot));
             extracted_store_ball.set(None);
             extracted_discount_ball.set(None);
             extracted_store.set(None);
@@ -641,7 +685,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 "rewards_draw.status.store_draw_ready",
                 &[
                     ("stores", available_shops.len().to_string()),
-                    ("black", 9_usize.max(selected.len()).to_string()),
+                    ("black", black_balls.to_string()),
                 ],
             ));
         });
@@ -682,11 +726,16 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
 
             drawing.set(true);
 
-            for step in 0..STORE_DRAW_STEPS {
+            let store_rules = game_rules().store_draw.clone();
+            for step in 0..draw_steps_from_seconds(store_rules.mix_seconds) {
                 let mut next = store_balls();
                 let pulse_period = 20;
                 let pulse_is_on = (step % pulse_period) < 10;
-                let power = if pulse_is_on { 1.0 } else { 0.0 };
+                let power = if pulse_is_on {
+                    entropy_multiplier(store_rules.entropy_percent)
+                } else {
+                    0.0
+                };
                 step_collision_physics(&mut next, 0.016, power, step);
                 store_balls.set(next);
                 delay_ms(PHYSICS_DT_MS).await;
@@ -779,11 +828,16 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             discount_stamp_visible.set(false);
             discount_stamp_ink_progress.set(0.0);
 
-            for step in 0..DISCOUNT_DRAW_STEPS {
+            let discount_rules = game_rules().discount_draw.clone();
+            for step in 0..draw_steps_from_seconds(discount_rules.mix_seconds) {
                 let mut next = discount_balls();
                 let pulse_period = 20;
                 let pulse_is_on = (step % pulse_period) < 10;
-                let power = if pulse_is_on { 1.0 } else { 0.0 };
+                let power = if pulse_is_on {
+                    entropy_multiplier(discount_rules.entropy_percent)
+                } else {
+                    0.0
+                };
                 step_collision_physics(&mut next, 0.016, power, step);
                 discount_balls.set(next);
                 delay_ms(PHYSICS_DT_MS).await;
@@ -844,7 +898,8 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 AuthState::LoggedIn(user) => (user.username, user.email),
                 _ => ("Guest".to_string(), "guest@example.com".to_string()),
             };
-            let valid_until = (chrono::Utc::now() + chrono::Duration::days(30)).date_naive();
+            let valid_days = i64::from(game_rules().voucher.validity_days);
+            let valid_until = (chrono::Utc::now() + chrono::Duration::days(valid_days)).date_naive();
             let valid_until_iso = valid_until.to_string();
             let auth_token = read_token().unwrap_or_default();
             if auth_token.is_empty() {
@@ -913,7 +968,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
         selected_categories.set(Vec::new());
         shops.set(Vec::new());
         store_balls.set(Vec::new());
-        discount_balls.set(init_discount_balls());
+        discount_balls.set(init_discount_balls(&game_rules()));
         extracted_store_ball.set(None);
         extracted_discount_ball.set(None);
         extracted_store.set(None);
@@ -936,6 +991,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let show_discount_stamp = phase() == DrawPhase::Completed
         && extracted_discount_ball().map(|v| v > 0).unwrap_or(false)
         && discount_stamp_visible();
+    let closed_timer_hms = cooldown_countdown().unwrap_or_else(|| daily_reset_countdown());
 
     rsx! {
         div { class: "relative flex flex-col items-center gap-6",
@@ -945,7 +1001,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         {translate(locale(), "rewards_draw.game_closed.title")}
                     }
                     p { class: "font-mono text-3xl font-bold tabular-nums text-dark mb-3",
-                        "{daily_reset_countdown()}"
+                        "{closed_timer_hms}"
                     }
                     p { class: "text-sm text-amber-900/90 leading-relaxed",
                         {translate(locale(), "rewards_draw.game_closed.body")}

@@ -16,6 +16,41 @@ pub struct ShopInfo {
     pub category: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct DiscountRangeRule {
+    pub discount_percent: u32,
+    pub balls_weight: u16,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct StoreDrawRules {
+    pub black_balls_min: u16,
+    pub black_balls_current: u16,
+    pub black_balls_max: u16,
+    pub mix_seconds: u8,
+    pub entropy_percent: u8,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct DiscountDrawRules {
+    pub black_balls: u16,
+    pub ranges: Vec<DiscountRangeRule>,
+    pub mix_seconds: u8,
+    pub entropy_percent: u8,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct VoucherRules {
+    pub validity_days: u16,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct GameRules {
+    pub store_draw: StoreDrawRules,
+    pub discount_draw: DiscountDrawRules,
+    pub voucher: VoucherRules,
+}
+
 #[derive(Debug, Deserialize)]
 struct StoresDataRaw {
     categories: BTreeMap<String, String>,
@@ -35,6 +70,7 @@ struct StoresData {
 }
 
 static STORES_DATA: OnceLock<StoresData> = OnceLock::new();
+static GAME_RULES: OnceLock<Mutex<GameRules>> = OnceLock::new();
 
 fn stores_data() -> &'static StoresData {
     STORES_DATA.get_or_init(|| {
@@ -57,6 +93,97 @@ fn stores_data() -> &'static StoresData {
 
 pub fn all_categories() -> Vec<StoreCategory> {
     stores_data().categories.clone()
+}
+
+pub fn default_game_rules() -> GameRules {
+    GameRules {
+        store_draw: StoreDrawRules {
+            black_balls_min: 0,
+            black_balls_current: 9,
+            black_balls_max: 30,
+            mix_seconds: 7,
+            entropy_percent: 65,
+        },
+        discount_draw: DiscountDrawRules {
+            black_balls: 15,
+            ranges: vec![
+                DiscountRangeRule { discount_percent: 50, balls_weight: 1 },
+                DiscountRangeRule { discount_percent: 45, balls_weight: 2 },
+                DiscountRangeRule { discount_percent: 40, balls_weight: 2 },
+                DiscountRangeRule { discount_percent: 35, balls_weight: 2 },
+                DiscountRangeRule { discount_percent: 30, balls_weight: 2 },
+                DiscountRangeRule { discount_percent: 25, balls_weight: 3 },
+                DiscountRangeRule { discount_percent: 20, balls_weight: 3 },
+                DiscountRangeRule { discount_percent: 15, balls_weight: 5 },
+                DiscountRangeRule { discount_percent: 10, balls_weight: 5 },
+                DiscountRangeRule { discount_percent: 5, balls_weight: 10 },
+            ],
+            mix_seconds: 7,
+            entropy_percent: 65,
+        },
+        voucher: VoucherRules {
+            validity_days: 30,
+        },
+    }
+}
+
+fn game_rules_state() -> &'static Mutex<GameRules> {
+    GAME_RULES.get_or_init(|| Mutex::new(default_game_rules()))
+}
+
+pub fn clamp_game_rules(mut rules: GameRules) -> GameRules {
+    rules.store_draw.mix_seconds = rules.store_draw.mix_seconds.clamp(3, 10);
+    rules.store_draw.entropy_percent = rules.store_draw.entropy_percent.clamp(0, 100);
+
+    rules.discount_draw.black_balls = rules.discount_draw.black_balls.clamp(0, 120);
+    rules.discount_draw.mix_seconds = rules.discount_draw.mix_seconds.clamp(3, 10);
+    rules.discount_draw.entropy_percent = rules.discount_draw.entropy_percent.clamp(0, 100);
+    if rules.discount_draw.ranges.is_empty() {
+        rules.discount_draw.ranges = default_game_rules().discount_draw.ranges;
+    }
+    for range in &mut rules.discount_draw.ranges {
+        range.discount_percent = range.discount_percent.clamp(1, 100);
+        range.balls_weight = range.balls_weight.clamp(1, 200);
+    }
+
+    rules.voucher.validity_days = rules.voucher.validity_days.clamp(1, 365);
+    rules
+}
+
+pub fn get_game_rules_snapshot() -> GameRules {
+    game_rules_state()
+        .lock()
+        .expect("game rules mutex poisoned")
+        .clone()
+}
+
+pub fn save_game_rules(rules: GameRules) -> GameRules {
+    let clamped = clamp_game_rules(rules);
+    let mut state = game_rules_state()
+        .lock()
+        .expect("game rules mutex poisoned");
+    *state = clamped.clone();
+    clamped
+}
+
+pub fn total_unique_shops_count() -> usize {
+    let mut names = HashSet::new();
+    for shop in &stores_data().shops {
+        names.insert(shop.name.as_str());
+    }
+    names.len()
+}
+
+pub fn store_black_ball_count_for_shop_count(shop_count: usize, rules: &GameRules) -> usize {
+    if shop_count == 0 {
+        return 0;
+    }
+    let limit = shop_count;
+    let min = usize::from(rules.store_draw.black_balls_min).min(limit);
+    let max_requested = usize::from(rules.store_draw.black_balls_max).min(limit);
+    let max = max_requested.max(min);
+    let current = usize::from(rules.store_draw.black_balls_current).min(limit);
+    current.clamp(min, max)
 }
 
 pub fn random_categories(count: usize) -> Vec<StoreCategory> {
@@ -186,7 +313,8 @@ pub fn register_game_start(player_key: &str) {
 pub fn can_award_prize_today() -> bool {
     #[cfg(feature = "server")]
     {
-        crate::services::vouchers::voucher_count_for_current_utc_day() < MAX_DAILY_PRIZES
+        crate::services::vouchers::active_daily_quota_cooldown_until_utc().is_none()
+            && crate::services::vouchers::voucher_count_for_current_utc_day() < MAX_DAILY_PRIZES
     }
     #[cfg(not(feature = "server"))]
     {
@@ -222,6 +350,9 @@ pub fn choose_distributed_shop(candidates: &[ShopInfo]) -> Option<ShopInfo> {
 pub fn register_prize_award(shop_name: &str) -> bool {
     #[cfg(feature = "server")]
     {
+        if crate::services::vouchers::active_daily_quota_cooldown_until_utc().is_some() {
+            return false;
+        }
         if crate::services::vouchers::voucher_count_for_current_utc_day() >= MAX_DAILY_PRIZES {
             return false;
         }
@@ -246,14 +377,19 @@ pub fn register_prize_award(shop_name: &str) -> bool {
 pub struct DailyPrizePoolSnapshot {
     pub distributed: u32,
     pub max: u32,
+    pub cooldown_active: bool,
+    pub cooldown_until_utc: Option<String>,
 }
 
 pub fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
     #[cfg(feature = "server")]
     {
+        let cooldown_until = crate::services::vouchers::active_daily_quota_cooldown_until_utc();
         DailyPrizePoolSnapshot {
             distributed: crate::services::vouchers::voucher_count_for_current_utc_day(),
             max: MAX_DAILY_PRIZES,
+            cooldown_active: cooldown_until.is_some(),
+            cooldown_until_utc: cooldown_until.map(|dt| dt.to_rfc3339()),
         }
     }
     #[cfg(not(feature = "server"))]
@@ -261,6 +397,8 @@ pub fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
         DailyPrizePoolSnapshot {
             distributed: 0,
             max: MAX_DAILY_PRIZES,
+            cooldown_active: false,
+            cooldown_until_utc: None,
         }
     }
 }
@@ -332,4 +470,14 @@ pub async fn game_server_choose_distributed_shop(
         })
         .collect();
     Ok(choose_distributed_shop(&candidates).map(|s| s.name))
+}
+
+#[server]
+pub async fn get_game_rules() -> Result<GameRules, ServerFnError> {
+    Ok(get_game_rules_snapshot())
+}
+
+#[server]
+pub async fn update_game_rules(rules: GameRules) -> Result<GameRules, ServerFnError> {
+    Ok(save_game_rules(rules))
 }

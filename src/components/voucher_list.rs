@@ -3,6 +3,7 @@ use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::context::auth::{read_token, AuthState};
 use crate::i18n::{translate, Locale};
+use crate::services::visits::get_visit_stats;
 use crate::services::vouchers::{list_active_vouchers, VoucherAdminSummary};
 use crate::Route;
 use dioxus::prelude::*;
@@ -16,6 +17,9 @@ pub fn VoucherListPage() -> Element {
     let mut loading = use_signal(|| false);
     let mut loaded = use_signal(|| false);
     let mut error = use_signal(String::new);
+    let mut daily_visits = use_signal(|| 0_i64);
+    let mut monthly_visits = use_signal(|| 0_i64);
+    let mut yearly_visits = use_signal(|| 0_i64);
 
     use_effect(move || {
         if matches!(auth(), AuthState::LoggedOut) {
@@ -48,6 +52,11 @@ pub fn VoucherListPage() -> Element {
                 Ok(items) => vouchers.set(items),
                 Err(err) => error.set(format!("Cannot load vouchers: {err}")),
             }
+            if let Ok(stats) = get_visit_stats().await {
+                daily_visits.set(stats.daily);
+                monthly_visits.set(stats.monthly);
+                yearly_visits.set(stats.yearly);
+            }
             loading.set(false);
         });
     });
@@ -65,10 +74,20 @@ pub fn VoucherListPage() -> Element {
                             "All currently active vouchers issued by the rewards game."
                         }
                     }
-                    a {
-                        href: "/rewards",
-                        class: "inline-flex items-center px-4 py-2 text-xs font-bold tracking-widest text-dark border border-gray-300 rounded hover:bg-gray-50 transition-colors",
-                        "Back to Rewards"
+                }
+
+                div { class: "grid grid-cols-1 md:grid-cols-3 gap-4 mb-8",
+                    div { class: "rounded-xl border border-gray-200 bg-white p-4 shadow-sm",
+                        p { class: "text-xs uppercase tracking-widest text-gray-500 mb-1", {translate(locale(), "visits.card.daily")} }
+                        p { class: "text-3xl font-black text-dark", "{daily_visits()}" }
+                    }
+                    div { class: "rounded-xl border border-gray-200 bg-white p-4 shadow-sm",
+                        p { class: "text-xs uppercase tracking-widest text-gray-500 mb-1", {translate(locale(), "visits.card.monthly")} }
+                        p { class: "text-3xl font-black text-dark", "{monthly_visits()}" }
+                    }
+                    div { class: "rounded-xl border border-gray-200 bg-white p-4 shadow-sm",
+                        p { class: "text-xs uppercase tracking-widest text-gray-500 mb-1", {translate(locale(), "visits.card.yearly")} }
+                        p { class: "text-3xl font-black text-dark", "{yearly_visits()}" }
                     }
                 }
 

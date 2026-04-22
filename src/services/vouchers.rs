@@ -1,5 +1,7 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "server")]
+use std::collections::HashMap;
 
 /// Plafond de bons émis par période UTC (minuit → minuit), aligné sur `data/vouchers.json`.
 pub const MAX_VOUCHERS_PER_UTC_DAY: u32 = 10;
@@ -82,6 +84,37 @@ pub(crate) fn voucher_count_for_current_utc_day() -> u32 {
                 .unwrap_or(false)
         })
         .count() as u32
+}
+
+#[cfg(feature = "server")]
+pub(crate) fn active_daily_quota_cooldown_until_utc() -> Option<chrono::DateTime<chrono::Utc>> {
+    let vouchers = load_vouchers().ok()?;
+    let mut by_day: HashMap<chrono::NaiveDate, Vec<chrono::DateTime<chrono::Utc>>> = HashMap::new();
+
+    for voucher in vouchers {
+        let Ok(parsed) = chrono::DateTime::parse_from_rfc3339(voucher.created_at.trim()) else {
+            continue;
+        };
+        let created_utc = parsed.with_timezone(&chrono::Utc);
+        by_day
+            .entry(created_utc.date_naive())
+            .or_default()
+            .push(created_utc);
+    }
+
+    let now = chrono::Utc::now();
+    by_day
+        .into_values()
+        .filter_map(|mut created_for_day| {
+            if created_for_day.len() < MAX_VOUCHERS_PER_UTC_DAY as usize {
+                return None;
+            }
+            created_for_day.sort_unstable();
+            let quota_reached_at = created_for_day[MAX_VOUCHERS_PER_UTC_DAY as usize - 1];
+            let cooldown_until = quota_reached_at + chrono::Duration::hours(24);
+            (cooldown_until > now).then_some(cooldown_until)
+        })
+        .max()
 }
 
 #[cfg(feature = "server")]
