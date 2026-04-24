@@ -7,7 +7,7 @@
       "kind": "indoor",
       "level": "L0",
       "capacity": 220,
-      "occupied": 120,
+      "occupied": 140,
       "reserved_accessible": 8,
       "reserved_family": 10,
       "ev_capacity": 0,
@@ -20,7 +20,7 @@
       "kind": "indoor",
       "level": "L-1",
       "capacity": 280,
-      "occupied": 170,
+      "occupied": 182,
       "reserved_accessible": 10,
       "reserved_family": 12,
       "ev_capacity": 0,
@@ -33,7 +33,7 @@
       "kind": "outdoor",
       "level": "L1",
       "capacity": 300,
-      "occupied": 210,
+      "occupied": 198,
       "reserved_accessible": 10,
       "reserved_family": 12,
       "ev_capacity": 0,
@@ -46,11 +46,11 @@
       "kind": "outdoor",
       "level": null,
       "capacity": 180,
-      "occupied": 108,
+      "occupied": 120,
       "reserved_accessible": 6,
       "reserved_family": 8,
       "ev_capacity": 4,
-      "ev_occupied": 2,
+      "ev_occupied": 0,
       "charging_stations": [
         {
           "network": "eCarUp",
@@ -72,7 +72,7 @@
       "kind": "outdoor",
       "level": "L0",
       "capacity": 600,
-      "occupied": 360,
+      "occupied": 408,
       "reserved_accessible": 20,
       "reserved_family": 24,
       "ev_capacity": 2,
@@ -112,7 +112,7 @@
       "kind": "indoor",
       "level": "L0",
       "capacity": 220,
-      "occupied": 132,
+      "occupied": 151,
       "reserved_accessible": 8,
       "reserved_family": 10,
       "ev_capacity": 6,
@@ -133,5 +133,5 @@
       ]
     }
   ],
-  "updated_at": "2026-04-21T10:00:00Z"
+  "updated_at": "2026-04-24T11:27:48.900271758+00:00"
 }

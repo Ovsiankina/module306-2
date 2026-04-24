@@ -1,6 +1,9 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "server")]
+use std::sync::{Mutex, OnceLock};
+
 pub const MAX_TOTAL_PARKING_CAPACITY: u32 = 1800;
 const OPENING_HOURS_CANONICAL: &str = "OPEN_7_7_11_19";
 
@@ -62,10 +65,126 @@ pub struct ParkingOperationResult {
 }
 
 #[cfg(feature = "server")]
-fn parkings_path() -> std::path::PathBuf {
-    std::env::var("PARKINGS_JSON_PATH")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("data/parkings.json"))
+struct LotMeta {
+    id: &'static str,
+    spot_start: usize,
+    spot_end: usize,       // exclusive
+    ev_bit_start: usize,   // within ev u16
+    ev_bit_end: usize,     // exclusive
+}
+
+#[cfg(feature = "server")]
+const LOT_META: [LotMeta; 6] = [
+    LotMeta { id: "p1", spot_start:    0, spot_end:  220, ev_bit_start:  0, ev_bit_end:  0 },
+    LotMeta { id: "p2", spot_start:  220, spot_end:  500, ev_bit_start:  0, ev_bit_end:  0 },
+    LotMeta { id: "p3", spot_start:  500, spot_end:  800, ev_bit_start:  0, ev_bit_end:  0 },
+    LotMeta { id: "p4", spot_start:  800, spot_end:  980, ev_bit_start:  0, ev_bit_end:  4 },
+    LotMeta { id: "p5", spot_start:  980, spot_end: 1580, ev_bit_start:  4, ev_bit_end:  6 },
+    LotMeta { id: "p6", spot_start: 1580, spot_end: 1800, ev_bit_start:  6, ev_bit_end: 12 },
+];
+
+#[cfg(feature = "server")]
+struct ParkingBits {
+    spots: [u32; 57],
+    ev: u16,
+}
+
+// Bitwise helper functions
+#[cfg(feature = "server")]
+fn count_range(spots: &[u32; 57], start: usize, end: usize) -> u32 {
+    let mut count = 0u32;
+    for bit in start..end {
+        let word = bit / 32;
+        let shift = bit % 32;
+        count += (spots[word] >> shift) & 1;
+    }
+    count
+}
+
+#[cfg(feature = "server")]
+fn set_first_free_bit(spots: &mut [u32; 57], start: usize, end: usize) -> Option<usize> {
+    for bit in start..end {
+        let word = bit / 32;
+        let shift = bit % 32;
+        if (spots[word] >> shift) & 1 == 0 {
+            spots[word] |= 1 << shift;
+            return Some(bit);
+        }
+    }
+    None
+}
+
+#[cfg(feature = "server")]
+fn clear_first_occupied_bit(spots: &mut [u32; 57], start: usize, end: usize) -> bool {
+    for bit in start..end {
+        let word = bit / 32;
+        let shift = bit % 32;
+        if (spots[word] >> shift) & 1 == 1 {
+            spots[word] &= !(1u32 << shift);
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(feature = "server")]
+fn count_ev_range(ev: u16, start: usize, end: usize) -> u32 {
+    (start..end).map(|i| ((ev >> i) & 1) as u32).sum()
+}
+
+#[cfg(feature = "server")]
+fn set_first_free_ev_bit(ev: &mut u16, start: usize, end: usize) -> bool {
+    for i in start..end {
+        if (*ev >> i) & 1 == 0 {
+            *ev |= 1 << i;
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(feature = "server")]
+fn clear_first_occupied_ev_bit(ev: &mut u16, start: usize, end: usize) -> bool {
+    for i in start..end {
+        if (*ev >> i) & 1 == 1 {
+            *ev &= !(1u16 << i);
+            return true;
+        }
+    }
+    false
+}
+
+#[cfg(feature = "server")]
+fn bits_from_state(state: &ParkingSystemState) -> ParkingBits {
+    let mut bits = ParkingBits { spots: [0u32; 57], ev: 0u16 };
+    for meta in &LOT_META {
+        let lot = match state.lots.iter().find(|l| l.id == meta.id) {
+            Some(l) => l,
+            None => continue,
+        };
+        let fill = (lot.occupied as usize).min(meta.spot_end - meta.spot_start);
+        for bit in meta.spot_start..(meta.spot_start + fill) {
+            bits.spots[bit / 32] |= 1 << (bit % 32);
+        }
+        if meta.ev_bit_end > meta.ev_bit_start {
+            let ev_fill = (lot.ev_occupied as usize).min(meta.ev_bit_end - meta.ev_bit_start);
+            for i in meta.ev_bit_start..(meta.ev_bit_start + ev_fill) {
+                bits.ev |= 1u16 << i;
+            }
+        }
+    }
+    bits
+}
+
+#[cfg(feature = "server")]
+fn state_from_bits(bits: &ParkingBits, template: &ParkingSystemState) -> ParkingSystemState {
+    let mut state = template.clone();
+    for (i, meta) in LOT_META.iter().enumerate() {
+        state.lots[i].occupied = count_range(&bits.spots, meta.spot_start, meta.spot_end);
+        state.lots[i].ev_occupied = count_ev_range(bits.ev, meta.ev_bit_start, meta.ev_bit_end);
+    }
+    state.updated_at = chrono::Utc::now().to_rfc3339();
+    state
 }
 
 #[cfg(feature = "server")]
@@ -357,66 +476,393 @@ fn to_snapshot(state: &ParkingSystemState) -> ParkingSnapshot {
     }
 }
 
+
+// Adapter implementations
 #[cfg(feature = "server")]
-fn load_state() -> Result<ParkingSystemState, ServerFnError> {
-    let path = parkings_path();
-    if !path.exists() {
-        let state = default_state();
-        save_state(&state)?;
-        return Ok(state);
-    }
-    let content = std::fs::read_to_string(&path).map_err(|e| ServerFnError::new(e.to_string()))?;
-    if content.trim().is_empty() {
-        let state = default_state();
-        save_state(&state)?;
-        return Ok(state);
-    }
-
-    if let Ok(mut state) = serde_json::from_str::<ParkingSystemState>(&content) {
-        normalize_state(&mut state);
-        validate_state(&state)?;
-        save_state(&state)?;
-        return Ok(state);
-    }
-
-    // Compatibilite: ancien format snapshot.
-    if let Ok(old_snapshot) = serde_json::from_str::<ParkingSnapshot>(&content) {
-        let mut state = default_state();
-        for zone in old_snapshot.zones {
-            if let Some(lot) = state.lots.iter_mut().find(|l| l.id == zone.id) {
-                lot.occupied = zone.occupied.min(lot.capacity);
-                lot.ev_occupied = zone.ev_occupied.min(lot.ev_capacity);
-            }
-        }
-        state.updated_at = chrono::Utc::now().to_rfc3339();
-        validate_state(&state)?;
-        save_state(&state)?;
-        return Ok(state);
-    }
-
-    Err(ServerFnError::new(
-        "Format data/parkings.json invalide".to_string(),
-    ))
+struct BitwiseFakeAdapter {
+    bits: ParkingBits,
+    template: ParkingSystemState,
 }
 
 #[cfg(feature = "server")]
-fn save_state(state: &ParkingSystemState) -> Result<(), ServerFnError> {
-    validate_state(state)?;
-    let path = parkings_path();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| ServerFnError::new(e.to_string()))?;
+impl BitwiseFakeAdapter {
+    fn new(initial_state: ParkingSystemState) -> Self {
+        let bits = bits_from_state(&initial_state);
+        BitwiseFakeAdapter {
+            bits,
+            template: initial_state,
+        }
     }
-    let serialized =
-        serde_json::to_string_pretty(state).map_err(|e| ServerFnError::new(e.to_string()))?;
-    std::fs::write(path, serialized).map_err(|e| ServerFnError::new(e.to_string()))
+
+    fn get_state(&self) -> ParkingSystemState {
+        state_from_bits(&self.bits, &self.template)
+    }
+
+    fn set_zone_occupancy(
+        &mut self,
+        zone_id: &str,
+        occupied: u32,
+        ev_occupied: u32,
+    ) -> Result<ParkingSystemState, ServerFnError> {
+        let meta = LOT_META
+            .iter()
+            .find(|m| m.id == zone_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let lot = self
+            .template
+            .lots
+            .iter()
+            .find(|l| l.id == zone_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let occupied_clamped = occupied.min(lot.capacity);
+        let ev_occupied_clamped = ev_occupied.min(lot.ev_capacity);
+
+        // Clear all bits in this lot
+        for bit in meta.spot_start..meta.spot_end {
+            self.bits.spots[bit / 32] &= !(1u32 << (bit % 32));
+        }
+        for i in meta.ev_bit_start..meta.ev_bit_end {
+            self.bits.ev &= !(1u16 << i);
+        }
+
+        // Set new occupied bits
+        for bit in meta.spot_start..(meta.spot_start + occupied_clamped as usize) {
+            self.bits.spots[bit / 32] |= 1u32 << (bit % 32);
+        }
+        for i in meta.ev_bit_start..(meta.ev_bit_start + ev_occupied_clamped as usize) {
+            self.bits.ev |= 1u16 << i;
+        }
+
+        Ok(self.get_state())
+    }
+
+    fn vehicle_entry(
+        &mut self,
+        lot_id: &str,
+        is_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        let meta = LOT_META
+            .iter()
+            .find(|m| m.id == lot_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let lot = self
+            .template
+            .lots
+            .iter()
+            .find(|l| l.id == lot_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let current_occupied = count_range(&self.bits.spots, meta.spot_start, meta.spot_end);
+        if current_occupied >= lot.capacity {
+            return Ok(ParkingOperationResult {
+                accepted: false,
+                message: format!("{} est complet.", lot.name),
+                state: self.get_state(),
+            });
+        }
+
+        if is_electric {
+            let current_ev = count_ev_range(self.bits.ev, meta.ev_bit_start, meta.ev_bit_end);
+            if current_ev >= lot.ev_capacity {
+                return Ok(ParkingOperationResult {
+                    accepted: false,
+                    message: format!("Plus de place de recharge disponible dans {}.", lot.name),
+                    state: self.get_state(),
+                });
+            }
+            set_first_free_ev_bit(&mut self.bits.ev, meta.ev_bit_start, meta.ev_bit_end);
+        }
+
+        set_first_free_bit(&mut self.bits.spots, meta.spot_start, meta.spot_end);
+
+        Ok(ParkingOperationResult {
+            accepted: true,
+            message: format!("Entree enregistree dans {}.", lot.name),
+            state: self.get_state(),
+        })
+    }
+
+    fn vehicle_exit(
+        &mut self,
+        lot_id: &str,
+        was_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        let meta = LOT_META
+            .iter()
+            .find(|m| m.id == lot_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let lot = self
+            .template
+            .lots
+            .iter()
+            .find(|l| l.id == lot_id)
+            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
+
+        let current_occupied = count_range(&self.bits.spots, meta.spot_start, meta.spot_end);
+        if current_occupied == 0 {
+            return Ok(ParkingOperationResult {
+                accepted: false,
+                message: format!("{} est deja vide.", lot.name),
+                state: self.get_state(),
+            });
+        }
+
+        clear_first_occupied_bit(&mut self.bits.spots, meta.spot_start, meta.spot_end);
+        if was_electric && meta.ev_bit_end > meta.ev_bit_start {
+            let current_ev = count_ev_range(self.bits.ev, meta.ev_bit_start, meta.ev_bit_end);
+            if current_ev > 0 {
+                clear_first_occupied_ev_bit(&mut self.bits.ev, meta.ev_bit_start, meta.ev_bit_end);
+            }
+        }
+
+        Ok(ParkingOperationResult {
+            accepted: true,
+            message: format!("Sortie enregistree depuis {}.", lot.name),
+            state: self.get_state(),
+        })
+    }
+
+    fn simulate_tick(&mut self, seed: i32) -> ParkingSystemState {
+        for (i, meta) in LOT_META.iter().enumerate() {
+            let lot = &self.template.lots[i];
+            let swing = ((seed + i as i32 * 37) % 7) - 3;
+            let current = count_range(&self.bits.spots, meta.spot_start, meta.spot_end) as i32;
+            let next = (current + swing).clamp(0, lot.capacity as i32) as usize;
+
+            // Clear all bits for this lot
+            for bit in meta.spot_start..meta.spot_end {
+                self.bits.spots[bit / 32] &= !(1u32 << (bit % 32));
+            }
+            // Set new occupied bits
+            for bit in meta.spot_start..(meta.spot_start + next) {
+                self.bits.spots[bit / 32] |= 1u32 << (bit % 32);
+            }
+
+            // EV spots
+            if meta.ev_bit_end > meta.ev_bit_start {
+                let ev_swing = ((seed + i as i32 * 13) % 3) - 1;
+                let current_ev = count_ev_range(self.bits.ev, meta.ev_bit_start, meta.ev_bit_end) as i32;
+                let next_ev = (current_ev + ev_swing).clamp(0, lot.ev_capacity as i32) as usize;
+                let clamped_ev = next_ev.min(next);
+
+                // Clear EV bits for this lot
+                for j in meta.ev_bit_start..meta.ev_bit_end {
+                    self.bits.ev &= !(1u16 << j);
+                }
+                // Set new EV bits
+                for j in meta.ev_bit_start..(meta.ev_bit_start + clamped_ev) {
+                    self.bits.ev |= 1u16 << j;
+                }
+            }
+        }
+
+        self.get_state()
+    }
+
+    fn shuffle_all_bits(&mut self) {
+        let seed = chrono::Utc::now().timestamp_subsec_millis() as u32;
+        for (i, meta) in LOT_META.iter().enumerate() {
+            let lot = &self.template.lots[i];
+            let capacity = lot.capacity as usize;
+
+            // Random occupancy between 20% and 80% of capacity
+            let random_ratio = ((seed.wrapping_mul(2654435761u32).wrapping_add(i as u32)) % 60 + 20) as usize;
+            let target_occupied = (capacity * random_ratio / 100).min(capacity);
+
+            // Clear all bits
+            for bit in meta.spot_start..meta.spot_end {
+                self.bits.spots[bit / 32] &= !(1u32 << (bit % 32));
+            }
+            // Set random occupied bits
+            for bit in meta.spot_start..(meta.spot_start + target_occupied) {
+                self.bits.spots[bit / 32] |= 1u32 << (bit % 32);
+            }
+
+            // EV spots: random 0-100% of EV capacity
+            if meta.ev_bit_end > meta.ev_bit_start {
+                let ev_capacity = (meta.ev_bit_end - meta.ev_bit_start) as usize;
+                let ev_random = ((seed.wrapping_add(i as u32 * 73)) % 101) as usize;
+                let target_ev = (ev_capacity * ev_random / 100).min(target_occupied);
+
+                // Clear EV bits
+                for j in meta.ev_bit_start..meta.ev_bit_end {
+                    self.bits.ev &= !(1u16 << j);
+                }
+                // Set random EV bits
+                for j in meta.ev_bit_start..(meta.ev_bit_start + target_ev) {
+                    self.bits.ev |= 1u16 << j;
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+struct RealParkingApiAdapter {
+    api_key: String,
+    inner: BitwiseFakeAdapter,
+}
+
+#[cfg(feature = "server")]
+impl RealParkingApiAdapter {
+    fn get_state(&self) -> ParkingSystemState {
+        // TODO: call real API with self.api_key
+        self.inner.get_state()
+    }
+
+    fn set_zone_occupancy(
+        &mut self,
+        zone_id: &str,
+        occupied: u32,
+        ev_occupied: u32,
+    ) -> Result<ParkingSystemState, ServerFnError> {
+        // TODO: call real API with self.api_key
+        self.inner.set_zone_occupancy(zone_id, occupied, ev_occupied)
+    }
+
+    fn vehicle_entry(
+        &mut self,
+        lot_id: &str,
+        is_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        // TODO: call real API with self.api_key
+        self.inner.vehicle_entry(lot_id, is_electric)
+    }
+
+    fn vehicle_exit(
+        &mut self,
+        lot_id: &str,
+        was_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        // TODO: call real API with self.api_key
+        self.inner.vehicle_exit(lot_id, was_electric)
+    }
+
+    fn simulate_tick(&mut self, seed: i32) -> ParkingSystemState {
+        // TODO: call real API with self.api_key
+        self.inner.simulate_tick(seed)
+    }
+
+    fn shuffle_all_bits(&mut self) {
+        // TODO: call real API with self.api_key
+        self.inner.shuffle_all_bits();
+    }
+}
+
+#[cfg(feature = "server")]
+enum ParkingAdapter {
+    Fake(BitwiseFakeAdapter),
+    Real(RealParkingApiAdapter),
+}
+
+#[cfg(feature = "server")]
+impl ParkingAdapter {
+    fn get_state(&self) -> ParkingSystemState {
+        match self {
+            ParkingAdapter::Fake(a) => a.get_state(),
+            ParkingAdapter::Real(a) => a.get_state(),
+        }
+    }
+
+    fn set_zone_occupancy(
+        &mut self,
+        zone_id: &str,
+        occupied: u32,
+        ev_occupied: u32,
+    ) -> Result<ParkingSystemState, ServerFnError> {
+        match self {
+            ParkingAdapter::Fake(a) => a.set_zone_occupancy(zone_id, occupied, ev_occupied),
+            ParkingAdapter::Real(a) => a.set_zone_occupancy(zone_id, occupied, ev_occupied),
+        }
+    }
+
+    fn vehicle_entry(
+        &mut self,
+        lot_id: &str,
+        is_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        match self {
+            ParkingAdapter::Fake(a) => a.vehicle_entry(lot_id, is_electric),
+            ParkingAdapter::Real(a) => a.vehicle_entry(lot_id, is_electric),
+        }
+    }
+
+    fn vehicle_exit(
+        &mut self,
+        lot_id: &str,
+        was_electric: bool,
+    ) -> Result<ParkingOperationResult, ServerFnError> {
+        match self {
+            ParkingAdapter::Fake(a) => a.vehicle_exit(lot_id, was_electric),
+            ParkingAdapter::Real(a) => a.vehicle_exit(lot_id, was_electric),
+        }
+    }
+
+    fn simulate_tick(&mut self, seed: i32) -> ParkingSystemState {
+        match self {
+            ParkingAdapter::Fake(a) => a.simulate_tick(seed),
+            ParkingAdapter::Real(a) => a.simulate_tick(seed),
+        }
+    }
+
+    fn shuffle_all_bits(&mut self) {
+        match self {
+            ParkingAdapter::Fake(a) => a.shuffle_all_bits(),
+            ParkingAdapter::Real(a) => a.shuffle_all_bits(),
+        }
+    }
+}
+
+#[cfg(feature = "server")]
+static PARKING_ADAPTER: OnceLock<Mutex<ParkingAdapter>> = OnceLock::new();
+
+#[cfg(feature = "server")]
+fn spawn_shuffle_task() {
+    tokio::spawn(async {
+        let refresh_sec_str = std::env::var("PARKING_REFRESH_RATE_SEC").unwrap_or_else(|_| "60".to_string());
+        let refresh_sec = refresh_sec_str.parse::<u64>().unwrap_or(60);
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(refresh_sec));
+
+        loop {
+            interval.tick().await;
+            if let Ok(mut adapter) = PARKING_ADAPTER.get().unwrap().lock() {
+                adapter.shuffle_all_bits();
+            }
+        }
+    });
+}
+
+#[cfg(feature = "server")]
+fn parking_adapter() -> &'static Mutex<ParkingAdapter> {
+    PARKING_ADAPTER.get_or_init(|| {
+        let initial_state = default_state();
+        let api_key = std::env::var("PARKING_API_KEY").unwrap_or_default();
+        let adapter = if api_key.is_empty() || api_key == "fake" {
+            ParkingAdapter::Fake(BitwiseFakeAdapter::new(initial_state))
+        } else {
+            ParkingAdapter::Real(RealParkingApiAdapter {
+                api_key,
+                inner: BitwiseFakeAdapter::new(initial_state),
+            })
+        };
+        let mutex = Mutex::new(adapter);
+        spawn_shuffle_task();
+        mutex
+    })
 }
 
 #[server]
 pub async fn get_parking_snapshot() -> Result<ParkingSnapshot, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let state = load_state()?;
-        return Ok(to_snapshot(&state));
+        let adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        return Ok(to_snapshot(&adapter.get_state()));
     }
     #[cfg(not(feature = "server"))]
     {
@@ -431,7 +877,10 @@ pub async fn get_parking_snapshot() -> Result<ParkingSnapshot, ServerFnError> {
 pub async fn get_parking_system_state() -> Result<ParkingSystemState, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        return load_state();
+        let adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        return Ok(adapter.get_state());
     }
     #[cfg(not(feature = "server"))]
     {
@@ -454,17 +903,10 @@ pub async fn update_parking_zone_occupancy(
 
     #[cfg(feature = "server")]
     {
-        let mut state = load_state()?;
-        let zone = state
-            .lots
-            .iter_mut()
-            .find(|z| z.id == zone_id)
-            .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
-
-        zone.occupied = occupied.min(zone.capacity);
-        zone.ev_occupied = ev_occupied.min(zone.ev_capacity);
-        state.updated_at = chrono::Utc::now().to_rfc3339();
-        save_state(&state)?;
+        let mut adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = adapter.set_zone_occupancy(&zone_id, occupied, ev_occupied)?;
         return Ok(to_snapshot(&state));
     }
 
@@ -482,43 +924,11 @@ pub async fn parking_vehicle_entry(
 ) -> Result<ParkingOperationResult, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let mut state = load_state()?;
-        let success_message = {
-            let lot = state
-                .lots
-                .iter_mut()
-                .find(|z| z.id == lot_id)
-                .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
-
-            if lot.occupied >= lot.capacity {
-                return Ok(ParkingOperationResult {
-                    accepted: false,
-                    message: format!("{} est complet.", lot.name),
-                    state,
-                });
-            }
-            if is_electric && lot.ev_occupied >= lot.ev_capacity {
-                return Ok(ParkingOperationResult {
-                    accepted: false,
-                    message: format!("Plus de place de recharge disponible dans {}.", lot.name),
-                    state,
-                });
-            }
-
-            lot.occupied += 1;
-            if is_electric {
-                lot.ev_occupied += 1;
-            }
-
-            format!("Entree enregistree dans {}.", lot.name)
-        };
-        state.updated_at = chrono::Utc::now().to_rfc3339();
-        save_state(&state)?;
-        return Ok(ParkingOperationResult {
-            accepted: true,
-            message: success_message,
-            state,
-        });
+        let mut adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let result = adapter.vehicle_entry(&lot_id, is_electric)?;
+        return Ok(result);
     }
     #[cfg(not(feature = "server"))]
     {
@@ -534,35 +944,11 @@ pub async fn parking_vehicle_exit(
 ) -> Result<ParkingOperationResult, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let mut state = load_state()?;
-        let success_message = {
-            let lot = state
-                .lots
-                .iter_mut()
-                .find(|z| z.id == lot_id)
-                .ok_or_else(|| ServerFnError::new("Parking introuvable".to_string()))?;
-
-            if lot.occupied == 0 {
-                return Ok(ParkingOperationResult {
-                    accepted: false,
-                    message: format!("{} est deja vide.", lot.name),
-                    state,
-                });
-            }
-            lot.occupied -= 1;
-            if was_electric && lot.ev_occupied > 0 {
-                lot.ev_occupied -= 1;
-            }
-
-            format!("Sortie enregistree depuis {}.", lot.name)
-        };
-        state.updated_at = chrono::Utc::now().to_rfc3339();
-        save_state(&state)?;
-        return Ok(ParkingOperationResult {
-            accepted: true,
-            message: success_message,
-            state,
-        });
+        let mut adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let result = adapter.vehicle_exit(&lot_id, was_electric)?;
+        return Ok(result);
     }
     #[cfg(not(feature = "server"))]
     {
@@ -577,27 +963,36 @@ pub async fn parking_simulate_tick(token: String) -> Result<ParkingSystemState, 
 
     #[cfg(feature = "server")]
     {
-        let mut state = load_state()?;
         let seed = chrono::Utc::now().timestamp_subsec_millis() as i32;
-        for (i, lot) in state.lots.iter_mut().enumerate() {
-            let swing = ((seed + i as i32 * 37) % 7) - 3;
-            let next = (lot.occupied as i32 + swing).clamp(0, lot.capacity as i32) as u32;
-            lot.occupied = next;
-
-            if lot.ev_capacity > 0 {
-                let ev_swing = ((seed + i as i32 * 13) % 3) - 1;
-                let next_ev =
-                    (lot.ev_occupied as i32 + ev_swing).clamp(0, lot.ev_capacity as i32) as u32;
-                lot.ev_occupied = next_ev.min(lot.occupied);
-            }
-        }
-        state.updated_at = chrono::Utc::now().to_rfc3339();
-        save_state(&state)?;
+        let mut adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = adapter.simulate_tick(seed);
         return Ok(state);
     }
     #[cfg(not(feature = "server"))]
     {
         let _ = token;
         Err(ServerFnError::new("Server feature is required".to_string()))
+    }
+}
+
+#[server]
+pub async fn refresh_parking() -> Result<ParkingSnapshot, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        let mut adapter = parking_adapter()
+            .lock()
+            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        adapter.shuffle_all_bits();
+        let state = adapter.get_state();
+        return Ok(to_snapshot(&state));
+    }
+    #[cfg(not(feature = "server"))]
+    {
+        Ok(ParkingSnapshot {
+            zones: vec![],
+            updated_at: String::new(),
+        })
     }
 }
