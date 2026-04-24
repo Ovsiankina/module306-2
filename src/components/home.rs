@@ -1,4 +1,5 @@
 use crate::components::footer::Footer;
+use crate::components::landing::LandingSection;
 use crate::components::nav::{Nav, NavPage};
 use crate::i18n::{Locale, translate, translate_fmt};
 use crate::services::game::{
@@ -519,6 +520,8 @@ pub(crate) fn Home() -> Element {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
             Nav { active: NavPage::None }
 
+            LandingSection {}
+
             div { class: "mt-auto",
                 // ─── Newsletter section ─────────────────────────────────
                 section { class: "bg-dark",
@@ -701,7 +704,7 @@ pub(crate) fn StoresPage() -> Element {
                         }
                     }
                     // Decorative editorial image
-                    div { class: "w-full lg:w-80 h-64 rounded-lg overflow-hidden",
+                    div { class: "w-full lg:w-60 h-48 rounded-lg overflow-hidden",
                         img { src: "/editorial-fashion.png", class: "w-full h-full object-cover", alt: "" }
                     }
                 }

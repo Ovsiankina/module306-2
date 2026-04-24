@@ -14,6 +14,7 @@
   "nav.admin.voucher_list": "VOUCHER LIST",
   "nav.admin.visits_stats": "VISITS STATS",
   "nav.admin.game_rules": "GAME RULES",
+  "nav.admin.content": "CONTENT MANAGEMENT",
   "locale.en": "English",
   "locale.it": "Italiano",
   "locale.de": "Deutsch",
@@ -325,5 +326,11 @@
   "game_rules.save": "Save Rules",
   "game_rules.status.saved": "Rules saved successfully.",
   "game_rules.status.load_error": "Unable to load rules.",
-  "game_rules.status.save_error": "Unable to save rules."
+  "game_rules.status.save_error": "Unable to save rules.",
+  "landing.events_title": "UPCOMING EVENTS",
+  "landing.events_subtitle": "Discover exclusive events, sales, and special activities happening at FoxTown.",
+  "landing.news_title": "LATEST NEWS",
+  "landing.news_subtitle": "Stay updated with announcements and stories from the shopping center.",
+  "landing.learn_more": "Learn More",
+  "landing.read_more": "Read More"
 }

@@ -8,6 +8,7 @@ use dioxus::prelude::*;
 use i18n::{translate, I18nProvider, Locale};
 
 mod components {
+    pub mod admin_content;
     pub mod cart;
     pub mod checkout;
     pub mod contact;
@@ -16,6 +17,7 @@ mod components {
     pub mod footer;
     pub mod game_rules;
     pub mod home;
+    pub mod landing;
     pub mod loading;
     pub mod login;
     pub mod nav;
@@ -103,6 +105,9 @@ pub enum Route {
 
     #[route("/admin/game-rules")]
     GameRules {},
+
+    #[route("/admin/content")]
+    AdminContent {},
 
     #[route("/store/:name")]
     Store { name: String },
@@ -218,6 +223,14 @@ fn GameRules() -> Element {
     rsx! {
         ProtectedRoute {
             components::game_rules::GameRulesPage {}
+        }
+    }
+}
+
+fn AdminContent() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::admin_content::AdminContentPage {}
         }
     }
 }
