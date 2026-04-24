@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "qr_token": "3d647e8c-93df-4d7a-97f8-89a0bdf57248",
+    "email": "lucie.martin@maildemo.fr",
+    "username": "lucie",
+    "store": "Coach",
+    "discount": 35,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:18:55.417765200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 2,
+    "qr_token": "014bb3b2-71ed-4fd6-b1a0-d83842443ee1",
+    "email": "thomas.bernard@maildemo.fr",
+    "username": "thomas",
+    "store": "Fay",
+    "discount": 25,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:35:03.222768100+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 3,
+    "qr_token": "cb143e68-01fe-45f7-8e72-f438b07d0937",
+    "email": "nina.keller@foxtown-demo.ch",
+    "username": "nina",
+    "store": "Damiani",
+    "discount": 15,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:41:55.844356200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 4,
+    "qr_token": "5ed4178f-31bf-4884-a435-e54871f52a62",
+    "email": "sophie.laurent@example.com",
+    "username": "sophie",
+    "store": "Borbonese",
+    "discount": 25,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:44:15.472414200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 5,
+    "qr_token": "ecd72910-6286-4a91-a43d-75f808e7cc4f",
+    "email": "marc.dubois@proton.me",
+    "username": "marc",
+    "store": "Kate Spade New York",
+    "discount": 35,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T13:53:58.939365200+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 6,
+    "qr_token": "b516f554-574f-441a-83f9-e62a345d99fd",
+    "email": "elena.russo@foxtown-demo.it",
+    "username": "elena",
+    "store": "Patrizia Pepe",
+    "discount": 20,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T14:07:39.527755900+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 7,
+    "qr_token": "5c0831bc-a67b-4b84-9683-674804dd1017",
+    "email": "jonas.weber@mailbox.org",
+    "username": "jonas",
+    "store": "Flavio Castellani",
+    "discount": 15,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T17:21:49.528662900+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 8,
+    "qr_token": "fd2a47ff-fa03-4932-8275-0098d300f05a",
+    "email": "claire.moret@bluewin.ch",
+    "username": "claire",
+    "store": "Polo Ralph Lauren",
+    "discount": 5,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T17:46:34.050732400+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 9,
+    "qr_token": "f4a9c1d2-8e3b-4f1a-9c77-22dd11ee00aa",
+    "email": "victor.hsu@demo.io",
+    "username": "victor",
+    "store": "Armani",
+    "discount": 30,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T18:02:10.000000000+00:00",
+    "redeemed": false
+  },
+  {
+    "id": 10,
+    "qr_token": "e7b2d4c1-5f6a-4e8b-8d33-99ff00aa11bb",
+    "email": "amelie.rousseau@foxtown.test",
+    "username": "amelie",
+    "store": "Versace",
+    "discount": 25,
+    "valid_until": "2026-04-21",
+    "created_at": "2026-04-21T18:15:45.000000000+00:00",
+    "redeemed": false
+  }
+]

@@ -52,6 +52,17 @@ mod server {
         .execute(pool)
         .await?;
 
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS visits (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                visited_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                path        TEXT    NOT NULL,
+                session_id  TEXT    NOT NULL
+            )",
+        )
+        .execute(pool)
+        .await?;
+
         // Dev seed: admin / admin  — change before going to production
         let (count,): (i64,) = sqlx::query_as(
             "SELECT COUNT(*) FROM users WHERE username = 'admin'",

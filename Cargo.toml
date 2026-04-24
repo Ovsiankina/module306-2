@@ -12,6 +12,8 @@ serde_json = "1"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }
+gloo-timers = { version = "0.3", features = ["futures"] }
+js-sys = "0.3.89"
 web-sys = { version = "0.3", features = ["Window", "Storage", "Document", "HtmlDocument"] }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
@@ -22,6 +24,10 @@ rand_core = { version = "0.6", features = ["getrandom"] }
 jsonwebtoken = "9"
 tokio = { version = "1", features = ["sync"] }
 dotenvy = "0.15"
+base64 = "0.22"
+qrcode = "0.14"
+uuid = { version = "1", features = ["v4"] }
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "pool", "hostname", "rustls-tls"] }
 
 [features]
 web = ["dioxus/web"]
@@ -34,3 +40,14 @@ opt-level = 3
 [profile.dev]
 lto = false
 opt-level = 1
+
+# Profils utilisés par `dx serve` / Dioxus fullstack (voir CLI Dioxus 0.7)
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

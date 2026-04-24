@@ -14,15 +14,21 @@ mod components {
     pub mod directory;
     pub mod error;
     pub mod footer;
+    pub mod game_rules;
     pub mod home;
     pub mod loading;
     pub mod login;
     pub mod nav;
+    pub mod parking;
+    pub mod parking_admin;
     pub mod product_item;
     pub mod product_page;
     pub mod not_found;
     pub mod privacy;
+    pub mod rewards_draw;
     pub mod rewards;
+    pub mod voucher_list;
+    pub mod visits_stats;
     pub mod store_page;
     pub mod terms;
 }
@@ -33,6 +39,7 @@ mod context {
 mod i18n;
 mod api;
 mod db;
+mod services;
 pub mod auth;
 pub mod admin;
 pub mod stores;
@@ -70,6 +77,12 @@ pub enum Route {
     #[route("/")]
     Home {},
 
+    #[route("/parking")]
+    Parking {},
+
+    #[route("/stores")]
+    Stores {},
+
     #[route("/details/:product_id")]
     Details { product_id: usize },
 
@@ -78,6 +91,18 @@ pub enum Route {
 
     #[route("/rewards")]
     Rewards {},
+
+    #[route("/admin/vouchers")]
+    VoucherList {},
+
+    #[route("/admin/visits")]
+    VisitsStats {},
+
+    #[route("/admin/parking-occupancy")]
+    ParkingOccupancy {},
+
+    #[route("/admin/game-rules")]
+    GameRules {},
 
     #[route("/store/:name")]
     Store { name: String },
@@ -109,6 +134,18 @@ pub enum Route {
 fn Home() -> Element {
     rsx! {
         components::home::Home {}
+    }
+}
+
+fn Stores() -> Element {
+    rsx! {
+        components::home::StoresPage {}
+    }
+}
+
+fn Parking() -> Element {
+    rsx! {
+        components::parking::ParkingPage {}
     }
 }
 
@@ -149,6 +186,38 @@ fn Rewards() -> Element {
     rsx! {
         ProtectedRoute {
             components::rewards::RewardsPage {}
+        }
+    }
+}
+
+fn VoucherList() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::voucher_list::VoucherListPage {}
+        }
+    }
+}
+
+fn VisitsStats() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::visits_stats::VisitsStatsPage {}
+        }
+    }
+}
+
+fn ParkingOccupancy() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::parking_admin::ParkingAdminPage {}
+        }
+    }
+}
+
+fn GameRules() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::game_rules::GameRulesPage {}
         }
     }
 }

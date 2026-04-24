@@ -1,8 +1,14 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::i18n::{Locale, translate, translate_fmt};
+use crate::services::game::{
+    delay_ms, format_daily_prize_reset_countdown_hms, get_daily_prize_pool_snapshot,
+    DailyPrizePoolSnapshot,
+};
+use crate::services::vouchers::list_recent_vouchers;
 use crate::stores::{get_stores, slugify, Category, Store};
 use crate::Route;
+use chrono::Utc;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -298,7 +304,257 @@ fn category_label(cat: &Category) -> &'static str {
     }
 }
 
+fn winner_display_name(username: &str) -> String {
+    let trimmed = username.trim();
+    if trimmed.is_empty() {
+        return "User U.".to_string();
+    }
+    let mut words = trimmed.split_whitespace();
+    let first_name_raw = words.next().unwrap_or(trimmed);
+    let first_name = first_name_raw
+        .chars()
+        .enumerate()
+        .map(|(i, c)| {
+            if i == 0 {
+                c.to_uppercase().to_string()
+            } else {
+                c.to_lowercase().to_string()
+            }
+        })
+        .collect::<String>();
+    let initial_source = words.next().unwrap_or(first_name_raw);
+    let initial = initial_source
+        .chars()
+        .next()
+        .map(|c| c.to_uppercase().to_string())
+        .unwrap_or_else(|| "U".to_string());
+    format!("{first_name} {initial}.")
+}
+
+fn ticker_relative_time(locale: Locale, created_at: &str) -> String {
+    let Ok(created) = chrono::DateTime::parse_from_rfc3339(created_at) else {
+        return translate(locale, "home.ticker.ago.now");
+    };
+    let now = chrono::Utc::now();
+    let delta = now.signed_duration_since(created.with_timezone(&chrono::Utc));
+
+    if delta.num_minutes() <= 0 {
+        return translate(locale, "home.ticker.ago.now");
+    }
+    if delta.num_minutes() < 60 {
+        return translate_fmt(
+            locale,
+            "home.ticker.ago.minutes",
+            &[("n", delta.num_minutes().to_string())],
+        );
+    }
+    if delta.num_hours() < 24 {
+        return translate_fmt(
+            locale,
+            "home.ticker.ago.hours",
+            &[("n", delta.num_hours().to_string())],
+        );
+    }
+    translate_fmt(
+        locale,
+        "home.ticker.ago.days",
+        &[("n", delta.num_days().to_string())],
+    )
+}
+
+fn format_remaining_to_timestamp_hms(target_rfc3339: &str) -> Option<String> {
+    let target = chrono::DateTime::parse_from_rfc3339(target_rfc3339)
+        .ok()?
+        .with_timezone(&Utc);
+    let secs = target.signed_duration_since(Utc::now()).num_seconds().max(0) as u64;
+    let h = secs / 3600;
+    let m = (secs % 3600) / 60;
+    let s = secs % 60;
+    Some(format!("{h:02}:{m:02}:{s:02}"))
+}
+
+#[component]
+pub(crate) fn HomeWinnersTickerBar() -> Element {
+    let locale = use_context::<Signal<Locale>>();
+    let mut pool = use_signal(|| None::<DailyPrizePoolSnapshot>);
+    let mut winners = use_signal(Vec::<(String, String)>::new);
+    let mut reset_hms = use_signal(|| format_daily_prize_reset_countdown_hms());
+    let mut cooldown_hms = use_signal(|| None::<String>);
+
+    use_effect(move || {
+        let locale_sig = locale;
+        spawn(async move {
+            loop {
+                let loc = locale_sig();
+                if let Ok(s) = get_daily_prize_pool_snapshot().await {
+                    pool.set(Some(s));
+                }
+                match list_recent_vouchers(10).await {
+                    Ok(list) => {
+                        let rows: Vec<(String, String)> = list
+                            .into_iter()
+                            .map(|v| {
+                                (
+                                    winner_display_name(&v.username),
+                                    ticker_relative_time(loc, &v.created_at),
+                                )
+                            })
+                            .collect();
+                        winners.set(rows);
+                    }
+                    Err(_) => {}
+                }
+                delay_ms(15_000).await;
+            }
+        });
+    });
+
+    use_effect(move || {
+        spawn(async move {
+            loop {
+                reset_hms.set(format_daily_prize_reset_countdown_hms());
+                let cooldown_next = pool().and_then(|s| {
+                    s.cooldown_until_utc
+                        .as_deref()
+                        .and_then(format_remaining_to_timestamp_hms)
+                });
+                cooldown_hms.set(cooldown_next);
+                delay_ms(1_000).await;
+            }
+        });
+    });
+
+    let items = winners();
+    let (current_str, max_str, cooldown_active) = match pool() {
+        Some(s) => {
+            let displayed_current = if s.cooldown_active { s.max } else { s.distributed };
+            (
+                displayed_current.to_string(),
+                s.max.to_string(),
+                s.cooldown_active,
+            )
+        }
+        None => ("—".to_string(), "10".to_string(), false),
+    };
+    let right_hms = cooldown_hms().unwrap_or_else(|| reset_hms());
+
+    rsx! {
+        div {
+            class: "sticky z-10 w-full h-16 max-h-16 overflow-hidden bg-dark text-white border-b border-gray-700 font-heading shadow-sm",
+            style: "top: 4rem;",
+            div {
+                class: "max-w-7xl mx-auto px-6 h-full flex items-center gap-3",
+                style: "min-height: 0;",
+                div {
+                    class: "shrink-0 flex flex-col justify-center gap-1",
+                    style: "line-height: 1;",
+                    span { class: "text-xs font-bold tracking-widest text-accent uppercase",
+                        {translate(locale(), "home.ticker.prizes_label")}
+                    }
+                    span {
+                        class: "text-sm font-black text-white",
+                        style: "font-variant-numeric: tabular-nums;",
+                        {translate_fmt(
+                            locale(),
+                            "home.ticker.prizes_ratio",
+                            &[("current", current_str), ("max", max_str)],
+                        )}
+                    }
+                }
+                div {
+                    class: "flex-1 overflow-hidden flex items-center",
+                    style: "min-width: 0; min-height: 0;",
+                    if items.is_empty() {
+                        p { class: "text-xs text-gray-400 truncate w-full",
+                            {translate(locale(), "home.ticker.empty")}
+                        }
+                    } else {
+                        div {
+                            class: "overflow-hidden w-full",
+                            style: "min-height: 0;",
+                            div { class: "ft-home-ticker-track",
+                                for pass in 0..2u8 {
+                                    for (i, (name, time)) in items.iter().enumerate() {
+                                        div {
+                                            key: "{pass}-{i}",
+                                            class: "flex items-center gap-2 shrink-0",
+                                            style: "white-space: nowrap;",
+                                            p { class: "text-xs font-bold text-white", "{name}" }
+                                            span { class: "text-xs text-gray-400 shrink-0", "{time}" }
+                                            span { class: "text-xs text-gray-400",
+                                                {translate(locale(), "home.ticker.sep")}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                div {
+                    class: "shrink-0 flex flex-col justify-center items-end gap-1 text-right",
+                    style: "line-height: 1; min-width: 9rem;",
+                    span { class: "text-xs font-bold tracking-widest text-accent uppercase",
+                        if cooldown_active {
+                            {translate(locale(), "home.ticker.quota_full_label")}
+                        } else {
+                            {translate(locale(), "home.ticker.reset_in_label")}
+                        }
+                    }
+                    p {
+                        class: "mt-0 text-lg font-bold text-white",
+                        style: "font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -0.025em;",
+                        "{right_hms}"
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub(crate) fn Home() -> Element {
+    let locale = use_context::<Signal<Locale>>();
+
+    rsx! {
+        div { class: "min-h-screen flex flex-col bg-white font-heading",
+            Nav { active: NavPage::None }
+
+            div { class: "mt-auto",
+                // ─── Newsletter section ─────────────────────────────────
+                section { class: "bg-dark",
+                    div { class: "max-w-7xl mx-auto px-6 py-16 flex flex-col lg:flex-row items-center gap-12",
+                        div { class: "flex-1",
+                            h2 { class: "text-3xl md:text-4xl font-extrabold text-white leading-tight mb-4",
+                                {translate(locale(), "home.newsletter.title")}
+                            }
+                            p { class: "text-muted leading-relaxed mb-8 max-w-md",
+                                {translate(locale(), "home.newsletter.subtitle")}
+                            }
+                            div { class: "flex max-w-md",
+                                input {
+                                    class: "flex-1 py-3.5 px-4 text-sm bg-gray-800 border border-gray-700 rounded-l-lg placeholder-surface text-white focus:ring-accent focus:border-accent focus:outline-none",
+                                    r#type: "email",
+                                    placeholder: {translate(locale(), "home.newsletter.placeholder")},
+                                }
+                                button { class: "px-6 py-3.5 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-r-lg transition-colors",
+                                    {translate(locale(), "home.newsletter.button")}
+                                }
+                            }
+                        }
+                        // Decorative editorial image
+                        div { class: "w-full lg:w-80 h-64 rounded-lg overflow-hidden",
+                            img { src: "/editorial-fashion.png", class: "w-full h-full object-cover", alt: "" }
+                        }
+                    }
+                }
+
+                Footer { dark: false, stick_to_bottom: false }
+            }
+        }
+    }
+}
+
+pub(crate) fn StoresPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut filter = use_signal(FilterGroup::default);
@@ -451,7 +707,7 @@ pub(crate) fn Home() -> Element {
                 }
             }
 
-            Footer { dark: false }
+            Footer { dark: false, stick_to_bottom: false }
         }
     }
 }
