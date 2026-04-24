@@ -2,7 +2,7 @@ use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::i18n::{Locale, translate, translate_fmt};
 use crate::services::game::delay_ms;
-use crate::services::parking::{get_parking_snapshot, ParkingSnapshot, ParkingZoneStatus};
+use crate::services::parking::{get_parking_snapshot, refresh_parking, ParkingSnapshot, ParkingZoneStatus};
 use crate::services::visits::{get_today_physical_recommendation, register_visit, VisitRecommendation};
 use dioxus::prelude::*;
 
@@ -316,8 +316,21 @@ pub fn ParkingPage() -> Element {
             Nav { active: NavPage::Parking }
 
             main { class: "max-w-7xl mx-auto px-6 py-10",
-                h1 { class: "text-4xl md:text-5xl font-black text-dark mb-3",
-                    {translate(locale(), "parking.title")}
+                div { class: "flex items-center justify-between mb-3",
+                    h1 { class: "text-4xl md:text-5xl font-black text-dark",
+                        {translate(locale(), "parking.title")}
+                    }
+                    button {
+                        onclick: move |_| {
+                            spawn(async move {
+                                if let Ok(snap) = refresh_parking().await {
+                                    snapshot.set(Some(snap));
+                                }
+                            });
+                        },
+                        class: "px-4 py-2 bg-accent hover:bg-accent-dark text-white font-semibold rounded-lg transition",
+                        "🔄 Refresh"
+                    }
                 }
                 p { class: "text-gray-600 mb-8 max-w-3xl",
                     {translate(locale(), "parking.subtitle")}
