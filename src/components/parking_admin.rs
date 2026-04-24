@@ -4,7 +4,7 @@ use crate::components::nav::{Nav, NavPage};
 use crate::context::auth::AuthState;
 use crate::i18n::{translate, translate_fmt, Locale};
 use crate::services::game::delay_ms;
-use crate::services::parking::{get_parking_snapshot, ParkingSnapshot, ParkingZoneStatus};
+use crate::services::parking::{get_parking_snapshot, refresh_parking, ParkingSnapshot, ParkingZoneStatus};
 use crate::Route;
 use dioxus::prelude::*;
 
@@ -207,8 +207,21 @@ pub fn ParkingAdminPage() -> Element {
                 section { class: "mt-2",
                     div { class: "flex items-center justify-between mb-4",
                         h2 { class: "text-2xl font-extrabold text-dark", {translate(locale(), "parking.admin.title")} }
-                        span { class: "text-xs uppercase tracking-widest text-accent font-bold",
-                            {translate(locale(), "parking.admin.badge")}
+                        div { class: "flex items-center gap-3",
+                            span { class: "text-xs uppercase tracking-widest text-accent font-bold",
+                                {translate(locale(), "parking.admin.badge")}
+                            }
+                            button {
+                                onclick: move |_| {
+                                    spawn(async move {
+                                        if let Ok(snap) = refresh_parking().await {
+                                            snapshot.set(Some(snap));
+                                        }
+                                    });
+                                },
+                                class: "px-3 py-1 bg-accent hover:bg-accent-dark text-white font-semibold rounded text-sm transition",
+                                "🔄 Refresh"
+                            }
                         }
                     }
                     p { class: "text-sm text-gray-600 mb-6",
