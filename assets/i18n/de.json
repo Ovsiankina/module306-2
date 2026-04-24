@@ -14,6 +14,7 @@
   "nav.admin.voucher_list": "GUTSCHEINLISTE",
   "nav.admin.visits_stats": "BESUCHSSTATISTIK",
   "nav.admin.game_rules": "SPIELREGELN",
+  "nav.admin.content": "INHALTSVERWALTUNG",
   "locale.en": "English",
   "locale.it": "Italiano",
   "locale.de": "Deutsch",
@@ -325,5 +326,11 @@
   "game_rules.save": "Regeln speichern",
   "game_rules.status.saved": "Regeln erfolgreich gespeichert.",
   "game_rules.status.load_error": "Regeln konnten nicht geladen werden.",
-  "game_rules.status.save_error": "Regeln konnten nicht gespeichert werden."
+  "game_rules.status.save_error": "Regeln konnten nicht gespeichert werden.",
+  "landing.events_title": "KOMMENDE VERANSTALTUNGEN",
+  "landing.events_subtitle": "Entdecken Sie exklusive Veranstaltungen, Verkäufe und spezielle Aktivitäten in FoxTown.",
+  "landing.news_title": "NEUESTE NACHRICHTEN",
+  "landing.news_subtitle": "Bleiben Sie informiert über Ankündigungen und Geschichten aus dem Einkaufszentrum.",
+  "landing.learn_more": "Mehr erfahren",
+  "landing.read_more": "Weiterlesen"
 }

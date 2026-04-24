@@ -68,25 +68,80 @@ pub struct ShopInfo {
 #[cfg(feature = "server")]
 mod store {
     use super::{Banner, Event, NewsItem, ShopInfo};
+    use chrono::Utc;
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
 
     pub fn news() -> &'static Mutex<(u32, Vec<NewsItem>)> {
         static S: OnceLock<Mutex<(u32, Vec<NewsItem>)>> = OnceLock::new();
         // TODO: load from database on startup
-        S.get_or_init(|| Mutex::new((1, vec![])))
+        S.get_or_init(|| {
+            let mut items = vec![
+                NewsItem {
+                    id: 1,
+                    title: "Welcome to FoxTown".to_string(),
+                    body: "<p>Discover your new favorite destination for luxury outlet shopping with over 160 premium brands, all with discounts up to 70% year-round.</p>".to_string(),
+                    author: "Admin".to_string(),
+                    created_at: Utc::now(),
+                    updated_at: Utc::now(),
+                },
+                NewsItem {
+                    id: 2,
+                    title: "Spring Collection Launch".to_string(),
+                    body: "<p>Explore the latest spring collections from world-renowned designers. New arrivals in women's, men's, and kids' fashion available now.</p>".to_string(),
+                    author: "Admin".to_string(),
+                    created_at: Utc::now(),
+                    updated_at: Utc::now(),
+                },
+            ];
+            Mutex::new((3, items))
+        })
     }
 
     pub fn events() -> &'static Mutex<(u32, Vec<Event>)> {
         static S: OnceLock<Mutex<(u32, Vec<Event>)>> = OnceLock::new();
         // TODO: load from database on startup
-        S.get_or_init(|| Mutex::new((1, vec![])))
+        S.get_or_init(|| {
+            let mut items = vec![
+                Event {
+                    id: 1,
+                    title: "VIP Preview Night".to_string(),
+                    description: "Join us for an exclusive evening shopping experience with special discounts and refreshments. Members only.".to_string(),
+                    date: "2026-05-15".to_string(),
+                    end_date: Some("2026-05-15".to_string()),
+                    location: "FoxTown Main Hall".to_string(),
+                    created_at: Utc::now(),
+                },
+                Event {
+                    id: 2,
+                    title: "Family Weekend".to_string(),
+                    description: "Special family-friendly activities, kids' entertainment, and exclusive discounts across all participating stores.".to_string(),
+                    date: "2026-05-18".to_string(),
+                    end_date: Some("2026-05-19".to_string()),
+                    location: "FoxTown Outlet".to_string(),
+                    created_at: Utc::now(),
+                },
+            ];
+            Mutex::new((3, items))
+        })
     }
 
     pub fn banners() -> &'static Mutex<(u32, Vec<Banner>)> {
         static S: OnceLock<Mutex<(u32, Vec<Banner>)>> = OnceLock::new();
         // TODO: load from database on startup
-        S.get_or_init(|| Mutex::new((1, vec![])))
+        S.get_or_init(|| {
+            let mut items = vec![
+                Banner {
+                    id: 1,
+                    title: "Summer Collection - Up to 70% Off".to_string(),
+                    image_url: "/editorial-fashion.png".to_string(),
+                    link_url: Some("/stores".to_string()),
+                    active: true,
+                    display_order: 1,
+                },
+            ];
+            Mutex::new((2, items))
+        })
     }
 
     pub fn shop_info() -> &'static Mutex<HashMap<String, ShopInfo>> {
@@ -289,6 +344,28 @@ pub async fn set_banner_active(
     banner.active = active;
     // TODO: persist to database
     Ok(())
+}
+
+/// Update a banner. Requires Editor or Admin role.
+/// POST /api/update_banner  —  body: { token, id, title, image_url, link_url? }
+#[server]
+pub async fn update_banner(
+    token: String,
+    id: u32,
+    title: String,
+    image_url: String,
+    link_url: Option<String>,
+) -> Result<Banner, ServerFnError> {
+    crate::auth::require_role(&token, &crate::auth::Role::Editor)?;
+    let mut g = store::banners().lock().unwrap();
+    let banner = g.1.iter_mut().find(|b| b.id == id)
+        .ok_or_else(|| ServerFnError::new(format!("Banner {id} not found")))?;
+    banner.title = title;
+    banner.image_url = image_url;
+    banner.link_url = link_url;
+    let result = banner.clone();
+    // TODO: persist to database
+    Ok(result)
 }
 
 /// Delete a banner. Requires Admin role.
