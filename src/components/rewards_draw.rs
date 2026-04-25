@@ -1050,7 +1050,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
             }
-            div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl p-4",
+            div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl py-4 px-6",
                 p { class: "text-xs font-bold tracking-widest text-accent mb-3",
                     {translate(locale(), "rewards_draw.title.pick_categories")}
                 }
