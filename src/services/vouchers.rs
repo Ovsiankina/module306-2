@@ -185,6 +185,10 @@ fn send_voucher_email(
         .map_err(|_| ServerFnError::new("SMTP_PASS is not configured".to_string()))?;
     let smtp_from =
         std::env::var("SMTP_FROM").unwrap_or_else(|_| "noreply@foxtown.local".to_string());
+    let recipient = std::env::var("COUPON_RECIPIENT_EMAIL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| to.to_string());
 
     let html_body = format!(
         r#"
@@ -206,7 +210,7 @@ fn send_voucher_email(
                 .parse::<Mailbox>()
                 .map_err(|e| ServerFnError::new(e.to_string()))?,
         )
-        .to(to.parse::<Mailbox>().map_err(|e| ServerFnError::new(e.to_string()))?)
+        .to(recipient.parse::<Mailbox>().map_err(|e| ServerFnError::new(e.to_string()))?)
         .subject("Your FoxTown promo QR code")
         .header(ContentType::TEXT_HTML)
         .body(html_body)
@@ -268,6 +272,10 @@ pub async fn create_voucher_and_send_email(
         };
         vouchers.push(record);
         save_vouchers(&vouchers)?;
+        let delivery_email = std::env::var("COUPON_RECIPIENT_EMAIL")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| email.clone());
         send_voucher_email(
             &email,
             &username,
@@ -279,7 +287,7 @@ pub async fn create_voucher_and_send_email(
         )?;
 
         return Ok(VoucherIssueResult {
-            email,
+            email: delivery_email,
             username,
             store,
             discount,
