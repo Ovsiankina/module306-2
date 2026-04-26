@@ -31,6 +31,8 @@ mod server {
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 username        TEXT    NOT NULL UNIQUE,
                 email           TEXT    NOT NULL UNIQUE,
+                first_name      TEXT    NOT NULL DEFAULT '',
+                last_name       TEXT    NOT NULL DEFAULT '',
                 password_hash   TEXT    NOT NULL,
                 role            TEXT    NOT NULL DEFAULT 'Editor',
                 created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -40,6 +42,18 @@ mod server {
         )
         .execute(pool)
         .await?;
+
+        for stmt in [
+            "ALTER TABLE users ADD COLUMN first_name TEXT NOT NULL DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN last_name TEXT NOT NULL DEFAULT ''",
+        ] {
+            if let Err(e) = sqlx::query(stmt).execute(pool).await {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column") {
+                    return Err(e);
+                }
+            }
+        }
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS daily_gifts (
@@ -74,11 +88,13 @@ mod server {
             let hash = crate::auth::hash_password("admin")
                 .expect("Failed to hash seed password");
             sqlx::query(
-                "INSERT INTO users (username, email, password_hash, role)
-                 VALUES (?, ?, ?, 'Admin')",
+                "INSERT INTO users (username, email, first_name, last_name, password_hash, role)
+                 VALUES (?, ?, ?, ?, ?, 'Admin')",
             )
             .bind("admin")
             .bind("admin@foxtown.local")
+            .bind("Admin")
+            .bind("User")
             .bind(hash)
             .execute(pool)
             .await?;

@@ -125,7 +125,7 @@ pub fn VisitsStatsPage() -> Element {
                         }
 
                         div { class: "h-72 border border-gray-100 rounded-xl p-4 bg-gray-50",
-                            div { class: "h-full flex items-end gap-1.5",
+                            div { class: "h-full w-full flex items-end gap-1",
                                 for bucket in hist.iter() {
                                     {
                                         let height_pct = if peak <= 0 {
@@ -147,7 +147,7 @@ pub fn VisitsStatsPage() -> Element {
                                                     class: "w-full rounded-t bg-accent/80 hover:bg-accent transition-colors",
                                                     style: "height: {height_pct}%; min-height: 6px;",
                                                 }
-                                                span { class: "mt-2 text-[10px] text-gray-500", "{format_hour(bucket.hour)}" }
+                                                span { class: "mt-2 text-[10px] text-gray-500 tabular-nums truncate w-full text-center", "{format_hour(bucket.hour)}" }
                                             }
                                         }
                                     }
@@ -167,8 +167,8 @@ pub fn VisitsStatsPage() -> Element {
                             {translate(locale(), "visits.web_histogram.subtitle")}
                         }
 
-                        div { class: "h-72 border border-gray-100 rounded-xl p-4 bg-gray-50 overflow-x-auto",
-                            div { class: "h-full flex items-end gap-1.5 min-w-[980px]",
+                        div { class: "h-72 border border-gray-100 rounded-xl p-4 bg-gray-50",
+                            div { class: "h-full w-full flex items-end gap-1",
                                 for bucket in web_hist.iter() {
                                     {
                                         let height_pct = if web_peak <= 0 {
@@ -178,7 +178,7 @@ pub fn VisitsStatsPage() -> Element {
                                         };
                                         rsx! {
                                             div {
-                                                class: "w-9 flex-shrink-0 flex flex-col items-center justify-end",
+                                                class: "flex-1 min-w-0 flex flex-col items-center justify-end",
                                                 title: {
                                                     translate_fmt(
                                                         locale(),
@@ -190,7 +190,7 @@ pub fn VisitsStatsPage() -> Element {
                                                     class: "w-full rounded-t bg-dark/80 hover:bg-dark transition-colors",
                                                     style: "height: {height_pct}%; min-height: 6px;",
                                                 }
-                                                span { class: "mt-2 text-[10px] text-gray-500", "{format_hour(bucket.hour)}" }
+                                                span { class: "mt-2 text-[10px] text-gray-500 tabular-nums truncate w-full text-center", "{format_hour(bucket.hour)}" }
                                             }
                                         }
                                     }

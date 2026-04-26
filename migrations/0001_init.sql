@@ -4,6 +4,8 @@ CREATE TABLE IF NOT EXISTS users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     username        TEXT    NOT NULL UNIQUE,
     email           TEXT    NOT NULL UNIQUE,
+    first_name      TEXT    NOT NULL DEFAULT '',
+    last_name       TEXT    NOT NULL DEFAULT '',
     password_hash   TEXT    NOT NULL,
     role            TEXT    NOT NULL DEFAULT 'Editor',
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,

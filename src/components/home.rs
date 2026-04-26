@@ -305,33 +305,6 @@ fn category_label(cat: &Category) -> &'static str {
     }
 }
 
-fn winner_display_name(username: &str) -> String {
-    let trimmed = username.trim();
-    if trimmed.is_empty() {
-        return "User U.".to_string();
-    }
-    let mut words = trimmed.split_whitespace();
-    let first_name_raw = words.next().unwrap_or(trimmed);
-    let first_name = first_name_raw
-        .chars()
-        .enumerate()
-        .map(|(i, c)| {
-            if i == 0 {
-                c.to_uppercase().to_string()
-            } else {
-                c.to_lowercase().to_string()
-            }
-        })
-        .collect::<String>();
-    let initial_source = words.next().unwrap_or(first_name_raw);
-    let initial = initial_source
-        .chars()
-        .next()
-        .map(|c| c.to_uppercase().to_string())
-        .unwrap_or_else(|| "U".to_string());
-    format!("{first_name} {initial}.")
-}
-
 fn ticker_relative_time(locale: Locale, created_at: &str) -> String {
     let Ok(created) = chrono::DateTime::parse_from_rfc3339(created_at) else {
         return translate(locale, "home.ticker.ago.now");
@@ -396,7 +369,7 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
                             .into_iter()
                             .map(|v| {
                                 (
-                                    winner_display_name(&v.username),
+                                    v.display_name.clone(),
                                     ticker_relative_time(loc, &v.created_at),
                                 )
                             })

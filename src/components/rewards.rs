@@ -32,34 +32,8 @@ fn format_relative_time(created_at: &str) -> String {
 }
 
 fn map_recent_winner(item: VoucherRecentSummary) -> WinnerFeedItem {
-    let trimmed = item.username.trim();
-    let display_name = if trimmed.is_empty() {
-        "User U.".to_string()
-    } else {
-        let mut words = trimmed.split_whitespace();
-        let first_name_raw = words.next().unwrap_or(trimmed);
-        let first_name = first_name_raw
-            .chars()
-            .enumerate()
-            .map(|(i, c)| {
-                if i == 0 {
-                    c.to_uppercase().to_string()
-                } else {
-                    c.to_lowercase().to_string()
-                }
-            })
-            .collect::<String>();
-        let initial_source = words.next().unwrap_or(first_name_raw);
-        let initial = initial_source
-            .chars()
-            .next()
-            .map(|c| c.to_uppercase().to_string())
-            .unwrap_or_else(|| "U".to_string());
-        format!("{first_name} {initial}.")
-    };
-
     WinnerFeedItem {
-        name: display_name,
+        name: item.display_name,
         prize: format!("{}% OFF {}", item.discount, item.store.to_uppercase()),
         time: format_relative_time(&item.created_at),
     }

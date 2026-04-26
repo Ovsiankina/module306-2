@@ -608,12 +608,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     };
 
     let build_store_draw = move |_| {
-        if drawing() || quota_exhausted() {
+        if drawing()
+            || quota_exhausted()
+            || phase() != DrawPhase::SelectCategories
+            || selected_categories().is_empty()
+        {
             return;
         }
         let locale_sig = locale;
         let auth_sig = auth;
         spawn(async move {
+            drawing.set(true);
             let loc = locale_sig();
             let player_key = match auth_sig() {
                 AuthState::LoggedIn(user) => format!("user:{}", user.id),
@@ -626,6 +631,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         loc,
                         "rewards_draw.status.game_closed_daily_quota",
                     ));
+                    drawing.set(false);
                     return;
                 }
                 _ => {}
@@ -637,10 +643,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         loc,
                         "rewards_draw.status.one_game_per_day_limit",
                     ));
+                    drawing.set(false);
                     return;
                 }
                 Err(_) => {
                     status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    drawing.set(false);
                     return;
                 }
                 Ok(true) => {}
@@ -649,16 +657,19 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             let selected = selected_categories();
             if selected.is_empty() {
                 status_message.set(translate(loc, "rewards_draw.status.min_one_category"));
+                drawing.set(false);
                 return;
             }
             if selected.len() > 3 {
                 status_message.set(translate(loc, "rewards_draw.status.max_three_categories"));
+                drawing.set(false);
                 return;
             }
 
             let available_shops = shops_by_category_keys(&selected);
             if available_shops.is_empty() {
                 status_message.set(translate(loc, "rewards_draw.status.no_store_for_selection"));
+                drawing.set(false);
                 return;
             }
 
@@ -688,6 +699,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     ("black", black_balls.to_string()),
                 ],
             ));
+            drawing.set(false);
         });
     };
 
@@ -1033,6 +1045,13 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
                 }
             }
+            if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
+                div { class: "w-full max-w-3xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm",
+                    p { class: "text-xs font-semibold text-amber-800 text-center leading-relaxed",
+                        "{status_message()}"
+                    }
+                }
+            }
             if can_show_machine {
                 p {
                     class: "text-xs text-muted tracking-wider",
@@ -1088,7 +1107,15 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     )}
                 }
                 button {
-                    class: "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white disabled:bg-gray-300",
+                    class: if !drawing()
+                        && phase() == DrawPhase::SelectCategories
+                        && !quota_exhausted()
+                        && !selected_categories().is_empty()
+                    {
+                        "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white hover:bg-amber-600 transition-colors"
+                    } else {
+                        "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-gray-300 text-white cursor-not-allowed transition-colors"
+                    },
                     disabled: quota_exhausted()
                         || drawing()
                         || selected_categories().is_empty()
@@ -1096,17 +1123,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     onclick: build_store_draw,
                     {translate(locale(), "rewards_draw.button.validate_categories")}
                 }
-                if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
-                    p { class: "mt-3 text-xs font-semibold text-amber-700",
-                        "{status_message()}"
-                    }
-                }
             }
 
             if can_show_machine {
                 div { class: "w-full max-w-5xl grid grid-cols-2 gap-6 items-start",
                     div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-muted text-center mb-2",
+                        p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
                             style: "transform: none;",
                             {translate(locale(), "rewards_draw.phase.first_store_draw")}
                         }
@@ -1120,7 +1142,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         )}
                     }
                     div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-muted text-center mb-2",
+                        p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
                             style: "transform: none;",
                             {translate(locale(), "rewards_draw.phase.discount_draw")}
                         }

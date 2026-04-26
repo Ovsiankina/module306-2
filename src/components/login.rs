@@ -17,6 +17,8 @@ pub fn LoginPage() -> Element {
     let mut tab = use_signal(|| Tab::SignIn);
     let mut username = use_signal(String::new);
     let mut email = use_signal(String::new);
+    let mut first_name = use_signal(String::new);
+    let mut last_name = use_signal(String::new);
     let mut password = use_signal(String::new);
     let mut confirm = use_signal(String::new);
     let mut error = use_signal(|| Option::<String>::None);
@@ -81,12 +83,12 @@ pub fn LoginPage() -> Element {
                                 // Email / Username field
                                 div {
                                     label { class: "block text-sm font-medium text-body mb-1.5",
-                                        {if tab() == Tab::SignIn { translate(locale(), "login.email_address") } else { translate(locale(), "login.username") }}
+                                        {if tab() == Tab::SignIn { translate(locale(), "login.identity_or_email") } else { translate(locale(), "login.username") }}
                                     }
                                     input {
                                         class: "{input_class}",
                                         r#type: "text",
-                                        placeholder: if tab() == Tab::SignIn { "name@email.com" } else { "username" },
+                                        placeholder: if tab() == Tab::SignIn { "name@email.com or username" } else { "username" },
                                         value: "{username}",
                                         oninput: move |e| username.set(e.value()),
                                     }
@@ -102,6 +104,26 @@ pub fn LoginPage() -> Element {
                                             placeholder: "name@email.com",
                                             value: "{email}",
                                             oninput: move |e| email.set(e.value()),
+                                        }
+                                    }
+                                    div {
+                                        label { class: "block text-sm font-medium text-body mb-1.5", {translate(locale(), "login.first_name")} }
+                                        input {
+                                            class: "{input_class}",
+                                            r#type: "text",
+                                            placeholder: { translate(locale(), "login.first_name") },
+                                            value: "{first_name}",
+                                            oninput: move |e| first_name.set(e.value()),
+                                        }
+                                    }
+                                    div {
+                                        label { class: "block text-sm font-medium text-body mb-1.5", {translate(locale(), "login.last_name")} }
+                                        input {
+                                            class: "{input_class}",
+                                            r#type: "text",
+                                            placeholder: { translate(locale(), "login.last_name") },
+                                            value: "{last_name}",
+                                            oninput: move |e| last_name.set(e.value()),
                                         }
                                     }
                                 }
@@ -150,6 +172,8 @@ pub fn LoginPage() -> Element {
                                     onclick: move |_| {
                                         let u = username();
                                         let em = email();
+                                        let fnam = first_name();
+                                        let lnam = last_name();
                                         let p = password();
                                         let c = confirm();
                                         let t = tab();
@@ -173,11 +197,16 @@ pub fn LoginPage() -> Element {
                                                         error.set(Some(translate(locale(), "login.error.password_mismatch")));
                                                         return;
                                                     }
-                                                    if u.is_empty() || em.is_empty() || p.is_empty() {
+                                                    if u.is_empty()
+                                                        || em.is_empty()
+                                                        || fnam.trim().is_empty()
+                                                        || lnam.trim().is_empty()
+                                                        || p.is_empty()
+                                                    {
                                                         error.set(Some(translate(locale(), "login.error.required")));
                                                         return;
                                                     }
-                                                    match register(u, em, p).await {
+                                                    match register(u, em, fnam, lnam, p).await {
                                                         Ok(token) => {
                                                             write_token(&token);
                                                             if let Ok(Some(user)) = me(token).await {

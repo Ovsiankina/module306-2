@@ -24,9 +24,26 @@ pub struct VoucherAdminSummary {
     pub valid_until: String,
 }
 
+/// Full voucher row for admin list (matches `data/vouchers.json` records).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct VoucherAdminFull {
+    pub id: u64,
+    pub qr_token: String,
+    pub email: String,
+    pub username: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub store: String,
+    pub discount: u32,
+    pub valid_until: String,
+    pub created_at: String,
+    pub redeemed: bool,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VoucherRecentSummary {
-    pub username: String,
+    /// Public winner label (given name + initial), resolved from the users table when possible.
+    pub display_name: String,
     pub store: String,
     pub discount: u32,
     pub created_at: String,
@@ -46,11 +63,24 @@ struct VoucherRecord {
     qr_token: String,
     email: String,
     username: String,
+    #[serde(default)]
+    first_name: String,
+    #[serde(default)]
+    last_name: String,
     store: String,
     discount: u32,
     valid_until: String,
     created_at: String,
     redeemed: bool,
+}
+
+#[cfg(feature = "server")]
+#[derive(Debug, Serialize)]
+struct VoucherQrPayload {
+    email: String,
+    store: String,
+    discount: u32,
+    valid_until: String,
 }
 
 #[cfg(feature = "server")]
@@ -173,6 +203,11 @@ fn send_voucher_email(
     use lettre::transport::smtp::authentication::Credentials;
     use lettre::{Message, SmtpTransport, Transport};
 
+    let smtp_fake_mode = std::env::var("SMTP_FAKE_MODE")
+        .ok()
+        .map(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
+        .unwrap_or(false);
+
     let smtp_host = std::env::var("SMTP_HOST")
         .map_err(|_| ServerFnError::new("SMTP_HOST is not configured".to_string()))?;
     let smtp_port = std::env::var("SMTP_PORT")
@@ -199,6 +234,14 @@ fn send_voucher_email(
         </div>
         "#
     );
+
+    if smtp_fake_mode {
+        println!(
+            "[SMTP FAKE MODE] Simulated voucher email\nTo: {to}\nFrom: {smtp_from}\nSubject: Your FoxTown promo QR code\nUsername: {username}\nStore: {store}\nDiscount: {discount}%\nValid until: {valid_until}\nVerification URL: {verify_url}\nQR (data URL prefix): {}",
+            &qr_code_data_url.chars().take(64).collect::<String>()
+        );
+        return Ok(());
+    }
 
     let email = Message::builder()
         .from(
@@ -229,6 +272,32 @@ fn is_voucher_active(voucher: &VoucherRecord, today: &str) -> bool {
     !voucher.redeemed && voucher.valid_until.as_str() >= today
 }
 
+#[cfg(feature = "server")]
+async fn lookup_user_names(
+    pool: &sqlx::SqlitePool,
+    username: &str,
+    email: &str,
+) -> (String, String) {
+    let by_username: Option<(String, String)> = sqlx::query_as(
+        "SELECT first_name, last_name FROM users WHERE username = ?",
+    )
+    .bind(username)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten();
+    if let Some(names) = by_username {
+        return names;
+    }
+    sqlx::query_as("SELECT first_name, last_name FROM users WHERE email = ?")
+        .bind(email)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| (String::new(), String::new()))
+}
+
 #[server]
 pub async fn create_voucher_and_send_email(
     token: String,
@@ -253,13 +322,26 @@ pub async fn create_voucher_and_send_email(
         let base_url =
             std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
         let verify_url = format!("{base_url}/voucher/verify?token={qr_token}");
-        let qr_code_data_url = generate_qr_svg_data_url(&verify_url)?;
+        let qr_payload = VoucherQrPayload {
+            email: email.clone(),
+            store: store.clone(),
+            discount,
+            valid_until: valid_until.clone(),
+        };
+        let qr_payload_json =
+            serde_json::to_string(&qr_payload).map_err(|e| ServerFnError::new(e.to_string()))?;
+        let qr_code_data_url = generate_qr_svg_data_url(&qr_payload_json)?;
+
+        let pool = crate::db::pool().await;
+        let (fname, lname) = lookup_user_names(pool, &username, &email).await;
 
         let record = VoucherRecord {
             id: next_id,
             qr_token,
             email: email.clone(),
             username: username.clone(),
+            first_name: fname,
+            last_name: lname,
             store: store.clone(),
             discount,
             valid_until: valid_until.clone(),
@@ -291,6 +373,61 @@ pub async fn create_voucher_and_send_email(
     #[cfg(not(feature = "server"))]
     {
         let _ = (token, email, username, store, discount, valid_until);
+        Err(ServerFnError::new("Server feature is required".to_string()))
+    }
+}
+
+#[server]
+pub async fn list_all_vouchers_admin(token: String) -> Result<Vec<VoucherAdminFull>, ServerFnError> {
+    crate::auth::require_role(&token, &crate::auth::Role::Admin)?;
+
+    #[cfg(feature = "server")]
+    {
+        let mut vouchers: Vec<VoucherAdminFull> = load_vouchers()?
+            .into_iter()
+            .map(|v| VoucherAdminFull {
+                id: v.id,
+                qr_token: v.qr_token,
+                email: v.email,
+                username: v.username,
+                first_name: v.first_name,
+                last_name: v.last_name,
+                store: v.store,
+                discount: v.discount,
+                valid_until: v.valid_until,
+                created_at: v.created_at,
+                redeemed: v.redeemed,
+            })
+            .collect();
+        vouchers.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        return Ok(vouchers);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        let _ = token;
+        Err(ServerFnError::new("Server feature is required".to_string()))
+    }
+}
+
+/// Remove all vouchers with `redeemed: true` from the JSON store. Returns how many were removed.
+#[server]
+pub async fn purge_redeemed_vouchers(token: String) -> Result<u32, ServerFnError> {
+    crate::auth::require_role(&token, &crate::auth::Role::Admin)?;
+
+    #[cfg(feature = "server")]
+    {
+        let mut vouchers = load_vouchers()?;
+        let before = vouchers.len();
+        vouchers.retain(|v| !v.redeemed);
+        let removed = before.saturating_sub(vouchers.len()) as u32;
+        save_vouchers(&vouchers)?;
+        return Ok(removed);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        let _ = token;
         Err(ServerFnError::new("Server feature is required".to_string()))
     }
 }
@@ -331,16 +468,22 @@ pub async fn list_recent_vouchers(limit: usize) -> Result<Vec<VoucherRecentSumma
         let mut recent = load_vouchers()?;
         recent.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-        let winners = recent
-            .into_iter()
-            .take(take)
-            .map(|v| VoucherRecentSummary {
-                username: v.username,
+        let pool = crate::db::pool().await;
+        let mut winners = Vec::new();
+        for v in recent.into_iter().take(take) {
+            let (fname, lname) = if !v.first_name.trim().is_empty() || !v.last_name.trim().is_empty() {
+                (v.first_name.clone(), v.last_name.clone())
+            } else {
+                lookup_user_names(pool, &v.username, &v.email).await
+            };
+            let display_name = crate::auth::winner_public_label(&fname, &lname, &v.username);
+            winners.push(VoucherRecentSummary {
+                display_name,
                 store: v.store,
                 discount: v.discount,
                 created_at: v.created_at,
-            })
-            .collect();
+            });
+        }
         return Ok(winners);
     }
 
