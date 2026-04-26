@@ -1052,23 +1052,6 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
             }
-            if can_show_machine {
-                p {
-                    class: "text-xs text-muted tracking-wider",
-                    style: "position: relative; top: -132px; left: 24px; width: 544px; height: 40px; display: grid; grid-template-columns: repeat(1, 1fr); grid-template-rows: repeat(1, 1fr); transform: none;",
-                    if phase() == DrawPhase::DrawStore {
-                        if second_chance_used() {
-                            {translate(locale(), "rewards_draw.phase.second_chance")}
-                        } else {
-                            {translate(locale(), "rewards_draw.phase.first_store_draw")}
-                        }
-                    } else if phase() == DrawPhase::DrawDiscount {
-                        {translate(locale(), "rewards_draw.phase.discount_draw")}
-                    } else {
-                        {translate(locale(), "rewards_draw.phase.session_finished")}
-                    }
-                }
-            }
             div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl py-4 px-6",
                 p { class: "text-xs font-bold tracking-widest text-accent mb-3",
                     {translate(locale(), "rewards_draw.title.pick_categories")}

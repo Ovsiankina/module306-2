@@ -492,6 +492,7 @@ pub(crate) fn Home() -> Element {
     rsx! {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
             Nav { active: NavPage::None }
+            GamePromoModal {}
 
             LandingSection {}
 
@@ -525,6 +526,69 @@ pub(crate) fn Home() -> Element {
                 }
 
                 Footer { dark: false, stick_to_bottom: false }
+            }
+        }
+    }
+}
+
+#[component]
+fn GamePromoModal() -> Element {
+    let mut is_open = use_signal(|| true);
+    let nav = use_navigator();
+
+    if !is_open() {
+        return rsx! {};
+    }
+
+    rsx! {
+        div {
+            class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
+            style: "position: fixed; inset: 0; z-index: 9999;",
+            onclick: move |_| is_open.set(false),
+
+            div {
+                class: "relative w-full max-w-lg rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden",
+                onclick: move |e| e.stop_propagation(),
+
+                button {
+                    class: "absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold",
+                    aria_label: "Close game promotion",
+                    onclick: move |_| is_open.set(false),
+                    "×"
+                }
+
+                div { class: "p-7 md:p-8",
+                    div { class: "mb-4 flex justify-center",
+                        img {
+                            src: asset!("/assets/fox_icon.svg"),
+                            alt: "FoxTown game",
+                            class: "h-24 w-24 ft-fox-pulse object-contain",
+                        }
+                    }
+
+                    p { class: "text-xs font-bold tracking-[0.22em] uppercase text-accent text-center mb-2",
+                        "New game"
+                    }
+                    p { class: "text-sm md:text-base text-body text-center mb-6",
+                        "Play the FoxTown rewards game now and claim exclusive discounts in just a few clicks."
+                    }
+
+                    div { class: "flex flex-col sm:flex-row gap-3",
+                        button {
+                            class: "flex-1 py-3 px-4 rounded-lg bg-accent text-white font-bold tracking-wide hover:bg-amber-600 transition-colors",
+                            onclick: move |_| {
+                                is_open.set(false);
+                                nav.push(Route::Rewards {});
+                            },
+                            "Play now"
+                        }
+                        button {
+                            class: "flex-1 py-3 px-4 rounded-lg bg-gray-100 text-dark font-semibold hover:bg-gray-200 transition-colors",
+                            onclick: move |_| is_open.set(false),
+                            "Maybe later"
+                        }
+                    }
+                }
             }
         }
     }

@@ -115,5 +115,18 @@
     "valid_until": "2026-05-26",
     "created_at": "2026-04-26T18:09:14.613705700+00:00",
     "redeemed": false
+  },
+  {
+    "id": 11,
+    "qr_token": "acafad0b-661d-49fe-b7e1-2e1a4772c668",
+    "email": "admin@foxtown.local",
+    "username": "admin",
+    "first_name": "",
+    "last_name": "",
+    "store": "Boxeur Des Rues",
+    "discount": 5,
+    "valid_until": "2026-05-26",
+    "created_at": "2026-04-26T19:15:07.782625900+00:00",
+    "redeemed": false
   }
 ]
