@@ -2,7 +2,8 @@ use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
-// Embedded at compile time — no file I/O at runtime
+// Embedded at compile time — used by the client/WASM and as the seed for the
+// SQLite store catalog on first boot.
 const STORES_JSON: &str = include_str!("../migrations/seeders/stores.json");
 const MAX_BRAND_ICON_SIZE_BYTES: usize = 5 * 1024 * 1024;
 
@@ -15,6 +16,13 @@ pub struct Store {
     pub phone: Option<String>,
     pub website: Option<String>,
     pub icon_path: Option<String>,
+    /// Image-relative X position on the floor plan, in percent (0..100).
+    /// `None` means the store has not been placed on the map yet.
+    #[serde(default)]
+    pub map_x: Option<f32>,
+    /// Image-relative Y position on the floor plan, in percent (0..100).
+    #[serde(default)]
+    pub map_y: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -132,20 +140,26 @@ struct StoresData {
     shops: Vec<Store>,
 }
 
-fn load_stores() -> Vec<Store> {
-    serde_json::from_str::<StoresData>(STORES_JSON)
+fn load_stores_from_str(json: &str) -> Vec<Store> {
+    serde_json::from_str::<StoresData>(json)
         .expect("stores.json is invalid")
         .shops
 }
 
-static STORES_CACHE: LazyLock<Vec<Store>> = LazyLock::new(load_stores);
+fn load_embedded_stores() -> Vec<Store> {
+    load_stores_from_str(STORES_JSON)
+}
 
-fn cached_stores() -> &'static [Store] {
-    STORES_CACHE.as_slice()
+// Embedded snapshot — always available, used by client-side code and
+// non-server callers (e.g. SSR component bodies that need synchronous access).
+static EMBEDDED_STORES: LazyLock<Vec<Store>> = LazyLock::new(load_embedded_stores);
+
+fn embedded_stores() -> &'static [Store] {
+    EMBEDDED_STORES.as_slice()
 }
 
 pub fn get_store_local(slug: &str) -> Option<Store> {
-    cached_stores()
+    embedded_stores()
         .iter()
         .find(|s| slugify(&s.name) == slug)
         .cloned()
@@ -306,9 +320,9 @@ pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
     #[cfg(feature = "server")]
     {
         let pool = crate::db::pool().await;
-        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>)> =
+        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<f64>, Option<f64>)> =
             sqlx::query_as(
-                "SELECT name, category, store_number, level, phone, website, icon_path
+                "SELECT name, category, store_number, level, phone, website, icon_path, map_x, map_y
                  FROM stores
                  ORDER BY name",
             )
@@ -316,7 +330,7 @@ pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
             .await
             .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-        for (name, category, store_number, level, phone, website, icon_path) in rows {
+        for (name, category, store_number, level, phone, website, icon_path, map_x, map_y) in rows {
             if slugify(&name) == slug {
                 let parsed_category = Category::from_key(&category)
                     .ok_or_else(|| ServerFnError::new(format!("Unknown store category '{category}'")))?;
@@ -328,6 +342,8 @@ pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
                     phone,
                     website,
                     icon_path,
+                    map_x: map_x.map(|v| v as f32),
+                    map_y: map_y.map(|v| v as f32),
                 });
             }
         }
@@ -336,7 +352,7 @@ pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
 
     #[cfg(not(feature = "server"))]
     {
-        cached_stores()
+        embedded_stores()
             .iter()
             .find(|s| slugify(&s.name) == slug)
             .cloned()
@@ -344,15 +360,14 @@ pub async fn get_store(slug: String) -> Result<Store, ServerFnError> {
     }
 }
 
-
 #[server]
 pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
     #[cfg(feature = "server")]
     {
         let pool = crate::db::pool().await;
-        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>)> =
+        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<f64>, Option<f64>)> =
             sqlx::query_as(
-                "SELECT name, category, store_number, level, phone, website, icon_path
+                "SELECT name, category, store_number, level, phone, website, icon_path, map_x, map_y
                  FROM stores
                  ORDER BY name",
             )
@@ -361,7 +376,7 @@ pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
             .map_err(|e| ServerFnError::new(e.to_string()))?;
 
         let mut stores = Vec::with_capacity(rows.len());
-        for (name, category, store_number, level, phone, website, icon_path) in rows {
+        for (name, category, store_number, level, phone, website, icon_path, map_x, map_y) in rows {
             let parsed_category = Category::from_key(&category)
                 .ok_or_else(|| ServerFnError::new(format!("Unknown store category '{category}'")))?;
             stores.push(Store {
@@ -372,6 +387,8 @@ pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
                 phone,
                 website,
                 icon_path,
+                map_x: map_x.map(|v| v as f32),
+                map_y: map_y.map(|v| v as f32),
             });
         }
         return Ok(stores);
@@ -379,7 +396,7 @@ pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
 
     #[cfg(not(feature = "server"))]
     {
-        Ok(cached_stores().to_vec())
+        Ok(embedded_stores().to_vec())
     }
 }
 
@@ -389,9 +406,9 @@ pub async fn search_stores(query: String) -> Result<Vec<Store>, ServerFnError> {
     {
         let pool = crate::db::pool().await;
         let like = format!("%{}%", query.trim().to_lowercase());
-        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>)> =
+        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>, Option<f64>, Option<f64>)> =
             sqlx::query_as(
-                "SELECT name, category, store_number, level, phone, website, icon_path
+                "SELECT name, category, store_number, level, phone, website, icon_path, map_x, map_y
                  FROM stores
                  WHERE LOWER(name) LIKE ?
                  ORDER BY name",
@@ -402,7 +419,7 @@ pub async fn search_stores(query: String) -> Result<Vec<Store>, ServerFnError> {
             .map_err(|e| ServerFnError::new(e.to_string()))?;
 
         let mut stores = Vec::with_capacity(rows.len());
-        for (name, category, store_number, level, phone, website, icon_path) in rows {
+        for (name, category, store_number, level, phone, website, icon_path, map_x, map_y) in rows {
             let parsed_category = Category::from_key(&category)
                 .ok_or_else(|| ServerFnError::new(format!("Unknown store category '{category}'")))?;
             stores.push(Store {
@@ -413,6 +430,8 @@ pub async fn search_stores(query: String) -> Result<Vec<Store>, ServerFnError> {
                 phone,
                 website,
                 icon_path,
+                map_x: map_x.map(|v| v as f32),
+                map_y: map_y.map(|v| v as f32),
             });
         }
         return Ok(stores);
@@ -421,7 +440,7 @@ pub async fn search_stores(query: String) -> Result<Vec<Store>, ServerFnError> {
     #[cfg(not(feature = "server"))]
     {
         let needle = query.trim().to_lowercase();
-        Ok(cached_stores()
+        Ok(embedded_stores()
             .iter()
             .filter(|s| needle.is_empty() || s.name.to_lowercase().contains(&needle))
             .cloned()
@@ -636,3 +655,80 @@ pub async fn delete_store(id: i64) -> Result<(), ServerFnError> {
     }
 }
 
+/// Set or clear the `(map_x, map_y)` and `level` of a store on the floor plan.
+/// `level` 0..=3, `x`/`y` are image-relative percentages in 0..=100.
+/// Pass `None` for `x`/`y` to clear the position. Requires Admin role.
+#[server]
+pub async fn set_store_position(
+    token: String,
+    slug: String,
+    level: Option<u8>,
+    x: Option<f32>,
+    y: Option<f32>,
+) -> Result<Store, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        crate::auth::require_role(&token, &crate::auth::Role::Admin)?;
+
+        if let Some(lvl) = level {
+            if lvl > 3 {
+                return Err(ServerFnError::new("level must be 0..=3"));
+            }
+        }
+        if x.is_some() != y.is_some() {
+            return Err(ServerFnError::new(
+                "x and y must both be set or both be cleared",
+            ));
+        }
+        for v in [x, y].into_iter().flatten() {
+            if !(0.0..=100.0).contains(&v) || !v.is_finite() {
+                return Err(ServerFnError::new("x and y must be in 0..=100"));
+            }
+        }
+
+        let pool = crate::db::pool().await;
+        let names: Vec<(String,)> = sqlx::query_as("SELECT name FROM stores")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        let target_name = names
+            .into_iter()
+            .map(|(n,)| n)
+            .find(|n| slugify(n) == slug)
+            .ok_or_else(|| ServerFnError::new(format!("Store '{slug}' not found")))?;
+
+        let result = if let Some(lvl) = level {
+            sqlx::query(
+                "UPDATE stores SET level = ?, map_x = ?, map_y = ? WHERE name = ?",
+            )
+            .bind(lvl as i64)
+            .bind(x.map(|v| v as f64))
+            .bind(y.map(|v| v as f64))
+            .bind(&target_name)
+            .execute(pool)
+            .await
+        } else {
+            sqlx::query("UPDATE stores SET map_x = ?, map_y = ? WHERE name = ?")
+                .bind(x.map(|v| v as f64))
+                .bind(y.map(|v| v as f64))
+                .bind(&target_name)
+                .execute(pool)
+                .await
+        }
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        if result.rows_affected() == 0 {
+            return Err(ServerFnError::new(format!("Store '{slug}' not found")));
+        }
+
+        return get_store(slug).await;
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        let _ = (token, slug, level, x, y);
+        Err(ServerFnError::new(
+            "set_store_position is only available on server",
+        ))
+    }
+}

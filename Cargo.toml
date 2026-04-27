@@ -8,7 +8,7 @@ publish = false
 dioxus = { version = "0.7.6", features = ["fullstack", "router"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde = "1"
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 chrono = { version = "0.4", features = ["serde", "wasmbind"] }

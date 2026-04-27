@@ -1,17 +1,54 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
-use crate::i18n::{Locale, translate, translate_fmt};
-use crate::stores::{get_stores, Store};
+use crate::i18n::{translate, translate_fmt, Locale};
+use crate::stores::{get_stores, slugify, Category, Store};
+use crate::Route;
 use dioxus::prelude::*;
+
+fn floor_marker_classes(level: u8) -> &'static str {
+    match level {
+        0 => "bg-yellow-400 border-yellow-700 text-yellow-900",
+        1 => "bg-red-500 border-red-800 text-white",
+        2 => "bg-blue-500 border-blue-800 text-white",
+        _ => "bg-green-500 border-green-800 text-white",
+    }
+}
+
+fn category_label_key(category: &Category) -> &'static str {
+    match category {
+        Category::HighFashion => "home.category.luxury_fashion",
+        Category::LadiesMenswear => "home.category.fashion",
+        Category::Casualwear => "home.category.casualwear",
+        Category::SportswearEquipment => "home.category.sport_performance",
+        Category::Childrenswear => "home.category.kidswear",
+        Category::Footwear => "home.category.footwear",
+        Category::Underwear => "home.category.underwear",
+        Category::WatchesJewellery => "home.category.luxury_heritage",
+        Category::Accessories => "home.category.accessories",
+        Category::Electronics => "home.category.electronics",
+        Category::Beauty => "home.category.beauty",
+        Category::Home => "home.category.home_lifestyle",
+        Category::FoodDrinks => "home.category.food_drinks",
+        Category::Services => "home.category.services",
+    }
+}
+
+fn store_matches(store: &Store, search_lc: &str, category: Option<&Category>) -> bool {
+    let matches_search = search_lc.is_empty() || store.name.to_lowercase().contains(search_lc);
+    let matches_cat = category.is_none_or(|c| store.category == *c);
+    matches_search && matches_cat
+}
 
 pub fn ShopDirectory() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut active_floor = use_signal(|| 0u8);
+    let mut category_filter = use_signal(|| None::<Category>);
 
     let stores = use_loader(|| get_stores())?;
 
     let q = search().to_lowercase();
+    let cat = category_filter();
     let search_results: Vec<Store> = if q.is_empty() {
         vec![]
     } else {
@@ -30,6 +67,9 @@ pub fn ShopDirectory() -> Element {
             "px-6 py-2.5 text-xs font-bold tracking-wider text-muted hover:text-dark rounded-full transition-colors"
         }
     };
+
+    let stores_owned: Vec<Store> = stores.iter().map(|s| (*s).clone()).collect();
+
     rsx! {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
             Nav { active: NavPage::Map }
@@ -81,25 +121,57 @@ pub fn ShopDirectory() -> Element {
                             if !search_results.is_empty() {
                                 div { class: "mt-2 border border-gray-100 rounded-lg divide-y divide-gray-50",
                                     for store in search_results {
-                                        div {
-                                            class: "px-4 py-3 hover:bg-gray-50 cursor-pointer",
-                                            onclick: move |_| {
-                                                if let Some(level) = store.level {
-                                                    active_floor.set(level);
-                                                }
-                                                search.set(String::new());
-                                            },
-                                            p { class: "text-sm font-bold text-dark", "{store.name}" }
-                                            if let Some(level) = store.level {
-                                                p { class: "text-xs text-muted",
-                                                    if let Some(ref num) = store.store_number {
-                                                        {translate_fmt(locale(), "directory.level_short_unit", &[("level", level.to_string()), ("unit", num.clone())])}
-                                                    } else {
-                                                        {translate_fmt(locale(), "directory.level_short", &[("level", level.to_string())])}
+                                        {
+                                            let level_for_click = store.level;
+                                            rsx! {
+                                                div {
+                                                    class: "px-4 py-3 hover:bg-gray-50 cursor-pointer",
+                                                    onclick: move |_| {
+                                                        if let Some(level) = level_for_click {
+                                                            active_floor.set(level);
+                                                        }
+                                                    },
+                                                    p { class: "text-sm font-bold text-dark", "{store.name}" }
+                                                    if let Some(level) = store.level {
+                                                        p { class: "text-xs text-muted",
+                                                            if let Some(ref num) = store.store_number {
+                                                                {translate_fmt(locale(), "directory.level_short_unit", &[("level", level.to_string()), ("unit", num.clone())])}
+                                                            } else {
+                                                                {translate_fmt(locale(), "directory.level_short", &[("level", level.to_string())])}
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Category filter
+                        div {
+                            h3 { class: "text-lg font-bold text-dark mb-4",
+                                {translate(locale(), "directory.category_filter")}
+                            }
+                            select {
+                                class: "w-full py-3 px-4 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none",
+                                onchange: move |e| {
+                                    let v = e.value();
+                                    if v.is_empty() {
+                                        category_filter.set(None);
+                                    } else {
+                                        let next = Category::all().into_iter().find(|c| c.key() == v);
+                                        category_filter.set(next);
+                                    }
+                                },
+                                option { value: "", {translate(locale(), "directory.all_categories")} }
+                                for c in Category::all() {
+                                    option {
+                                        key: "{c.key()}",
+                                        value: "{c.key()}",
+                                        selected: category_filter().as_ref() == Some(&c),
+                                        {translate(locale(), category_label_key(&c))}
                                     }
                                 }
                             }
@@ -141,7 +213,13 @@ pub fn ShopDirectory() -> Element {
                             }
                         }
 
-                        DirectoryMap { active_floor, locale }
+                        DirectoryMap {
+                            active_floor,
+                            locale,
+                            stores: stores_owned,
+                            search_lc: q,
+                            category: cat,
+                        }
                     }
                 }
             }
@@ -152,7 +230,13 @@ pub fn ShopDirectory() -> Element {
 }
 
 #[component]
-fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
+fn DirectoryMap(
+    active_floor: Signal<u8>,
+    locale: Signal<Locale>,
+    stores: Vec<Store>,
+    search_lc: String,
+    category: Option<Category>,
+) -> Element {
     let mut zoom_level = use_signal(|| 1.0f32);
     let mut pan_offset = use_signal(|| (0.0f32, 0.0f32));
     let mut is_dragging = use_signal(|| false);
@@ -176,19 +260,33 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
         _ => asset!("/assets/fox_town/level_3.jpg"),
     };
 
+    let nav = use_navigator();
+    let any_filter_active = !search_lc.is_empty() || category.is_some();
+
+    let visible_markers: Vec<Store> = stores
+        .iter()
+        .filter(|s| s.level == Some(active_floor()) && s.map_x.is_some() && s.map_y.is_some())
+        .cloned()
+        .collect();
+
+    let transform_style = format!(
+        "transform: translate({}px, {}px) scale({}); transform-origin: center center; touch-action: none; will-change: transform;",
+        pan_offset().0,
+        pan_offset().1,
+        zoom_level()
+    );
+
     rsx! {
         div {
             class: "relative bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden",
-            // Floor plan image
-            img {
-                src: floor_plan_src,
+            // Transformable wrapper holds image + markers so they pan/zoom together
+            div {
                 class: if is_dragging() {
-                    "w-full object-cover transition-transform duration-200 cursor-grabbing select-none"
+                    "relative cursor-grabbing select-none"
                 } else {
-                    "w-full object-cover transition-transform duration-200 cursor-grab select-none"
+                    "relative cursor-grab select-none"
                 },
-                alt: {translate_fmt(locale(), "directory.floor_plan_alt", &[("level", active_floor().to_string())])},
-                draggable: false,
+                style: "{transform_style}",
                 onmousedown: move |evt| {
                     is_dragging.set(true);
                     let coords = evt.client_coordinates();
@@ -201,7 +299,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                     if !is_dragging() {
                         return;
                     }
-
                     let coords = evt.client_coordinates();
                     pan_offset.set((
                         coords.x as f32 - drag_origin().0,
@@ -220,7 +317,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                     if delta_y.abs() <= f32::EPSILON {
                         return;
                     }
-
                     let direction = if delta_y < 0.0 { 1.0 } else { -1.0 };
                     let wheel_multiplier = (delta_y.abs() / 120.0).clamp(0.5, 4.0);
                     let next_zoom =
@@ -230,7 +326,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                 ontouchstart: move |evt| {
                     evt.prevent_default();
                     let touches = evt.touches();
-
                     if touches.len() >= 2 {
                         is_dragging.set(false);
                         let p1 = touches[0].client_coordinates();
@@ -253,16 +348,13 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                 ontouchmove: move |evt| {
                     evt.prevent_default();
                     let touches = evt.touches();
-
                     if touches.len() >= 2 {
                         is_dragging.set(false);
-
                         let p1 = touches[0].client_coordinates();
                         let p2 = touches[1].client_coordinates();
                         let dx = (p1.x - p2.x) as f32;
                         let dy = (p1.y - p2.y) as f32;
                         let distance = (dx * dx + dy * dy).sqrt();
-
                         if let Some(start_distance) = pinch_start_distance() {
                             if start_distance > f32::EPSILON {
                                 let scale = distance / start_distance;
@@ -286,7 +378,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                     if touches.len() < 2 {
                         pinch_start_distance.set(None);
                     }
-
                     if touches.is_empty() {
                         is_dragging.set(false);
                     } else if touches.len() == 1 {
@@ -298,15 +389,52 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                         is_dragging.set(true);
                     }
                 },
-                style: format!(
-                    "transform: translate({}px, {}px) scale({}); transform-origin: center center; touch-action: none;",
-                    pan_offset().0,
-                    pan_offset().1,
-                    zoom_level()
-                ),
+
+                // Floor plan image
+                img {
+                    src: floor_plan_src,
+                    class: "w-full h-auto block object-contain transition-transform duration-200",
+                    alt: {translate_fmt(locale(), "directory.floor_plan_alt", &[("level", active_floor().to_string())])},
+                    draggable: false,
+                }
+
+                // Marker overlay
+                div { class: "absolute inset-0 pointer-events-none",
+                    for store in visible_markers.clone() {
+                        {
+                            let x = store.map_x.unwrap_or(0.0);
+                            let y = store.map_y.unwrap_or(0.0);
+                            let level = active_floor();
+                            let name_for_nav = store.name.clone();
+                            let slug = slugify(&store.name);
+                            let unit = store.store_number.clone().unwrap_or_default();
+                            let matches = store_matches(&store, &search_lc, category.as_ref());
+                            let dimmed = any_filter_active && !matches;
+                            let highlighted = any_filter_active && matches;
+                            let dim_class = if dimmed { "opacity-20 grayscale" } else { "opacity-100" };
+                            let pulse_class = if highlighted { "ring-2 ring-accent ring-offset-1 animate-pulse" } else { "" };
+                            let color = floor_marker_classes(level);
+                            rsx! {
+                                button {
+                                    key: "marker-{slug}",
+                                    class: "pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 px-1.5 py-0.5 text-[10px] font-bold shadow {color} {dim_class} {pulse_class} hover:scale-125 transition-transform",
+                                    style: "left: {x}%; top: {y}%;",
+                                    title: "{name_for_nav}",
+                                    onclick: move |evt| {
+                                        evt.stop_propagation();
+                                        let _ = nav.push(Route::Store { name: slug.clone() });
+                                    },
+                                    onmousedown: move |evt| { evt.stop_propagation(); },
+                                    ontouchstart: move |evt| { evt.stop_propagation(); },
+                                    "{unit}"
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            // Zoom controls
+            // Zoom controls (outside the transform)
             div { class: "absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-10",
                 button {
                     class: "w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center text-dark hover:bg-gray-50",
@@ -338,7 +466,6 @@ fn DirectoryMap(active_floor: Signal<u8>, locale: Signal<Locale>) -> Element {
                         fill: "none",
                         stroke: "currentColor",
                         stroke_width: "2",
-                        // Crosshair / location icon
                         circle { cx: "12", cy: "12", r: "3" }
                         path { d: "M12 2v4M12 18v4M2 12h4M18 12h4" }
                     }

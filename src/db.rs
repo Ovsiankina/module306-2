@@ -172,11 +172,22 @@ mod server {
                 level         INTEGER,
                 phone         TEXT,
                 website       TEXT,
-                icon_path     TEXT
+                icon_path     TEXT,
+                map_x         REAL,
+                map_y         REAL
             )",
         )
         .execute(pool)
         .await?;
+
+        // Backfill: ensure map_x/map_y columns exist when upgrading from an
+        // older schema that predates the floor-plan editor.
+        let _ = sqlx::query("ALTER TABLE stores ADD COLUMN map_x REAL")
+            .execute(pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE stores ADD COLUMN map_y REAL")
+            .execute(pool)
+            .await;
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS parkings (

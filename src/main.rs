@@ -20,6 +20,7 @@ mod components {
     pub mod landing;
     pub mod loading;
     pub mod login;
+    pub mod map_editor;
     pub mod nav;
     pub mod parking;
     pub mod parking_admin;
@@ -127,6 +128,9 @@ pub enum Route {
 
     #[route("/admin/stores")]
     StoresAdmin {},
+
+    #[route("/admin/map-editor")]
+    MapEditor {},
 
     #[route("/store/:name")]
     Store { name: String },
@@ -258,6 +262,14 @@ fn StoresAdmin() -> Element {
     rsx! {
         ProtectedRoute {
             components::stores_admin::StoresAdminPage {}
+        }
+    }
+}
+
+fn MapEditor() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::map_editor::MapEditorPage {}
         }
     }
 }
