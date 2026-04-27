@@ -29,6 +29,43 @@ fn icon_src_from_db_path(path: &str) -> String {
     trimmed.to_string()
 }
 
+fn store_admin_row_matches_query(row: &StoreAdminRow, q_lower: &str) -> bool {
+    if q_lower.is_empty() {
+        return true;
+    }
+    row.name.to_lowercase().contains(q_lower)
+        || row.id.to_string().contains(q_lower)
+        || row
+            .store_number
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(q_lower)
+        || row
+            .level
+            .map(|v| v.to_string())
+            .unwrap_or_default()
+            .contains(q_lower)
+        || row
+            .phone
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(q_lower)
+        || row
+            .website
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(q_lower)
+        || row
+            .icon_path
+            .as_deref()
+            .unwrap_or_default()
+            .to_lowercase()
+            .contains(q_lower)
+}
+
 pub fn StoresAdminPage() -> Element {
     let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
@@ -53,6 +90,7 @@ pub fn StoresAdminPage() -> Element {
     let mut selected_file_bytes = use_signal(|| None::<Vec<u8>>);
     let mut desktop_tab = use_signal(|| StoresAdminTab::Add);
     let mut preview_image_src = use_signal(|| None::<String>);
+    let mut manage_search = use_signal(String::new);
 
     use_effect(move || {
         if matches!(auth(), AuthState::LoggedOut) {
@@ -292,44 +330,84 @@ pub fn StoresAdminPage() -> Element {
                     }
                 }
 
-                div { class: "hidden md:flex mb-4 rounded-xl border border-gray-200 p-1 w-fit gap-1",
-                    button {
-                        class: if desktop_tab() == StoresAdminTab::Add {
-                            "rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
-                        } else {
-                            "rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
-                        },
-                        onclick: move |_| desktop_tab.set(StoresAdminTab::Add),
-                        {translate(locale(), "stores_admin.tab.add")}
+                div { class: "mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4",
+                    div { class: "flex w-full flex-col gap-3 md:w-auto md:shrink-0",
+                        div { class: "hidden md:flex rounded-xl border border-gray-200 p-1 w-fit gap-1",
+                            button {
+                                class: if desktop_tab() == StoresAdminTab::Add {
+                                    "rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
+                                } else {
+                                    "rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
+                                },
+                                onclick: move |_| desktop_tab.set(StoresAdminTab::Add),
+                                {translate(locale(), "stores_admin.tab.add")}
+                            }
+                            button {
+                                class: if desktop_tab() == StoresAdminTab::Manage {
+                                    "rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
+                                } else {
+                                    "rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
+                                },
+                                onclick: move |_| desktop_tab.set(StoresAdminTab::Manage),
+                                {translate(locale(), "stores_admin.tab.manage")}
+                            }
+                        }
+                        div { class: "flex rounded-xl border border-gray-200 p-1 gap-1 md:hidden",
+                            button {
+                                class: if desktop_tab() == StoresAdminTab::Add {
+                                    "flex-1 rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
+                                } else {
+                                    "flex-1 rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
+                                },
+                                onclick: move |_| desktop_tab.set(StoresAdminTab::Add),
+                                {translate(locale(), "stores_admin.tab.add")}
+                            }
+                            button {
+                                class: if desktop_tab() == StoresAdminTab::Manage {
+                                    "flex-1 rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
+                                } else {
+                                    "flex-1 rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
+                                },
+                                onclick: move |_| desktop_tab.set(StoresAdminTab::Manage),
+                                {translate(locale(), "stores_admin.tab.manage")}
+                            }
+                        }
                     }
-                    button {
-                        class: if desktop_tab() == StoresAdminTab::Manage {
-                            "rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
-                        } else {
-                            "rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
-                        },
-                        onclick: move |_| desktop_tab.set(StoresAdminTab::Manage),
-                        {translate(locale(), "stores_admin.tab.manage")}
-                    }
-                }
-                div { class: "mb-4 flex rounded-xl border border-gray-200 p-1 gap-1 md:hidden",
-                    button {
-                        class: if desktop_tab() == StoresAdminTab::Add {
-                            "flex-1 rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
-                        } else {
-                            "flex-1 rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
-                        },
-                        onclick: move |_| desktop_tab.set(StoresAdminTab::Add),
-                        {translate(locale(), "stores_admin.tab.add")}
-                    }
-                    button {
-                        class: if desktop_tab() == StoresAdminTab::Manage {
-                            "flex-1 rounded-lg bg-dark px-4 py-2 text-xs font-bold tracking-wider text-white"
-                        } else {
-                            "flex-1 rounded-lg px-4 py-2 text-xs font-bold tracking-wider text-dark hover:bg-gray-100"
-                        },
-                        onclick: move |_| desktop_tab.set(StoresAdminTab::Manage),
-                        {translate(locale(), "stores_admin.tab.manage")}
+                    div { class: "flex w-full max-w-lg md:ml-auto md:w-auto md:min-w-0 md:flex-1 md:justify-end",
+                        div { class: "flex w-full max-w-lg",
+                            div { class: "flex-1 relative",
+                                input {
+                                    class: "w-full py-3.5 pl-4 pr-12 text-sm border border-gray-200 rounded-l-lg placeholder-muted focus:ring-accent focus:border-accent focus:outline-none",
+                                    r#type: "text",
+                                    placeholder: {translate(locale(), "stores_admin.search.placeholder")},
+                                    value: "{manage_search}",
+                                    oninput: move |e| {
+                                        let value = e.value();
+                                        if !value.trim().is_empty() {
+                                            desktop_tab.set(StoresAdminTab::Manage);
+                                        }
+                                        manage_search.set(value);
+                                    },
+                                }
+                            }
+                            button {
+                                class: "px-5 bg-dark text-white rounded-r-lg hover:bg-gray-700 transition-colors",
+                                r#type: "button",
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    width: "18",
+                                    height: "18",
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    stroke_linecap: "round",
+                                    stroke_linejoin: "round",
+                                    circle { cx: "11", cy: "11", r: "8" }
+                                    line { x1: "21", y1: "21", x2: "16.65", y2: "16.65" }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -581,9 +659,29 @@ pub fn StoresAdminPage() -> Element {
                             div { class: "rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-sm text-muted",
                                 "Aucune boutique a afficher."
                             }
+                        } else if !manage_search().trim().is_empty()
+                            && rows()
+                                .iter()
+                                .filter(|row| {
+                                    store_admin_row_matches_query(
+                                        row,
+                                        &manage_search().trim().to_lowercase(),
+                                    )
+                                })
+                                .count()
+                                == 0
+                        {
+                            div { class: "rounded-lg border border-gray-200 bg-amber-50 px-4 py-6 text-sm text-amber-900",
+                                {translate(locale(), "stores_admin.search.no_match")}
+                            }
                         } else {
                             div { class: "grid grid-cols-1 gap-3",
-                                for row in rows() {
+                                for row in rows().into_iter().filter(|row| {
+                                    store_admin_row_matches_query(
+                                        row,
+                                        &manage_search().trim().to_lowercase(),
+                                    )
+                                }) {
                                     div {
                                         key: "{row.id}",
                                         class: "rounded-lg border border-gray-200 p-3",
@@ -608,7 +706,7 @@ pub fn StoresAdminPage() -> Element {
                                                             onclick: move |_| {
                                                                 preview_image_src.set(Some(icon_src_from_db_path(&path)));
                                                             },
-                                                            "Voir"
+                                                            {translate(locale(), "stores_admin.action.view")}
                                                         }
                                                     } else {
                                                         span {}

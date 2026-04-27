@@ -7,10 +7,39 @@ use crate::services::game::{
     DailyPrizePoolSnapshot,
 };
 use crate::services::vouchers::list_recent_vouchers;
-use crate::stores::{get_stores, slugify, Category, Store};
+use crate::stores::{search_stores, slugify, Category, Store};
 use crate::Route;
 use chrono::Utc;
 use dioxus::prelude::*;
+
+/// Reporte l'exécution sur la file JS (`setTimeout(0)`), hors de l'exécuteur
+/// `wasm-bindgen-futures` — évite les panics `RefCell already borrowed` lors
+/// des `Signal::set` déclenchés depuis des gestionnaires de clic / hydratation.
+#[cfg(target_family = "wasm")]
+fn defer_after_paint(f: impl FnOnce() + 'static) {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let mut f = Some(f);
+    let closure = Closure::wrap(Box::new(move || {
+        if let Some(done) = f.take() {
+            done();
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+        closure.as_ref().unchecked_ref(),
+        0,
+    );
+    closure.forget();
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn defer_after_paint(f: impl FnOnce() + 'static) {
+    f();
+}
 
 #[derive(Clone, Copy, PartialEq, Default)]
 enum FilterGroup {
@@ -379,62 +408,108 @@ pub(crate) fn Home() -> Element {
     }
 }
 
-#[component]
-fn GamePromoModal() -> Element {
-    let mut is_open = use_signal(|| true);
-    let nav = use_navigator();
+/// Logique localStorage (navigateur uniquement). Le serveur ne doit pas décider
+/// d'afficher la modale à l'init : même état `false` partout évite les erreurs
+/// d'hydratation (`hydrate_node` / attributs indéfinis).
+fn wasm_game_promo_should_open_and_mark_seen() -> bool {
+    const KEY: &str = "game_promo_last_seen_at_ms";
+    const COOLDOWN_MS: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
 
-    if !is_open() {
-        return rsx! {};
+    #[cfg(target_family = "wasm")]
+    {
+        if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
+            let now = js_sys::Date::now();
+            let should_show = match storage.get_item(KEY).ok().flatten() {
+                None => true,
+                Some(raw) => raw
+                    .parse::<f64>()
+                    .map(|last_seen| now - last_seen >= COOLDOWN_MS)
+                    .unwrap_or(true),
+            };
+            if should_show {
+                let _ = storage.set_item(KEY, &now.to_string());
+            }
+            return should_show;
+        }
     }
 
+    false
+}
+
+#[component]
+fn GamePromoModal() -> Element {
+    let mut is_open = use_signal(|| false);
+    let nav = use_navigator();
+
+    use_effect(move || {
+        #[cfg(target_family = "wasm")]
+        if wasm_game_promo_should_open_and_mark_seen() {
+            defer_after_paint(move || is_open.set(true));
+        }
+    });
+
     rsx! {
-        div {
-            class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
-            style: "position: fixed; inset: 0; z-index: 9999;",
-            onclick: move |_| is_open.set(false),
-
+        if is_open() {
             div {
-                class: "relative w-full max-w-lg rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden",
-                onclick: move |e| e.stop_propagation(),
+                class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
+                style: "position: fixed; inset: 0; z-index: 9999;",
+                onclick: move |_| {
+                    defer_after_paint(move || is_open.set(false));
+                },
 
-                button {
-                    class: "absolute top-3 right-3 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold",
-                    aria_label: "Close game promotion",
-                    onclick: move |_| is_open.set(false),
-                    "×"
-                }
+                div {
+                    class: "relative isolate w-full max-w-lg rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden",
+                    onclick: move |e| e.stop_propagation(),
 
-                div { class: "p-7 md:p-8",
-                    div { class: "mb-4 flex justify-center",
-                        img {
-                            src: asset!("/assets/fox_icon.svg"),
-                            alt: "FoxTown game",
-                            class: "h-24 w-24 ft-fox-pulse object-contain",
+                    div { class: "py-6 px-6 md:p-8",
+                        div { class: "mb-4 flex justify-center",
+                            img {
+                                src: asset!("/assets/fox_icon.svg"),
+                                alt: "FoxTown game",
+                                class: "h-24 w-24 ft-fox-pulse object-contain",
+                            }
+                        }
+
+                        p { class: "text-xs font-bold tracking-[0.22em] uppercase text-accent text-center mb-2",
+                            "New game"
+                        }
+                        p { class: "text-sm md:text-base text-body text-center mb-6",
+                            "Play the FoxTown rewards game now and claim exclusive discounts in just a few clicks."
+                        }
+
+                        div { class: "flex flex-col sm:flex-row gap-3",
+                            button {
+                                r#type: "button",
+                                class: "flex-1 py-3 px-4 rounded-lg bg-accent text-white font-bold tracking-wide hover:bg-amber-600 transition-colors",
+                                onclick: move |_| {
+                                    defer_after_paint(move || {
+                                        is_open.set(false);
+                                        nav.push(Route::Rewards {});
+                                    });
+                                },
+                                "Play now"
+                            }
+                            button {
+                                r#type: "button",
+                                class: "flex-1 py-3 px-4 rounded-lg bg-gray-100 text-dark font-semibold hover:bg-gray-200 transition-colors",
+                                onclick: move |_| {
+                                    defer_after_paint(move || is_open.set(false));
+                                },
+                                "Maybe later"
+                            }
                         }
                     }
 
-                    p { class: "text-xs font-bold tracking-[0.22em] uppercase text-accent text-center mb-2",
-                        "New game"
-                    }
-                    p { class: "text-sm md:text-base text-body text-center mb-6",
-                        "Play the FoxTown rewards game now and claim exclusive discounts in just a few clicks."
-                    }
-
-                    div { class: "flex flex-col sm:flex-row gap-3",
-                        button {
-                            class: "flex-1 py-3 px-4 rounded-lg bg-accent text-white font-bold tracking-wide hover:bg-amber-600 transition-colors",
-                            onclick: move |_| {
-                                is_open.set(false);
-                                nav.push(Route::Rewards {});
-                            },
-                            "Play now"
-                        }
-                        button {
-                            class: "flex-1 py-3 px-4 rounded-lg bg-gray-100 text-dark font-semibold hover:bg-gray-200 transition-colors",
-                            onclick: move |_| is_open.set(false),
-                            "Maybe later"
-                        }
+                    button {
+                        class: "pointer-events-auto absolute top-[12px] right-[12px] z-20 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-gray-100 p-0 text-base font-bold leading-none text-gray-600 shadow-sm hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                        r#type: "button",
+                        aria_label: "Close game promotion",
+                        style: "margin: 0;",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            defer_after_paint(move || is_open.set(false));
+                        },
+                        "×"
                     }
                 }
             }
@@ -446,25 +521,27 @@ pub(crate) fn StoresPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut filter = use_signal(FilterGroup::default);
+    let stores = use_loader(|| search_stores(String::new()))?;
+    let mut queried_stores = use_signal(Vec::<Store>::new);
+    let mut query_seq = use_signal(|| 0u64);
 
-    let stores = use_loader(|| get_stores())?;
+    let active_filter = filter();
+    let source_rows: Vec<Store> = if search().trim().is_empty() {
+        stores.iter().map(|s| (*s).clone()).collect()
+    } else {
+        queried_stores()
+    };
 
-    let q = search().to_lowercase();
-    let fg = filter();
-
-    let filtered: Vec<Store> = stores
-        .iter()
+    let filtered: Vec<Store> = source_rows
+        .into_iter()
         .filter(|s| {
             let has_icon = s
                 .icon_path
                 .as_deref()
                 .map(|p| !p.trim().is_empty())
                 .unwrap_or(false);
-            has_icon
-                && (q.is_empty() || s.name.to_lowercase().contains(&q))
-                && fg.matches(&s.category)
+            has_icon && active_filter.matches(&s.category)
         })
-        .map(|s| (*s).clone())
         .collect();
 
     rsx! {
@@ -493,7 +570,18 @@ pub(crate) fn StoresPage() -> Element {
                             r#type: "text",
                             placeholder: {translate(locale(), "home.search_placeholder")},
                             value: "{search}",
-                            oninput: move |e| search.set(e.value()),
+                            oninput: move |e| {
+                                let value = e.value();
+                                search.set(value.clone());
+                                let seq = query_seq() + 1;
+                                query_seq.set(seq);
+                                spawn(async move {
+                                    let rows = search_stores(value).await.unwrap_or_default();
+                                    if query_seq() == seq {
+                                        queried_stores.set(rows);
+                                    }
+                                });
+                            },
                         }
                     }
                     button { class: "px-5 bg-dark text-white rounded-r-lg hover:bg-gray-700 transition-colors",
@@ -543,9 +631,9 @@ pub(crate) fn StoresPage() -> Element {
                     }
                 } else {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6",
-                        for store in filtered {
+                        for (idx, store) in filtered.into_iter().enumerate() {
                             Link {
-                                key: "{store.name}",
+                                key: "{idx}-{slugify(&store.name)}",
                                 to: Route::Store { name: slugify(&store.name) },
                                 class: "group block",
 

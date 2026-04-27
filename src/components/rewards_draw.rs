@@ -26,6 +26,33 @@ use crate::services::vouchers::create_voucher_and_send_email;
 use dioxus::prelude::*;
 use std::collections::HashMap;
 
+/// Évite les panics `RefCell already borrowed` lors des `Signal::set` depuis des clics (cf. `home.rs`).
+#[cfg(target_family = "wasm")]
+pub(crate) fn defer_after_paint(f: impl FnOnce() + 'static) {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let mut f = Some(f);
+    let closure = Closure::wrap(Box::new(move || {
+        if let Some(done) = f.take() {
+            done();
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+        closure.as_ref().unchecked_ref(),
+        0,
+    );
+    closure.forget();
+}
+
+#[cfg(not(target_family = "wasm"))]
+pub(crate) fn defer_after_paint(f: impl FnOnce() + 'static) {
+    f();
+}
+
 const CONTAINER_RADIUS: f64 = 120.0;
 const BALL_RADIUS: f64 = 16.0;
 const PHYSICS_DT_MS: u64 = 16;
@@ -90,6 +117,10 @@ pub struct WinnerEvent {
     pub valid_until_iso: String,
     pub qr_payload: String,
 }
+
+/// Fourni par `RewardsPage` : ouverture du modal règles / reset depuis le bouton du hero.
+#[derive(Clone, Copy)]
+pub struct RewardsRulesModalOpen(pub Signal<bool>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DrawPhase {
@@ -530,6 +561,7 @@ fn render_machine(
 pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
+    let mut rules_modal_open = use_context::<RewardsRulesModalOpen>().0;
     let mut daily_reset_countdown =
         use_signal(|| format_daily_prize_reset_countdown_hms());
     let mut daily_reset_at = use_signal(|| format_next_reset_local(locale(), next_utc_midnight()));
@@ -1042,23 +1074,76 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         )}
                     }
                 }
-            } else {
-            div { class: "w-full max-w-3xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm",
-                p { class: "text-xs font-bold tracking-widest text-slate-600 text-center",
-                    {translate(locale(), "rewards_draw.daily_reset.heading")}
-                }
-                p { class: "mt-2 text-center font-mono text-2xl font-bold tabular-nums text-dark tracking-tight",
-                    "{daily_reset_countdown()}"
-                }
-                p { class: "mt-2 text-center text-xs text-slate-600 leading-relaxed",
-                    {translate_fmt(
-                        locale(),
-                        "rewards_draw.daily_reset.resets_at",
-                        &[("time", daily_reset_at())],
-                    )}
-                }
-                p { class: "mt-1 text-center text-[10px] text-slate-400",
-                    {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
+            }
+            if rules_modal_open() {
+                div {
+                    class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
+                    style: "position: fixed; inset: 0; z-index: 9999;",
+                    onclick: move |_| {
+                        defer_after_paint(move || rules_modal_open.set(false));
+                    },
+                    div {
+                        class: "relative isolate w-full max-w-lg max-h-[min(90vh,640px)] overflow-y-auto rounded-2xl bg-white border border-gray-200 shadow-2xl",
+                        onclick: move |e| e.stop_propagation(),
+                        div { class: "py-5 px-5 md:p-6",
+                            h2 { class: "text-sm font-extrabold tracking-widest text-dark text-center mb-4",
+                                {translate(locale(), "rewards_draw.rules.title")}
+                            }
+                            div { class: "rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4",
+                                p { class: "text-xs font-bold tracking-widest text-slate-600 text-center",
+                                    {translate(locale(), "rewards_draw.daily_reset.heading")}
+                                }
+                                p { class: "mt-2 text-center font-mono text-2xl font-bold tabular-nums text-dark tracking-tight",
+                                    "{daily_reset_countdown()}"
+                                }
+                                p { class: "mt-2 text-center text-xs text-slate-600 leading-relaxed",
+                                    {translate_fmt(
+                                        locale(),
+                                        "rewards_draw.daily_reset.resets_at",
+                                        &[("time", daily_reset_at())],
+                                    )}
+                                }
+                                p { class: "mt-1 text-center text-[10px] text-slate-400",
+                                    {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
+                                }
+                            }
+                            h3 { class: "text-xs font-bold tracking-wider text-dark mb-2",
+                                {translate(locale(), "rewards_draw.rules.diff_title")}
+                            }
+                            p { class: "text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_reset")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_cooldown")}
+                            }
+                            p { class: "mt-2 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_midnight_note")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-700 font-semibold leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_goal")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_intro")}
+                            }
+                            p { class: "mt-1.5 text-xs text-slate-600 leading-relaxed pl-1",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_bullet_cooldown")}
+                            }
+                            p { class: "mt-1 text-xs text-slate-600 leading-relaxed pl-1",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_bullet_reset")}
+                            }
+                        }
+                        button {
+                            class: "pointer-events-auto absolute top-[10px] right-[10px] z-20 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-gray-100 p-0 text-base font-bold leading-none text-gray-600 shadow-sm hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                            r#type: "button",
+                            aria_label: translate(locale(), "rewards_draw.rules.close_aria"),
+                            style: "margin: 0;",
+                            onclick: move |e| {
+                                e.stop_propagation();
+                                defer_after_paint(move || rules_modal_open.set(false));
+                            },
+                            "×"
+                        }
+                    }
                 }
             }
             if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
@@ -1098,7 +1183,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         }
                     }
                 }
-                p { class: "mt-3 text-xs text-muted",
+                p { class: "mt-3 py-1.5 text-xs text-muted",
                     {translate_fmt(
                         locale(),
                         "rewards_draw.selected_count",
@@ -1125,46 +1210,27 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             }
 
             if can_show_machine {
-                div { class: "w-full max-w-5xl grid grid-cols-2 gap-6 items-start",
-                    div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
-                            style: "transform: none;",
-                            {translate(locale(), "rewards_draw.phase.first_store_draw")}
+                div { class: "w-full max-w-5xl grid grid-cols-2 grid-rows-1 gap-6",
+                    div { class: "flex flex-col gap-4 items-center w-full",
+                        div { class: "bg-white border border-gray-100 rounded-xl p-3 w-full",
+                            p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
+                                style: "transform: none;",
+                                {translate(locale(), "rewards_draw.phase.first_store_draw")}
+                            }
+                            {render_machine(
+                                &ordered_store_balls,
+                                extracted_store_ball(),
+                                false,
+                                extracted_store().as_deref(),
+                                false,
+                                0.0,
+                            )}
                         }
-                        {render_machine(
-                            &ordered_store_balls,
-                            extracted_store_ball(),
-                            false,
-                            extracted_store().as_deref(),
-                            false,
-                            0.0,
-                        )}
-                    }
-                    div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
-                            style: "transform: none;",
-                            {translate(locale(), "rewards_draw.phase.discount_draw")}
-                        }
-                        {render_machine(
-                            &ordered_discount_balls,
-                            extracted_discount_ball(),
-                            true,
-                            None,
-                            show_discount_stamp,
-                            discount_stamp_ink_progress(),
-                        )}
-                    }
-                }
-            }
-
-            if can_show_machine {
-                div { class: "text-center",
-                    div { class: "flex items-center justify-center gap-3 mb-3",
                         button {
                             class: if !drawing() && phase() == DrawPhase::DrawStore {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
                             } else {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
                             },
                             disabled: drawing() || phase() != DrawPhase::DrawStore,
                             onclick: draw_store,
@@ -1174,11 +1240,27 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                                 {translate(locale(), "rewards_draw.button.draw_store")}
                             }
                         }
+                    }
+                    div { class: "flex flex-col gap-4 items-center w-full",
+                        div { class: "bg-white border border-gray-100 rounded-xl p-3 w-full",
+                            p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
+                                style: "transform: none;",
+                                {translate(locale(), "rewards_draw.phase.discount_draw")}
+                            }
+                            {render_machine(
+                                &ordered_discount_balls,
+                                extracted_discount_ball(),
+                                true,
+                                None,
+                                show_discount_stamp,
+                                discount_stamp_ink_progress(),
+                            )}
+                        }
                         button {
                             class: if !drawing() && phase() == DrawPhase::DrawDiscount {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
                             } else {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
                             },
                             disabled: drawing() || phase() != DrawPhase::DrawDiscount,
                             onclick: draw_discount,
@@ -1189,8 +1271,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                             }
                         }
                     }
+                }
+            }
 
-                p { class: "text-xs text-muted mt-2",
+            if can_show_machine {
+                div { class: "text-center w-full max-w-5xl",
+                p { class: "text-xs text-muted mt-4",
                     "{status_message()}"
                 }
                 if let Some(store) = extracted_store() {
@@ -1231,7 +1317,6 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
                 }
-            }
             }
         }
     }

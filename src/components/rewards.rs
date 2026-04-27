@@ -1,6 +1,8 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
-use crate::components::rewards_draw::{RewardsDraw, WinnerEvent};
+use crate::components::rewards_draw::{
+    defer_after_paint, RewardsDraw, RewardsRulesModalOpen, WinnerEvent,
+};
 use crate::i18n::{Locale, translate};
 use crate::services::vouchers::{list_recent_vouchers, VoucherRecentSummary};
 use dioxus::prelude::*;
@@ -41,6 +43,7 @@ fn map_recent_winner(item: VoucherRecentSummary) -> WinnerFeedItem {
 
 pub fn RewardsPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
+    let mut rules_modal_open = use_context_provider(|| RewardsRulesModalOpen(Signal::new(false)));
     let mut winners = use_signal(Vec::<WinnerFeedItem>::new);
     let mut winners_loaded = use_signal(|| false);
 
@@ -91,23 +94,36 @@ pub fn RewardsPage() -> Element {
 
             // ─── Hero Game Section ──────────────────────────────────
             section { class: "bg-gray-50",
-                div { class: "max-w-7xl mx-auto px-6 py-16",
-                    div { class: "flex flex-col lg:flex-row items-center gap-12",
+                button {
+                    r#type: "button",
+                    class: "float-right mt-16 mb-4 mr-6 px-4 py-2 text-xs font-bold tracking-wider uppercase text-right rounded-lg bg-black text-accent hover:bg-gray-800 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 min-[80rem]:mr-[max(1.5rem,calc((100vw-80rem)/2+1.5rem))]",
+                    onclick: move |_| {
+                        defer_after_paint(move || rules_modal_open.0.set(true));
+                    },
+                    {translate(locale(), "rewards_draw.rules.button")}
+                }
 
-                        // Left content
-                        div { class: "flex-1",
-                            p { class: "text-xs font-bold tracking-widest text-accent mb-4",
-                                {translate(locale(), "rewards.exclusive")}
-                            }
-                            h1 { class: "text-4xl md:text-5xl font-extrabold text-dark leading-tight mb-6",
+                div { class: "clear-both max-w-7xl mx-auto px-6 pb-16 flex flex-col gap-12",
+
+                    // 1) Titre + sous-titre (pleine largeur)
+                    div { class: "w-full",
+                        div { class: "min-w-0",
+                            h1 { class: "text-4xl md:text-5xl font-extrabold text-dark leading-tight text-left mb-3",
                                 {format!("{} ", translate(locale(), "rewards.spin"))}
                                 span { class: "text-accent", {translate(locale(), "rewards.to_win")} }
                             }
-                            p { class: "text-body leading-relaxed max-w-lg mb-10",
+                            p { class: "text-xs font-bold tracking-widest text-accent mb-2",
+                                {translate(locale(), "rewards.exclusive")}
+                            }
+                            p { class: "text-body leading-relaxed max-w-2xl",
                                 {translate(locale(), "rewards.hero_subtitle")}
                             }
+                        }
+                    }
 
-                            // Recent Winners
+                    // 2) Gagnants + tirage (flex, comme avant la grille)
+                    div { class: "flex flex-col items-center lg:flex-row lg:items-start gap-12 w-full",
+                        div { class: "flex-1 w-full min-w-0",
                             div { class: "bg-white rounded-xl border border-gray-100 p-6",
                                 div { class: "flex items-center justify-between mb-5",
                                     h3 { class: "text-lg font-bold text-dark", {translate(locale(), "rewards.recent_winners")} }
@@ -116,7 +132,6 @@ pub fn RewardsPage() -> Element {
                                         span { class: "text-xs font-bold text-accent", {translate(locale(), "rewards.live")} }
                                     }
                                 }
-
                                 div { class: "space-y-4",
                                     for entry in winners() {
                                         WinnerRow {
@@ -127,10 +142,7 @@ pub fn RewardsPage() -> Element {
                                     }
                                 }
                             }
-
                         }
-
-                        // Right: Ball draw game (from game-promo service)
                         RewardsDraw {
                             on_win: move |win: WinnerEvent| {
                                 let display_name = format!("{}.", win.user_name.to_uppercase());

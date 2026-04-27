@@ -384,6 +384,52 @@ pub async fn get_stores() -> Result<Vec<Store>, ServerFnError> {
 }
 
 #[server]
+pub async fn search_stores(query: String) -> Result<Vec<Store>, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        let pool = crate::db::pool().await;
+        let like = format!("%{}%", query.trim().to_lowercase());
+        let rows: Vec<(String, String, Option<String>, Option<i64>, Option<String>, Option<String>, Option<String>)> =
+            sqlx::query_as(
+                "SELECT name, category, store_number, level, phone, website, icon_path
+                 FROM stores
+                 WHERE LOWER(name) LIKE ?
+                 ORDER BY name",
+            )
+            .bind(like)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        let mut stores = Vec::with_capacity(rows.len());
+        for (name, category, store_number, level, phone, website, icon_path) in rows {
+            let parsed_category = Category::from_key(&category)
+                .ok_or_else(|| ServerFnError::new(format!("Unknown store category '{category}'")))?;
+            stores.push(Store {
+                name,
+                category: parsed_category,
+                store_number,
+                level: level.map(|v| v as u8),
+                phone,
+                website,
+                icon_path,
+            });
+        }
+        return Ok(stores);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        let needle = query.trim().to_lowercase();
+        Ok(cached_stores()
+            .iter()
+            .filter(|s| needle.is_empty() || s.name.to_lowercase().contains(&needle))
+            .cloned()
+            .collect())
+    }
+}
+
+#[server]
 pub async fn get_stores_by_category(category: Category) -> Result<Vec<Store>, ServerFnError> {
     Ok(get_stores()
         .await?
