@@ -3,7 +3,6 @@ use crate::context::auth::read_token;
 use crate::i18n::{translate, translate_fmt, Locale};
 use chrono::{DateTime, Utc};
 use crate::services::game::{
-    all_categories,
     default_game_rules,
     delay_ms,
     DailyPrizePoolSnapshot,
@@ -12,12 +11,14 @@ use crate::services::game::{
     get_game_rules,
     game_server_can_award_prize_today,
     game_server_can_start_today,
+    game_server_all_categories,
     game_server_choose_distributed_shop,
     game_server_register_session_finished,
+    game_server_shops_by_category_keys,
     game_server_try_register_prize_award,
     get_daily_prize_pool_snapshot,
     random_index,
-    shops_by_category_keys,
+    StoreCategory,
     store_black_ball_count_for_shop_count,
     ShopInfo,
 };
@@ -576,9 +577,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     });
 
     let mut phase = use_signal(|| DrawPhase::SelectCategories);
-    let categories = all_categories();
+    let mut categories = use_signal(Vec::<StoreCategory>::new);
     let mut selected_categories = use_signal(Vec::<String>::new);
     let mut shops = use_signal(Vec::<ShopInfo>::new);
+
+    use_effect(move || {
+        spawn(async move {
+            if let Ok(server_categories) = game_server_all_categories().await {
+                categories.set(server_categories);
+            }
+        });
+    });
 
     let mut store_balls = use_signal(Vec::<Ball3D>::new);
     let mut discount_balls = use_signal(|| init_discount_balls(&game_rules()));
@@ -666,7 +675,14 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                 return;
             }
 
-            let available_shops = shops_by_category_keys(&selected);
+            let available_shops = match game_server_shops_by_category_keys(selected.clone()).await {
+                Ok(shops) => shops,
+                Err(_) => {
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    drawing.set(false);
+                    return;
+                }
+            };
             if available_shops.is_empty() {
                 status_message.set(translate(loc, "rewards_draw.status.no_store_for_selection"));
                 drawing.set(false);
@@ -1057,7 +1073,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     {translate(locale(), "rewards_draw.title.pick_categories")}
                 }
                 div { class: "flex flex-wrap gap-2",
-                    for category in categories {
+                    for category in categories() {
                         button {
                             key: "{category.key}",
                             class: if selected_categories().contains(&category.key) {

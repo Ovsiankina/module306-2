@@ -4,7 +4,7 @@ use crate::components::nav::{Nav, NavPage};
 use crate::context::auth::AuthState;
 use crate::i18n::{translate, translate_fmt, Locale};
 use crate::services::game::{
-    default_game_rules, get_game_rules, total_unique_shops_count, update_game_rules,
+    default_game_rules, game_server_total_unique_shops_count, get_game_rules, update_game_rules,
     DiscountRangeRule, GameRules,
 };
 use crate::Route;
@@ -18,6 +18,7 @@ pub fn GameRulesPage() -> Element {
     let nav = use_navigator();
 
     let mut rules = use_signal(default_game_rules);
+    let mut total_stores = use_signal(|| 0usize);
     let mut loading = use_signal(|| true);
     let mut saving = use_signal(|| false);
     let mut status = use_signal(String::new);
@@ -44,11 +45,14 @@ pub fn GameRulesPage() -> Element {
                 }
                 Err(_) => status.set(translate(locale(), "game_rules.status.load_error")),
             }
+            if let Ok(count) = game_server_total_unique_shops_count().await {
+                total_stores.set(count);
+            }
             loading.set(false);
         });
     });
 
-    let total_stores = total_unique_shops_count();
+    let total_stores = total_stores();
     let current = rules();
     let store_max_limit = total_stores.max(1).min(u16::MAX as usize) as u16;
     let store_min = current.store_draw.black_balls_min.min(store_max_limit);

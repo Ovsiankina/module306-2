@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "server")]
 use std::collections::HashMap;
 
-/// Plafond de bons émis par période UTC (minuit → minuit), aligné sur `data/vouchers.json`.
+/// Plafond de bons émis par période UTC (minuit → minuit), aligné sur `migrations/seeders/vouchers.json`.
 pub const MAX_VOUCHERS_PER_UTC_DAY: u32 = 10;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -24,7 +24,7 @@ pub struct VoucherAdminSummary {
     pub valid_until: String,
 }
 
-/// Full voucher row for admin list (matches `data/vouchers.json` records).
+/// Full voucher row for admin list (matches `migrations/seeders/vouchers.json` records).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VoucherAdminFull {
     pub id: u64,
@@ -84,15 +84,8 @@ struct VoucherQrPayload {
 }
 
 #[cfg(feature = "server")]
-fn vouchers_path() -> std::path::PathBuf {
-    std::env::var("VOUCHERS_JSON_PATH")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("data/vouchers.json"))
-}
-
-#[cfg(feature = "server")]
-pub(crate) fn voucher_count_for_current_utc_day() -> u32 {
-    let Ok(vouchers) = load_vouchers() else {
+pub(crate) async fn voucher_count_for_current_utc_day() -> u32 {
+    let Ok(vouchers) = load_vouchers().await else {
         return 0;
     };
     let now = chrono::Utc::now();
@@ -117,8 +110,8 @@ pub(crate) fn voucher_count_for_current_utc_day() -> u32 {
 }
 
 #[cfg(feature = "server")]
-pub(crate) fn active_daily_quota_cooldown_until_utc() -> Option<chrono::DateTime<chrono::Utc>> {
-    let vouchers = load_vouchers().ok()?;
+pub(crate) async fn active_daily_quota_cooldown_until_utc() -> Option<chrono::DateTime<chrono::Utc>> {
+    let vouchers = load_vouchers().await.ok()?;
     let mut by_day: HashMap<chrono::NaiveDate, Vec<chrono::DateTime<chrono::Utc>>> = HashMap::new();
 
     for voucher in vouchers {
@@ -148,27 +141,46 @@ pub(crate) fn active_daily_quota_cooldown_until_utc() -> Option<chrono::DateTime
 }
 
 #[cfg(feature = "server")]
-fn load_vouchers() -> Result<Vec<VoucherRecord>, ServerFnError> {
-    let path = vouchers_path();
-    if !path.exists() {
-        return Ok(vec![]);
-    }
-    let content = std::fs::read_to_string(&path).map_err(|e| ServerFnError::new(e.to_string()))?;
-    if content.trim().is_empty() {
-        return Ok(vec![]);
-    }
-    serde_json::from_str(&content).map_err(|e| ServerFnError::new(e.to_string()))
-}
+async fn load_vouchers() -> Result<Vec<VoucherRecord>, ServerFnError> {
+    let pool = crate::db::pool().await;
+    let rows: Vec<(
+        i64,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        i64,
+        String,
+        String,
+        i64,
+    )> = sqlx::query_as(
+        "SELECT id, qr_token, email, username, first_name, last_name, store, discount, valid_until, created_at, redeemed
+         FROM vouchers",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-#[cfg(feature = "server")]
-fn save_vouchers(vouchers: &[VoucherRecord]) -> Result<(), ServerFnError> {
-    let path = vouchers_path();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| ServerFnError::new(e.to_string()))?;
-    }
-    let serialized =
-        serde_json::to_string_pretty(vouchers).map_err(|e| ServerFnError::new(e.to_string()))?;
-    std::fs::write(path, serialized).map_err(|e| ServerFnError::new(e.to_string()))
+    Ok(rows
+        .into_iter()
+        .map(
+            |(id, qr_token, email, username, first_name, last_name, store, discount, valid_until, created_at, redeemed)| VoucherRecord {
+                id: id as u64,
+                qr_token,
+                email,
+                username,
+                first_name,
+                last_name,
+                store,
+                discount: discount as u32,
+                valid_until,
+                created_at,
+                redeemed: redeemed != 0,
+            },
+        )
+        .collect())
 }
 
 #[cfg(feature = "server")]
@@ -311,13 +323,11 @@ pub async fn create_voucher_and_send_email(
 
     #[cfg(feature = "server")]
     {
-        if voucher_count_for_current_utc_day() >= MAX_VOUCHERS_PER_UTC_DAY {
+        if voucher_count_for_current_utc_day().await >= MAX_VOUCHERS_PER_UTC_DAY {
             return Err(ServerFnError::new(
                 "Quota journalier de bons atteint (minuit UTC).".to_string(),
             ));
         }
-        let mut vouchers = load_vouchers()?;
-        let next_id = vouchers.iter().map(|v| v.id).max().unwrap_or(0) + 1;
         let qr_token = uuid::Uuid::new_v4().to_string();
         let base_url =
             std::env::var("APP_BASE_URL").unwrap_or_else(|_| "http://localhost:8080".to_string());
@@ -335,21 +345,24 @@ pub async fn create_voucher_and_send_email(
         let pool = crate::db::pool().await;
         let (fname, lname) = lookup_user_names(pool, &username, &email).await;
 
-        let record = VoucherRecord {
-            id: next_id,
-            qr_token,
-            email: email.clone(),
-            username: username.clone(),
-            first_name: fname,
-            last_name: lname,
-            store: store.clone(),
-            discount,
-            valid_until: valid_until.clone(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-            redeemed: false,
-        };
-        vouchers.push(record);
-        save_vouchers(&vouchers)?;
+        let created_at = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO vouchers
+             (qr_token, email, username, first_name, last_name, store, discount, valid_until, created_at, redeemed)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        )
+        .bind(&qr_token)
+        .bind(&email)
+        .bind(&username)
+        .bind(&fname)
+        .bind(&lname)
+        .bind(&store)
+        .bind(discount as i64)
+        .bind(&valid_until)
+        .bind(created_at)
+        .execute(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
         send_voucher_email(
             &email,
             &username,
@@ -383,7 +396,7 @@ pub async fn list_all_vouchers_admin(token: String) -> Result<Vec<VoucherAdminFu
 
     #[cfg(feature = "server")]
     {
-        let mut vouchers: Vec<VoucherAdminFull> = load_vouchers()?
+        let mut vouchers: Vec<VoucherAdminFull> = load_vouchers().await?
             .into_iter()
             .map(|v| VoucherAdminFull {
                 id: v.id,
@@ -410,18 +423,18 @@ pub async fn list_all_vouchers_admin(token: String) -> Result<Vec<VoucherAdminFu
     }
 }
 
-/// Remove all vouchers with `redeemed: true` from the JSON store. Returns how many were removed.
 #[server]
 pub async fn purge_redeemed_vouchers(token: String) -> Result<u32, ServerFnError> {
     crate::auth::require_role(&token, &crate::auth::Role::Admin)?;
 
     #[cfg(feature = "server")]
     {
-        let mut vouchers = load_vouchers()?;
-        let before = vouchers.len();
-        vouchers.retain(|v| !v.redeemed);
-        let removed = before.saturating_sub(vouchers.len()) as u32;
-        save_vouchers(&vouchers)?;
+        let pool = crate::db::pool().await;
+        let res = sqlx::query("DELETE FROM vouchers WHERE redeemed = 1")
+            .execute(pool)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        let removed = res.rows_affected() as u32;
         return Ok(removed);
     }
 
@@ -439,7 +452,7 @@ pub async fn list_active_vouchers(token: String) -> Result<Vec<VoucherAdminSumma
     #[cfg(feature = "server")]
     {
         let today = chrono::Utc::now().date_naive().to_string();
-        let mut active: Vec<VoucherAdminSummary> = load_vouchers()?
+        let mut active: Vec<VoucherAdminSummary> = load_vouchers().await?
             .into_iter()
             .filter(|v| is_voucher_active(v, &today))
             .map(|v| VoucherAdminSummary {
@@ -465,7 +478,7 @@ pub async fn list_recent_vouchers(limit: usize) -> Result<Vec<VoucherRecentSumma
     #[cfg(feature = "server")]
     {
         let take = if limit == 0 { 8 } else { limit.min(20) };
-        let mut recent = load_vouchers()?;
+        let mut recent = load_vouchers().await?;
         recent.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
         let pool = crate::db::pool().await;
@@ -499,7 +512,7 @@ pub async fn verify_voucher(qr_token: String) -> Result<VoucherVerification, Ser
     #[cfg(feature = "server")]
     {
         let today = chrono::Utc::now().date_naive().to_string();
-        let vouchers = load_vouchers()?;
+        let vouchers = load_vouchers().await?;
         if let Some(voucher) = vouchers.iter().find(|v| v.qr_token == qr_token) {
             let active = is_voucher_active(voucher, &today);
             let message = if active {

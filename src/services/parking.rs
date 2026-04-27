@@ -498,6 +498,167 @@ fn to_snapshot(state: &ParkingSystemState) -> ParkingSnapshot {
     }
 }
 
+#[cfg(feature = "server")]
+async fn save_parking_state_to_db(state: &ParkingSystemState) -> Result<(), ServerFnError> {
+    let pool = crate::db::pool().await;
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    sqlx::query("DELETE FROM parking_charging_stations")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+    sqlx::query("DELETE FROM parkings")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    for lot in &state.lots {
+        sqlx::query(
+            "INSERT INTO parkings
+             (id, name, kind, level, capacity, occupied, reserved_accessible, reserved_family, ev_capacity, ev_occupied, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&lot.id)
+        .bind(&lot.name)
+        .bind(&lot.kind)
+        .bind(&lot.level)
+        .bind(lot.capacity as i64)
+        .bind(lot.occupied as i64)
+        .bind(lot.reserved_accessible as i64)
+        .bind(lot.reserved_family as i64)
+        .bind(lot.ev_capacity as i64)
+        .bind(lot.ev_occupied as i64)
+        .bind(&state.updated_at)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        for station in &lot.charging_stations {
+            let connectors = serde_json::to_string(&station.connectors)
+                .map_err(|e| ServerFnError::new(e.to_string()))?;
+            sqlx::query(
+                "INSERT INTO parking_charging_stations
+                 (parking_id, network, station_type, power_kw, connectors, ports, paid, availability, notes)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+            .bind(&lot.id)
+            .bind(&station.network)
+            .bind(&station.station_type)
+            .bind(station.power_kw as i64)
+            .bind(connectors)
+            .bind(station.ports as i64)
+            .bind(if station.paid { 1_i64 } else { 0_i64 })
+            .bind(&station.availability)
+            .bind(&station.notes)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| ServerFnError::new(e.to_string()))?;
+        }
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))
+}
+
+#[cfg(feature = "server")]
+async fn load_parking_state_from_db() -> Result<Option<ParkingSystemState>, ServerFnError> {
+    let pool = crate::db::pool().await;
+    let lots_rows: Vec<(
+        String,
+        String,
+        String,
+        Option<String>,
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+        i64,
+        String,
+    )> = sqlx::query_as(
+        "SELECT id, name, kind, level, capacity, occupied, reserved_accessible, reserved_family, ev_capacity, ev_occupied, updated_at
+         FROM parkings
+         ORDER BY id",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    if lots_rows.is_empty() {
+        return Ok(None);
+    }
+
+    let station_rows: Vec<(String, String, String, i64, String, i64, i64, String, String)> =
+        sqlx::query_as(
+            "SELECT parking_id, network, station_type, power_kw, connectors, ports, paid, availability, notes
+             FROM parking_charging_stations
+             ORDER BY parking_id, id",
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+    let mut by_lot: std::collections::HashMap<String, Vec<ChargingStation>> =
+        std::collections::HashMap::new();
+    for (parking_id, network, station_type, power_kw, connectors, ports, paid, availability, notes) in
+        station_rows
+    {
+        let connectors_vec: Vec<String> = serde_json::from_str(&connectors).unwrap_or_default();
+        by_lot.entry(parking_id).or_default().push(ChargingStation {
+            network,
+            station_type,
+            power_kw: power_kw.max(0) as u32,
+            connectors: connectors_vec,
+            ports: ports.max(0) as u32,
+            paid: paid != 0,
+            availability,
+            notes,
+        });
+    }
+
+    let updated_at = lots_rows[0].10.clone();
+    let lots = lots_rows
+        .into_iter()
+        .map(
+            |(id, name, kind, level, capacity, occupied, reserved_accessible, reserved_family, ev_capacity, ev_occupied, _)| {
+                ParkingLot {
+                    charging_stations: by_lot.remove(&id).unwrap_or_default(),
+                    id,
+                    name,
+                    kind,
+                    level,
+                    capacity: capacity.max(0) as u32,
+                    occupied: occupied.max(0) as u32,
+                    reserved_accessible: reserved_accessible.max(0) as u32,
+                    reserved_family: reserved_family.max(0) as u32,
+                    ev_capacity: ev_capacity.max(0) as u32,
+                    ev_occupied: ev_occupied.max(0) as u32,
+                }
+            },
+        )
+        .collect();
+
+    Ok(Some(ParkingSystemState {
+        max_total_capacity: MAX_TOTAL_PARKING_CAPACITY,
+        lots,
+        updated_at,
+    }))
+}
+
+#[cfg(feature = "server")]
+async fn load_or_seed_parking_state_from_db() -> Result<ParkingSystemState, ServerFnError> {
+    if let Some(state) = load_parking_state_from_db().await? {
+        return Ok(state);
+    }
+    let state = default_state();
+    save_parking_state_to_db(&state).await?;
+    Ok(state)
+}
+
 
 // Adapter implementations
 #[cfg(feature = "server")]
@@ -885,10 +1046,8 @@ fn parking_adapter() -> &'static Mutex<ParkingAdapter> {
 pub async fn get_parking_snapshot() -> Result<ParkingSnapshot, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
-        return Ok(to_snapshot(&adapter.get_state()));
+        let state = load_or_seed_parking_state_from_db().await?;
+        return Ok(to_snapshot(&state));
     }
     #[cfg(not(feature = "server"))]
     {
@@ -903,10 +1062,7 @@ pub async fn get_parking_snapshot() -> Result<ParkingSnapshot, ServerFnError> {
 pub async fn get_parking_system_state() -> Result<ParkingSystemState, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
-        return Ok(adapter.get_state());
+        return load_or_seed_parking_state_from_db().await;
     }
     #[cfg(not(feature = "server"))]
     {
@@ -929,10 +1085,10 @@ pub async fn update_parking_zone_occupancy(
 
     #[cfg(feature = "server")]
     {
-        let mut adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = load_or_seed_parking_state_from_db().await?;
+        let mut adapter = BitwiseFakeAdapter::new(state);
         let state = adapter.set_zone_occupancy(&zone_id, occupied, ev_occupied)?;
+        save_parking_state_to_db(&state).await?;
         return Ok(to_snapshot(&state));
     }
 
@@ -950,10 +1106,10 @@ pub async fn parking_vehicle_entry(
 ) -> Result<ParkingOperationResult, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let mut adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = load_or_seed_parking_state_from_db().await?;
+        let mut adapter = BitwiseFakeAdapter::new(state);
         let result = adapter.vehicle_entry(&lot_id, is_electric)?;
+        save_parking_state_to_db(&result.state).await?;
         return Ok(result);
     }
     #[cfg(not(feature = "server"))]
@@ -970,10 +1126,10 @@ pub async fn parking_vehicle_exit(
 ) -> Result<ParkingOperationResult, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let mut adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = load_or_seed_parking_state_from_db().await?;
+        let mut adapter = BitwiseFakeAdapter::new(state);
         let result = adapter.vehicle_exit(&lot_id, was_electric)?;
+        save_parking_state_to_db(&result.state).await?;
         return Ok(result);
     }
     #[cfg(not(feature = "server"))]
@@ -990,10 +1146,10 @@ pub async fn parking_simulate_tick(token: String) -> Result<ParkingSystemState, 
     #[cfg(feature = "server")]
     {
         let seed = chrono::Utc::now().timestamp_subsec_millis() as i32;
-        let mut adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = load_or_seed_parking_state_from_db().await?;
+        let mut adapter = BitwiseFakeAdapter::new(state);
         let state = adapter.simulate_tick(seed);
+        save_parking_state_to_db(&state).await?;
         return Ok(state);
     }
     #[cfg(not(feature = "server"))]
@@ -1007,11 +1163,11 @@ pub async fn parking_simulate_tick(token: String) -> Result<ParkingSystemState, 
 pub async fn refresh_parking() -> Result<ParkingSnapshot, ServerFnError> {
     #[cfg(feature = "server")]
     {
-        let mut adapter = parking_adapter()
-            .lock()
-            .map_err(|_| ServerFnError::new("adapter mutex poisoned".to_string()))?;
+        let state = load_or_seed_parking_state_from_db().await?;
+        let mut adapter = BitwiseFakeAdapter::new(state);
         adapter.shuffle_all_bits();
         let state = adapter.get_state();
+        save_parking_state_to_db(&state).await?;
         return Ok(to_snapshot(&state));
     }
     #[cfg(not(feature = "server"))]

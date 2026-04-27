@@ -1,15 +1,15 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Mutex, OnceLock};
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StoreCategory {
     pub key: String,
     pub label: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ShopInfo {
     pub id: u32,
     pub name: String,
@@ -51,48 +51,21 @@ pub struct GameRules {
     pub voucher: VoucherRules,
 }
 
-#[derive(Debug, Deserialize)]
-struct StoresDataRaw {
-    categories: BTreeMap<String, String>,
-    shops: Vec<ShopRaw>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ShopRaw {
-    name: String,
-    category: String,
-}
-
-#[derive(Debug)]
-struct StoresData {
-    categories: Vec<StoreCategory>,
-    shops: Vec<ShopRaw>,
-}
-
-static STORES_DATA: OnceLock<StoresData> = OnceLock::new();
 static GAME_RULES: OnceLock<Mutex<GameRules>> = OnceLock::new();
 
-fn stores_data() -> &'static StoresData {
-    STORES_DATA.get_or_init(|| {
-        let raw = include_str!("../../data/stores.json");
-        let parsed: StoresDataRaw =
-            serde_json::from_str(raw).expect("Le fichier data/stores.json est invalide");
-
-        let categories = parsed
-            .categories
-            .into_iter()
-            .map(|(key, label)| StoreCategory { key, label })
-            .collect();
-
-        StoresData {
-            categories,
-            shops: parsed.shops,
+fn all_categories_from_stores(stores: &[crate::stores::Store]) -> Vec<StoreCategory> {
+    let mut categories = Vec::new();
+    let mut seen = HashSet::new();
+    for store in stores {
+        let key = store.category.key().to_string();
+        if seen.insert(key.clone()) {
+            categories.push(StoreCategory {
+                key,
+                label: store.category.label().to_string(),
+            });
         }
-    })
-}
-
-pub fn all_categories() -> Vec<StoreCategory> {
-    stores_data().categories.clone()
+    }
+    categories
 }
 
 pub fn default_game_rules() -> GameRules {
@@ -166,9 +139,9 @@ pub fn save_game_rules(rules: GameRules) -> GameRules {
     clamped
 }
 
-pub fn total_unique_shops_count() -> usize {
+fn total_unique_shops_count_from_stores(stores: &[crate::stores::Store]) -> usize {
     let mut names = HashSet::new();
-    for shop in &stores_data().shops {
+    for shop in stores {
         names.insert(shop.name.as_str());
     }
     names.len()
@@ -187,27 +160,40 @@ pub fn store_black_ball_count_for_shop_count(shop_count: usize, rules: &GameRule
 }
 
 pub fn random_categories(count: usize) -> Vec<StoreCategory> {
-    let mut indices: Vec<usize> = (0..stores_data().categories.len()).collect();
+    let all_categories: Vec<StoreCategory> = crate::stores::Category::all()
+        .into_iter()
+        .map(|category| StoreCategory {
+            key: category.key().to_string(),
+            label: category.label().to_string(),
+        })
+        .collect();
+    let mut indices: Vec<usize> = (0..all_categories.len()).collect();
     let mut selected = Vec::new();
     let max = count.min(indices.len());
 
     for _ in 0..max {
         let idx = random_index(indices.len());
         let category_idx = indices.remove(idx);
-        selected.push(stores_data().categories[category_idx].clone());
+        selected.push(all_categories[category_idx].clone());
     }
 
     selected
 }
 
-pub fn stores_by_category_keys(keys: &[String]) -> Vec<String> {
-    shops_by_category_keys(keys)
+fn stores_by_category_keys_from_stores(
+    stores: &[crate::stores::Store],
+    keys: &[String],
+) -> Vec<String> {
+    shops_by_category_keys_from_stores(stores, keys)
         .into_iter()
         .map(|shop| shop.name)
         .collect()
 }
 
-pub fn shops_by_category_keys(keys: &[String]) -> Vec<ShopInfo> {
+fn shops_by_category_keys_from_stores(
+    stores: &[crate::stores::Store],
+    keys: &[String],
+) -> Vec<ShopInfo> {
     if keys.is_empty() {
         return Vec::new();
     }
@@ -216,12 +202,13 @@ pub fn shops_by_category_keys(keys: &[String]) -> Vec<ShopInfo> {
     let mut seen_names = HashSet::new();
     let mut result = Vec::new();
 
-    for (idx, shop) in stores_data().shops.iter().enumerate() {
-        if selected.contains(shop.category.as_str()) && seen_names.insert(shop.name.clone()) {
+    for (idx, shop) in stores.iter().enumerate() {
+        let category_key = shop.category.key();
+        if selected.contains(category_key) && seen_names.insert(shop.name.clone()) {
             result.push(ShopInfo {
                 id: (idx as u32) + 1,
                 name: shop.name.clone(),
-                category: shop.category.clone(),
+                category: category_key.to_string(),
             });
         }
     }
@@ -310,11 +297,13 @@ pub fn register_game_start(player_key: &str) {
     state.players_who_played.insert(player_key.to_string());
 }
 
-pub fn can_award_prize_today() -> bool {
+pub async fn can_award_prize_today() -> bool {
     #[cfg(feature = "server")]
     {
-        crate::services::vouchers::active_daily_quota_cooldown_until_utc().is_none()
-            && crate::services::vouchers::voucher_count_for_current_utc_day() < MAX_DAILY_PRIZES
+        crate::services::vouchers::active_daily_quota_cooldown_until_utc()
+            .await
+            .is_none()
+            && crate::services::vouchers::voucher_count_for_current_utc_day().await < MAX_DAILY_PRIZES
     }
     #[cfg(not(feature = "server"))]
     {
@@ -347,13 +336,16 @@ pub fn choose_distributed_shop(candidates: &[ShopInfo]) -> Option<ShopInfo> {
     best.get(random_index(best.len())).cloned()
 }
 
-pub fn register_prize_award(shop_name: &str) -> bool {
+pub async fn register_prize_award(shop_name: &str) -> bool {
     #[cfg(feature = "server")]
     {
-        if crate::services::vouchers::active_daily_quota_cooldown_until_utc().is_some() {
+        if crate::services::vouchers::active_daily_quota_cooldown_until_utc()
+            .await
+            .is_some()
+        {
             return false;
         }
-        if crate::services::vouchers::voucher_count_for_current_utc_day() >= MAX_DAILY_PRIZES {
+        if crate::services::vouchers::voucher_count_for_current_utc_day().await >= MAX_DAILY_PRIZES {
             return false;
         }
         let mut state = daily_rules()
@@ -381,12 +373,12 @@ pub struct DailyPrizePoolSnapshot {
     pub cooldown_until_utc: Option<String>,
 }
 
-pub fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
+pub async fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
     #[cfg(feature = "server")]
     {
-        let cooldown_until = crate::services::vouchers::active_daily_quota_cooldown_until_utc();
+        let cooldown_until = crate::services::vouchers::active_daily_quota_cooldown_until_utc().await;
         DailyPrizePoolSnapshot {
-            distributed: crate::services::vouchers::voucher_count_for_current_utc_day(),
+            distributed: crate::services::vouchers::voucher_count_for_current_utc_day().await,
             max: MAX_DAILY_PRIZES,
             cooldown_active: cooldown_until.is_some(),
             cooldown_until_utc: cooldown_until.map(|dt| dt.to_rfc3339()),
@@ -405,7 +397,100 @@ pub fn daily_prize_pool_snapshot() -> DailyPrizePoolSnapshot {
 
 #[server]
 pub async fn get_daily_prize_pool_snapshot() -> Result<DailyPrizePoolSnapshot, ServerFnError> {
-    Ok(daily_prize_pool_snapshot())
+    Ok(daily_prize_pool_snapshot().await)
+}
+
+#[server]
+pub async fn game_server_all_categories() -> Result<Vec<StoreCategory>, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        let pool = crate::db::pool().await;
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT name, category
+             FROM stores
+             ORDER BY name",
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        let mut categories = Vec::new();
+        let mut seen = HashSet::new();
+        for (_name, category_key) in rows {
+            if let Some(category) = crate::stores::Category::from_key(&category_key) {
+                let key = category.key().to_string();
+                if seen.insert(key.clone()) {
+                    categories.push(StoreCategory {
+                        key,
+                        label: category.label().to_string(),
+                    });
+                }
+            }
+        }
+        return Ok(categories);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        Ok(Vec::new())
+    }
+}
+
+#[server]
+pub async fn game_server_total_unique_shops_count() -> Result<usize, ServerFnError> {
+    let stores = crate::stores::get_stores().await?;
+    Ok(total_unique_shops_count_from_stores(&stores))
+}
+
+#[server]
+pub async fn game_server_shops_by_category_keys(
+    keys: Vec<String>,
+) -> Result<Vec<ShopInfo>, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        if keys.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let pool = crate::db::pool().await;
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT name, category
+             FROM stores
+             ORDER BY name",
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        let selected: HashSet<&str> = keys.iter().map(|k| k.as_str()).collect();
+        let mut seen_names = HashSet::new();
+        let mut result = Vec::new();
+
+        for (idx, (name, category_key)) in rows.into_iter().enumerate() {
+            if selected.contains(category_key.as_str()) && seen_names.insert(name.clone()) {
+                result.push(ShopInfo {
+                    id: (idx as u32) + 1,
+                    name,
+                    category: category_key,
+                });
+            }
+        }
+
+        return Ok(result);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        Ok(Vec::new())
+    }
+}
+
+#[server]
+pub async fn game_server_stores_by_category_keys(
+    keys: Vec<String>,
+) -> Result<Vec<String>, ServerFnError> {
+    let stores = crate::stores::get_stores().await?;
+    Ok(stores_by_category_keys_from_stores(&stores, &keys))
 }
 
 /// Secondes jusqu'au prochain minuit UTC (réinitialisation quota / jeu).
@@ -434,7 +519,7 @@ pub fn format_daily_prize_reset_countdown_hms() -> String {
 
 #[server]
 pub async fn game_server_can_award_prize_today() -> Result<bool, ServerFnError> {
-    Ok(can_award_prize_today())
+    Ok(can_award_prize_today().await)
 }
 
 #[server]
@@ -450,7 +535,7 @@ pub async fn game_server_register_session_finished(player_key: String) -> Result
 
 #[server]
 pub async fn game_server_try_register_prize_award(shop_name: String) -> Result<bool, ServerFnError> {
-    Ok(register_prize_award(&shop_name))
+    Ok(register_prize_award(&shop_name).await)
 }
 
 #[server]

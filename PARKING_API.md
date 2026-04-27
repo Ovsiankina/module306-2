@@ -20,7 +20,7 @@ Les endpoints sont exposes via les server functions Dioxus en `POST /api/<functi
 
 ## Donnees persistees
 
-- Fichier: `data/parkings.json`
+- Fichier: `migrations/seeders/parkings.json`
 - Variables d'environnement:
   - `PARKINGS_JSON_PATH` (optionnel): chemin alternatif pour le JSON
 

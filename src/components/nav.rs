@@ -196,6 +196,13 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.content")}
                                             }
+                                            a {
+                                                class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
+                                                href: "/admin/stores",
+                                                onclick: move |_| account_menu_open.set(false),
+                                                {translate(locale(), "nav.admin.stores_management")}
+                                            }
                                         }
                                         // Logout: all logged-in roles (Editor + Admin)
                                         button {
@@ -301,56 +308,7 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                     onclick: move |_| mobile_menu_open.set(false),
                                     {translate(locale(), "nav.rewards")}
                                 }
-                                if matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin) {
-                                    a {
-                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                        href: "/admin/vouchers",
-                                        onclick: move |_| mobile_menu_open.set(false),
-                                        {translate(locale(), "nav.admin.voucher_list")}
-                                    }
-                                    a {
-                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                        href: "/admin/visits",
-                                        onclick: move |_| mobile_menu_open.set(false),
-                                        {translate(locale(), "nav.admin.visits_stats")}
-                                    }
-                                    a {
-                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                        href: "/admin/parking-occupancy",
-                                        onclick: move |_| mobile_menu_open.set(false),
-                                        {translate(locale(), "nav.admin.parking_occupancy")}
-                                    }
-                                    a {
-                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                        href: "/admin/game-rules",
-                                        onclick: move |_| mobile_menu_open.set(false),
-                                        {translate(locale(), "nav.admin.game_rules")}
-                                    }
-                                    a {
-                                        class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
-                                        href: "/admin/content",
-                                        onclick: move |_| mobile_menu_open.set(false),
-                                        {translate(locale(), "nav.admin.content")}
-                                    }
-                                }
-                                if matches!(auth(), AuthState::LoggedIn(_)) {
-                                    button {
-                                        class: "text-left text-sm font-semibold tracking-widest text-red-700 hover:text-red-800 transition-colors",
-                                        r#type: "button",
-                                        onclick: move |_| {
-                                            mobile_menu_open.set(false);
-                                            spawn(async move {
-                                                if let Some(t) = read_token() {
-                                                    let _ = logout(t).await;
-                                                }
-                                                clear_token();
-                                                auth.set(AuthState::LoggedOut);
-                                                let _ = nav.replace(Route::Home {});
-                                            });
-                                        },
-                                        {translate(locale(), "nav.logout")}
-                                    }
-                                } else {
+                                if matches!(auth(), AuthState::LoggedOut) {
                                     a {
                                         class: "text-sm font-semibold tracking-widest text-nav hover:text-dark transition-colors",
                                         href: "/login",

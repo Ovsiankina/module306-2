@@ -67,105 +67,10 @@ impl FilterGroup {
     }
 }
 
-fn brand_image(name: &str) -> Option<String> {
-    let normalized = name.trim().to_lowercase();
-    let file_name = match normalized.as_str() {
-        "swatch"
-        | "mantero"
-        | "christmas store"
-        | "chalet suisse"
-        | "fashion bar"
-        | "gelateria"
-        | "il caffè"
-        | "maui poke"
-        | "pizzeria"
-        | "the place"
-        | "wood avenue - italian restaurant"
-        | "casinò admiral"
-        | "infopoint / guest services"
-        | "tax & exchange services"
-        | "cloakroom / tailor's store"
-        | "vantaviaggi"
-        | "the sense gallery" => return None,
-        "kate spade new york" => "kate_spade.jpg".to_string(),
-        "philipp plein" => "philipp_plein_men.jpg".to_string(),
-        "polo ralph lauren" => "polo.jpg".to_string(),
-        "7 for all mankind" => "7.jpg".to_string(),
-        "andré maurice" => "andre_maurice.jpg".to_string(),
-        "boggi milano" => "boggi.jpg".to_string(),
-        "elena mirò" => "elena_miro.jpg".to_string(),
-        "gaudì" => "gaudi.jpg".to_string(),
-        "hackett london" => "hackett.jpg".to_string(),
-        "human couture" => "0_sbs.jpg".to_string(),
-        "paul & shark" => "paul_shark.jpg".to_string(),
-        "aeronautica militare" => "aventurx.jpg".to_string(),
-        "c.p. company" => "cp_company.jpg".to_string(),
-        "diesel factory outlet" => "diesel.jpg".to_string(),
-        "k·way" => "kway.jpg".to_string(),
-        "k-way" => "kway.jpg".to_string(),
-        "jack & jones" => "jack_jones.jpg".to_string(),
-        "lee - wrangler" => "lee.jpg".to_string(),
-        "levi's & dockers" => "levis.jpg".to_string(),
-        "quiksilver" => "quicksilver.jpg".to_string(),
-        "nike factory store" => "nike.jpg".to_string(),
-        "rh+" => "rh_plus.jpg".to_string(),
-        "harmont & blaine junior" => "harmont_&_blaine.jpg".to_string(),
-        "jacadi paris" => "jacadi.jpg".to_string(),
-        "church's" => "churchs.jpg".to_string(),
-        "tod's - hogan" => "tods.jpg".to_string(),
-        "calzedonia - intimissimi" => "calzedonia.jpg".to_string(),
-        "belotti otticaudito" => "belotti.jpg".to_string(),
-        "blitz for eyes" => "blitz.jpg".to_string(),
-        "bric's" => "brics.jpg".to_string(),
-        "sbs" => "0_sbs.jpg".to_string(),
-        "kiko milano" => "kiko.jpg".to_string(),
-        "millefiori store" => "millefiori.jpg".to_string(),
-        "villeroy & boch" => "villeroy_et_boch.jpg".to_string(),
-        "free shop" => "free2shop.jpg".to_string(),
-        "dolce & gabbana" => "dolce_gabana.jpg".to_string(),
-        "loro piana" => "Loro_piana.jpg".to_string(),
-        "marc o'polo" => "marc_O_polo.jpg".to_string(),
-        "harmont & blaine" => "harmont_&_blaine.jpg".to_string(),
-        "zadig & voltaire" => "zadig_&_voltaire.jpg".to_string(),
-        "salvatore ferragamo" => "salvatorre_ferragamo.jpg".to_string(),
-        _ => {
-            let mut slug = String::with_capacity(normalized.len());
-            let mut prev_underscore = false;
-
-            for ch in normalized.chars() {
-                let mapped = if ch.is_ascii_alphanumeric() {
-                    Some(ch)
-                } else if ch == '&' {
-                    Some('&')
-                } else {
-                    Some('_')
-                };
-
-                if let Some(c) = mapped {
-                    if c == '_' {
-                        if !prev_underscore {
-                            slug.push('_');
-                            prev_underscore = true;
-                        }
-                    } else {
-                        slug.push(c);
-                        prev_underscore = false;
-                    }
-                }
-            }
-
-            let slug = slug.trim_matches('_');
-            format!("{slug}.jpg")
-        }
-    };
-
-    Some(format!("/brands/{file_name}"))
-}
-
 #[component]
-fn StoreCardImage(name: String) -> Element {
+fn StoreCardImage(name: String, icon_path: Option<String>) -> Element {
     let mut image_failed = use_signal(|| false);
-    let image_src = brand_image(&name);
+    let image_src = icon_path.filter(|p| !p.trim().is_empty());
     let image_src_value = image_src.as_deref().unwrap_or_default();
 
     rsx! {
@@ -188,65 +93,8 @@ fn StoreCardImage(name: String) -> Element {
 
 #[cfg(test)]
 mod tests {
-    use super::{FilterGroup, brand_image, category_label};
+    use super::{FilterGroup, category_label};
     use crate::stores::Category;
-
-    #[test]
-    fn brand_image_uses_known_overrides() {
-        assert_eq!(
-            brand_image("Dolce & Gabbana"),
-            Some("/brands/dolce_gabana.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Loro Piana"),
-            Some("/brands/Loro_piana.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Marc O'Polo"),
-            Some("/brands/marc_O_polo.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Harmont & Blaine"),
-            Some("/brands/harmont_&_blaine.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Zadig & Voltaire"),
-            Some("/brands/zadig_&_voltaire.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Salvatore Ferragamo"),
-            Some("/brands/salvatorre_ferragamo.jpg".to_string())
-        );
-    }
-
-    #[test]
-    fn brand_image_normalizes_generic_names() {
-        assert_eq!(
-            brand_image("New Balance"),
-            Some("/brands/new_balance.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("  Tommy   Hilfiger  "),
-            Some("/brands/tommy_hilfiger.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Paul&Shark"),
-            Some("/brands/paul&shark.jpg".to_string())
-        );
-    }
-
-    #[test]
-    fn brand_image_collapses_separator_runs() {
-        assert_eq!(brand_image("A---B"), Some("/brands/a_b.jpg".to_string()));
-        assert_eq!(brand_image("A   B"), Some("/brands/a_b.jpg".to_string()));
-        assert_eq!(brand_image("__A__B__"), Some("/brands/a_b.jpg".to_string()));
-    }
-
-    #[test]
-    fn brand_image_skips_known_missing_files() {
-        assert_eq!(brand_image("Swatch"), None);
-        assert_eq!(brand_image("The Sense Gallery"), None);
-    }
 
     #[test]
     fn filter_group_label_keys_are_stable_and_complete() {
@@ -607,7 +455,14 @@ pub(crate) fn StoresPage() -> Element {
     let filtered: Vec<Store> = stores
         .iter()
         .filter(|s| {
-            (q.is_empty() || s.name.to_lowercase().contains(&q)) && fg.matches(&s.category)
+            let has_icon = s
+                .icon_path
+                .as_deref()
+                .map(|p| !p.trim().is_empty())
+                .unwrap_or(false);
+            has_icon
+                && (q.is_empty() || s.name.to_lowercase().contains(&q))
+                && fg.matches(&s.category)
         })
         .map(|s| (*s).clone())
         .collect();
@@ -694,7 +549,10 @@ pub(crate) fn StoresPage() -> Element {
                                 to: Route::Store { name: slugify(&store.name) },
                                 class: "group block",
 
-                                StoreCardImage { name: store.name.clone() }
+                                StoreCardImage {
+                                    name: store.name.clone(),
+                                    icon_path: store.icon_path.clone(),
+                                }
 
                                 // Info
                                 h3 { class: "text-sm font-bold text-dark tracking-wide mb-1",

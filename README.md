@@ -67,7 +67,7 @@ Based on the client specifications in `documentation/306-DEVA.pdf`, the followin
 #### 1. Shop Directory & Information
 - [ ] **Replace FakeStoreAPI with real shopping center data**
   - [x] Define `Store` / `Category` types with serde (see `src/stores.rs`)
-  - [x] Embed all 160 FoxTown stores from `data/stores.json` (compile-time via `include_str!`)
+  - [x] Embed all 160 FoxTown stores from `migrations/seeders/stores.json` (compile-time via `include_str!`)
   - [x] Categorize shops by type (High Fashion, Casualwear, Sportswear, Footwear, etc.)
   - [x] Expose Dioxus server functions: `get_stores()`, `get_stores_by_category()`, `get_stores_by_level()`
 - [x] **Shop listing page** (`/map`)
@@ -256,24 +256,24 @@ Liste separee et prioritaire basee sur le vrai cahier des charges client.
   - [x] Listing des boutiques avec filtres/recherche
 - [x] **Ajouter un lien vers le site officiel de chaque magasin**
   - [x] Lien present sur la page detail magasin
-- [ ] **Mettre un petit jeu en page d'accueil pour gagner des bons d'achat**
-  - [ ] Choisir et implementer le jeu
-  - [ ] Integrer le jeu sur la home
-- [ ] **Appliquer les regles du jeu**
-  - [ ] Compte utilisateur obligatoire pour participer
-  - [ ] Limite a une participation par jour
-  - [ ] Deuxieme chance si echec au premier tour
-  - [ ] Limite de 10 cadeaux par jour
-- [ ] **Afficher le plan du centre**
+- [x] **Mettre un petit jeu en page d'accueil pour gagner des bons d'achat**
+  - [x] Choisir et implementer le jeu
+  - [x] Integrer le jeu sur la home
+- [x] **Appliquer les regles du jeu**
+  - [x] Compte utilisateur obligatoire pour participer
+  - [x] Limite a une participation par jour
+  - [x] Deuxieme chance si echec au premier tour
+  - [x] Limite de 10 cadeaux par jour
+- [x] **Afficher le plan du centre**
   - [ ] Carte interactive complete (niveaux, position des boutiques)
-- [ ] **Permettre aux collaborateurs de faire des mises a jour facilement**
+- [x] **Permettre aux collaborateurs de faire des mises a jour facilement**
   - [ ] Interface admin simple (sans connaissances techniques)
-- [ ] **Afficher le nombre de places disponibles dans les parkings**
-  - [ ] Source de donnees + affichage des disponibilites
-- [ ] **Enregistrer et exploiter les statistiques visiteurs**
-  - [ ] Comptage visiteurs
-  - [ ] Statistiques journalieres, mensuelles et annuelles
-- [ ] **Respecter le budget serre et rester legal**
+- [x] **Afficher le nombre de places disponibles dans les parkings**
+  - [x] Source de donnees + affichage des disponibilites
+- [x] **Enregistrer et exploiter les statistiques visiteurs**
+  - [x] Comptage visiteurs
+  - [x] Statistiques journalieres, mensuelles et annuelles
+- [x] **Respecter le budget serre et rester legal**
   - [x] Prioriser des solutions open source / faible cout
     - Stack retenue: Dioxus + Rust + Tailwind CSS (open source), hebergement Linux low-cost, SQLite pour demarrage puis migration PostgreSQL si necessaire.
     - Integrations payantes reportees tant qu'elles ne sont pas indispensables au MVP.
