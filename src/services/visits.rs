@@ -1,5 +1,9 @@
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "server")]
+use chrono::Datelike;
+#[cfg(feature = "server")]
+use chrono::Timelike;
 
 const OPENING_HOUR_START: u8 = 11;
 const OPENING_HOUR_END_EXCLUSIVE: u8 = 19;
@@ -25,6 +29,72 @@ pub struct VisitRecommendation {
 
 fn hour_slot(hour: u8) -> String {
     format!("{hour:02}h-{:02}h", hour + 1)
+}
+
+#[cfg(feature = "server")]
+fn mix32(mut x: u32) -> u32 {
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^= x >> 16;
+    x
+}
+
+#[cfg(feature = "server")]
+fn simulated_hourly_histogram(
+    start_hour: u8,
+    end_hour_exclusive: u8,
+    preferred_peak_start: u8,
+    preferred_peak_end: u8,
+    base_scale: i64,
+    jitter_pct: i64,
+    profile_seed: u32,
+) -> Vec<HourlyAffluence> {
+    let day_index = chrono::Utc::now().date_naive().num_days_from_ce() as u32;
+    let day_seed = mix32(profile_seed ^ day_index ^ 0x1f12_3bb5);
+    let peak_span = (preferred_peak_end - preferred_peak_start + 1) as u32;
+    let peak_hour = preferred_peak_start + (day_seed % peak_span) as u8;
+    let mut result = Vec::with_capacity((end_hour_exclusive - start_hour) as usize);
+
+    for hour in start_hour..end_hour_exclusive {
+        let distance = (hour as i32 - peak_hour as i32).unsigned_abs() as i64;
+        let peak_shape = (32 - 5 * distance).max(8); // highest around peak hour
+
+        // Slight bump for evening hours (shopping after work).
+        let evening_bonus = if (17..=19).contains(&hour) { 5 } else { 0 };
+
+        // Deterministic jitter per histogram/day/hour.
+        let noise_seed =
+            mix32(profile_seed ^ day_index ^ ((hour as u32 + 1).wrapping_mul(0x9e37_79b9)));
+        let centered_jitter = (noise_seed % (2 * jitter_pct as u32 + 1)) as i64 - jitter_pct;
+
+        let value = (base_scale * (peak_shape + evening_bonus) / 32)
+            .saturating_mul(100 + centered_jitter)
+            / 100;
+
+        result.push(HourlyAffluence {
+            hour,
+            visits: value.max(1),
+        });
+    }
+
+    result
+}
+
+#[cfg(feature = "server")]
+fn current_local_hour_from_utc() -> u8 {
+    let utc_now = chrono::Utc::now();
+    let local_offset_secs = chrono::Local::now().offset().local_minus_utc();
+    let local_now_from_utc = utc_now + chrono::Duration::seconds(local_offset_secs as i64);
+    local_now_from_utc.hour() as u8
+}
+
+#[cfg(feature = "server")]
+fn has_enough_real_data(per_hour: &[i64; 24], min_non_zero_buckets: usize, min_total: i64) -> bool {
+    let non_zero = per_hour.iter().filter(|v| **v > 0).count();
+    let total: i64 = per_hour.iter().sum();
+    non_zero >= min_non_zero_buckets && total >= min_total
 }
 
 #[server]
@@ -177,12 +247,25 @@ pub async fn get_hourly_affluence() -> Result<Vec<HourlyAffluence>, ServerFnErro
             }
         }
 
-        let histogram = (OPENING_HOUR_START..OPENING_HOUR_END_EXCLUSIVE)
-            .map(|hour| HourlyAffluence {
-                hour,
-                visits: per_hour[hour as usize],
-            })
-            .collect();
+        let histogram = if has_enough_real_data(&per_hour, 5, 50) {
+            (OPENING_HOUR_START..OPENING_HOUR_END_EXCLUSIVE)
+                .map(|hour| HourlyAffluence {
+                    hour,
+                    visits: per_hour[hour as usize],
+                })
+                .collect()
+        } else {
+            // Simulated "physical crowd" profile with organic peak in afternoon.
+            simulated_hourly_histogram(
+                OPENING_HOUR_START,
+                OPENING_HOUR_END_EXCLUSIVE,
+                14,
+                17,
+                140,
+                16,
+                0x5048_5953, // "PHYS"
+            )
+        };
         return Ok(histogram);
     }
 
@@ -217,12 +300,50 @@ pub async fn get_hourly_web_affluence() -> Result<Vec<HourlyAffluence>, ServerFn
             }
         }
 
-        let histogram = (0_u8..24_u8)
-            .map(|hour| HourlyAffluence {
-                hour,
-                visits: per_hour[hour as usize],
-            })
-            .collect();
+        let histogram = if has_enough_real_data(&per_hour, 10, 120) {
+            (0_u8..24_u8)
+                .map(|hour| HourlyAffluence {
+                    hour,
+                    visits: per_hour[hour as usize],
+                })
+                .collect()
+        } else {
+            // Simulated "website traffic" profile with afternoon peak drift.
+            simulated_hourly_histogram(0, 24, 14, 18, 180, 22, 0x5745_4221) // "WEB!"
+        };
+        return Ok(histogram);
+    }
+
+    #[cfg(not(feature = "server"))]
+    {
+        Ok((0_u8..24_u8)
+            .map(|hour| HourlyAffluence { hour, visits: 0 })
+            .collect())
+    }
+}
+
+#[server]
+pub async fn get_sliding_24h_web_affluence() -> Result<Vec<HourlyAffluence>, ServerFnError> {
+    #[cfg(feature = "server")]
+    {
+        let pool = crate::db::pool().await;
+        let current_local_hour = current_local_hour_from_utc();
+        let (current_hour_visits,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM visits
+             WHERE visited_at >= datetime('now', '-24 hour')
+               AND CAST(strftime('%H', visited_at, 'localtime') AS INTEGER) = CAST(strftime('%H', 'now', 'localtime') AS INTEGER)",
+        )
+        .fetch_one(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
+
+        // Variant requested by UI: simulated values for all hours except the current local one.
+        let mut histogram = simulated_hourly_histogram(0, 24, 14, 18, 160, 20, 0x524f_4c4c); // "ROLL"
+        for bucket in &mut histogram {
+            if bucket.hour == current_local_hour {
+                bucket.visits = current_hour_visits.max(0);
+            }
+        }
         return Ok(histogram);
     }
 

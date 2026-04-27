@@ -155,6 +155,28 @@ fn clear_first_occupied_ev_bit(ev: &mut u16, start: usize, end: usize) -> bool {
 }
 
 #[cfg(feature = "server")]
+fn mix32(mut x: u32) -> u32 {
+    x ^= x >> 16;
+    x = x.wrapping_mul(0x7feb_352d);
+    x ^= x >> 15;
+    x = x.wrapping_mul(0x846c_a68b);
+    x ^= x >> 16;
+    x
+}
+
+#[cfg(feature = "server")]
+fn lot_ratio_bounds(i: usize) -> (u32, u32) {
+    match i {
+        0 => (40, 78), // p1
+        1 => (30, 70), // p2
+        2 => (35, 82), // p3
+        3 => (20, 65), // p4
+        4 => (45, 92), // p5
+        _ => (38, 85), // p6
+    }
+}
+
+#[cfg(feature = "server")]
 fn bits_from_state(state: &ParkingSystemState) -> ParkingBits {
     let mut bits = ParkingBits { spots: [0u32; 57], ev: 0u16 };
     for meta in &LOT_META {
@@ -668,9 +690,12 @@ impl BitwiseFakeAdapter {
         for (i, meta) in LOT_META.iter().enumerate() {
             let lot = &self.template.lots[i];
             let capacity = lot.capacity as usize;
+            let (min_ratio, max_ratio) = lot_ratio_bounds(i);
+            let span = (max_ratio - min_ratio + 1) as usize;
+            let lot_seed = mix32(seed ^ ((i as u32 + 1).wrapping_mul(0x9e37_79b9)));
 
-            // Random occupancy between 20% and 80% of capacity
-            let random_ratio = ((seed.wrapping_mul(2654435761u32).wrapping_add(i as u32)) % 60 + 20) as usize;
+            // Independent pseudo-random occupancy per lot, with lot-specific ranges.
+            let random_ratio = min_ratio as usize + (lot_seed as usize % span);
             let target_occupied = (capacity * random_ratio / 100).min(capacity);
 
             // Clear all bits
@@ -685,7 +710,8 @@ impl BitwiseFakeAdapter {
             // EV spots: random 0-100% of EV capacity
             if meta.ev_bit_end > meta.ev_bit_start {
                 let ev_capacity = (meta.ev_bit_end - meta.ev_bit_start) as usize;
-                let ev_random = ((seed.wrapping_add(i as u32 * 73)) % 101) as usize;
+                let ev_seed = mix32(lot_seed ^ 0xa511_e9b3);
+                let ev_random = (ev_seed % 101) as usize;
                 let target_ev = (ev_capacity * ev_random / 100).min(target_occupied);
 
                 // Clear EV bits

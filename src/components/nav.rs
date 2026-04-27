@@ -133,9 +133,9 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                     onclick: move |_| account_menu_open.set(false),
                                 }
                             }
-                            div { class: "relative z-50",
+                            div { class: "relative z-50 inline-flex h-10 w-10 shrink-0 items-center justify-center",
                                 button {
-                                    class: "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 p-0 text-dark shadow-sm hover:bg-gray-50 transition-colors",
+                                    class: "relative z-50 flex h-full w-full shrink-0 appearance-none items-center justify-center rounded-full border border-gray-200 bg-gray-100 p-0 text-dark shadow-sm transition-colors hover:bg-gray-50",
                                     r#type: "button",
                                     title: translate(locale(), "nav.account"),
                                     "aria-label": translate(locale(), "nav.account"),
@@ -157,34 +157,41 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                     }
                                 }
                                 if account_menu_open() {
-                                    div { class: "absolute right-0 top-full mt-2 w-56 rounded-xl border border-gray-100 bg-white py-2 shadow-xl",
+                                    div {
+                                        class: "absolute right-0 z-50 flex w-56 flex-col justify-center rounded-xl border border-gray-100 bg-white py-2 shadow-xl",
+                                        style: "top: 100%; margin-top: 0; align-items: stretch;",
                                         if matches!(auth(), AuthState::LoggedIn(user) if user.role == Role::Admin) {
                                             a {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
                                                 href: "/admin/vouchers",
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.voucher_list")}
                                             }
                                             a {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
                                                 href: "/admin/visits",
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.visits_stats")}
                                             }
                                             a {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
                                                 href: "/admin/parking-occupancy",
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.parking_occupancy")}
                                             }
                                             a {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
                                                 href: "/admin/game-rules",
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.game_rules")}
                                             }
                                             a {
                                                 class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                style: "width: 100%;",
                                                 href: "/admin/content",
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.content")}
