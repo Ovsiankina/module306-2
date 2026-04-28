@@ -45,8 +45,8 @@
       "phone": "+41 091 630 06 17",
       "website": "https://www.armani.com",
       "icon_path": "/brands/armani.jpg",
-      "map_x": null,
-      "map_y": null
+      "map_x": 37.96747970581055,
+      "map_y": 16.358440399169922
     },
     {
       "name": "Borbonese",
@@ -691,8 +691,8 @@
       "phone": "+41 091 971 60 00",
       "website": "https://www.aeronautica.it",
       "icon_path": "/brands/aventurx.jpg",
-      "map_x": null,
-      "map_y": null
+      "map_x": 27.398374557495117,
+      "map_y": 36.95092010498047
     },
     {
       "name": "Boxeur Des Rues",
@@ -1549,7 +1549,7 @@
       "phone": "+41 091 646 83 37",
       "website": "https://www.lecreuset.com",
       "icon_path": "/brands/le_creuset.jpg",
-      "map_x": 33.57723617553711,
+      "map_x": 33.08943176269531,
       "map_y": 29.938804626464844
     },
     {
@@ -1703,8 +1703,8 @@
       "phone": "+41 091 646 78 83",
       "website": "https://www.foxtown.com",
       "icon_path": null,
-      "map_x": 25.691057205200195,
-      "map_y": 31.068571090698242
+      "map_x": 25.52845573425293,
+      "map_y": 29.938804626464844
     },
     {
       "name": "Tax & Exchange Services",

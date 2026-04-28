@@ -241,12 +241,14 @@ pub fn ShopDirectory() -> Element {
 }
 
 #[component]
-fn DirectoryMap(
+pub fn DirectoryMap(
     active_floor: Signal<u8>,
     locale: Signal<Locale>,
     stores: Vec<Store>,
     search_lc: String,
     category: Option<Category>,
+    #[props(default)]
+    highlight_slug: Option<String>,
 ) -> Element {
     let mut zoom_level = use_signal(|| 1.0f32);
     let mut pan_offset = use_signal(|| (0.0f32, 0.0f32));
@@ -272,7 +274,7 @@ fn DirectoryMap(
     };
 
     let nav = use_navigator();
-    let any_filter_active = !search_lc.is_empty() || category.is_some();
+    let any_filter_active = !search_lc.is_empty() || category.is_some() || highlight_slug.is_some();
 
     let visible_markers: Vec<Store> = stores
         .iter()
@@ -420,7 +422,12 @@ fn DirectoryMap(
                             let slug = slugify(&store.name);
                             let unit = store.store_number.clone().unwrap_or_default();
                             let icon = store.icon_path.clone();
-                            let matches = store_matches(&store, &search_lc, category.as_ref());
+                            let is_highlight = highlight_slug.as_deref() == Some(slug.as_str());
+                            let matches = if highlight_slug.is_some() {
+                                is_highlight
+                            } else {
+                                store_matches(&store, &search_lc, category.as_ref())
+                            };
                             let dimmed = any_filter_active && !matches;
                             let highlighted = any_filter_active && matches;
                             let dim_class = if dimmed { "opacity-20 grayscale" } else { "opacity-100" };
@@ -429,8 +436,8 @@ fn DirectoryMap(
                             rsx! {
                                 button {
                                     key: "marker-{slug}",
-                                    class: "pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {dim_class} {pulse_class} hover:scale-125 transition-transform",
-                                    style: "left: {x}%; top: {y}%;",
+                                    class: "pointer-events-auto absolute w-8 h-8 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {dim_class} {pulse_class} hover:scale-125 transition-transform",
+                                    style: "left: calc({x}% - 16px); top: calc({y}% - 16px);",
                                     title: "{name_for_nav}",
                                     onclick: move |evt| {
                                         evt.stop_propagation();

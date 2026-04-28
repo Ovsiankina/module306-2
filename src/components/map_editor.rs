@@ -430,8 +430,8 @@ pub fn MapEditorPage() -> Element {
                                     rsx! {
                                         button {
                                             key: "marker-{slug}",
-                                            class: "absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {outline}",
-                                            style: "left: {x}%; top: {y}%;",
+                                            class: "absolute w-8 h-8 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {outline}",
+                                            style: "left: calc({x}% - 16px); top: calc({y}% - 16px);",
                                             title: "{name}",
                                             onclick: move |evt| {
                                                 evt.stop_propagation();

@@ -1,4 +1,5 @@
-use crate::stores::{Category, Store, get_store_local};
+use crate::components::directory::DirectoryMap;
+use crate::stores::{get_store_local, get_stores, slugify, Category, Store};
 use crate::i18n::{Locale, translate, translate_fmt};
 use crate::Route;
 use dioxus::prelude::*;
@@ -159,16 +160,34 @@ pub fn StorePage(name: String) -> Element {
                 }
             }
 
-            // Map placeholder
+            // Map: same component as the directory page, with this store highlighted.
             div { class: "bg-white border border-gray-200 rounded-lg overflow-hidden",
                 h2 { class: "px-6 py-4 text-xs uppercase font-semibold font-heading text-gray-400 tracking-widest border-b border-gray-100",
                     {translate(locale(), "store.map_title")}
                 }
-                // TODO: render interactive floor plan highlighting this store's position on its level
-                div { class: "flex items-center justify-center h-48 bg-gray-50 text-sm text-gray-400 font-semibold font-heading",
-                    {translate(locale(), "store.map_coming")}
+                div { class: "p-4",
+                    StoreMap { name: name.clone(), level }
                 }
             }
+        }
+    }
+}
+
+#[component]
+fn StoreMap(name: String, level: Option<u8>) -> Element {
+    let locale = use_context::<Signal<Locale>>();
+    let active_floor = use_signal(|| level.unwrap_or(0));
+    let stores = use_loader(|| get_stores())?;
+    let stores_owned: Vec<Store> = stores.iter().map(|s| (*s).clone()).collect();
+
+    rsx! {
+        DirectoryMap {
+            active_floor,
+            locale,
+            stores: stores_owned,
+            search_lc: String::new(),
+            category: None,
+            highlight_slug: Some(slugify(&name)),
         }
     }
 }
