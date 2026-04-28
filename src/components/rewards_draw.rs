@@ -1153,59 +1153,61 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
             }
-            div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl py-4 px-6",
-                p { class: "text-xs font-bold tracking-widest text-accent mb-3",
-                    {translate(locale(), "rewards_draw.title.pick_categories")}
-                }
-                div { class: "flex flex-wrap gap-2",
-                    for category in categories() {
-                        button {
-                            key: "{category.key}",
-                            class: if selected_categories().contains(&category.key) {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-dark text-white"
-                            } else if selected_categories().len() >= 3 {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
-                            } else {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-dark hover:bg-gray-200"
-                            },
-                            disabled: quota_exhausted()
-                                || (!selected_categories().contains(&category.key)
-                                    && selected_categories().len() >= 3),
-                            onclick: {
-                                let key = category.key.clone();
-                                move |_| toggle_category(key.clone())
-                            },
-                            {
-                                category_translation_key(&category.key)
-                                    .map(|key| translate(locale(), key))
-                                    .unwrap_or_else(|| category.label.clone())
+            if !quota_exhausted() {
+                div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl py-4 px-6",
+                    p { class: "text-xs font-bold tracking-widest text-accent mb-3",
+                        {translate(locale(), "rewards_draw.title.pick_categories")}
+                    }
+                    div { class: "flex flex-wrap gap-2",
+                        for category in categories() {
+                            button {
+                                key: "{category.key}",
+                                class: if selected_categories().contains(&category.key) {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-dark text-white"
+                                } else if selected_categories().len() >= 3 {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
+                                } else {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-dark hover:bg-gray-200"
+                                },
+                                disabled: quota_exhausted()
+                                    || (!selected_categories().contains(&category.key)
+                                        && selected_categories().len() >= 3),
+                                onclick: {
+                                    let key = category.key.clone();
+                                    move |_| toggle_category(key.clone())
+                                },
+                                {
+                                    category_translation_key(&category.key)
+                                        .map(|key| translate(locale(), key))
+                                        .unwrap_or_else(|| category.label.clone())
+                                }
                             }
                         }
                     }
-                }
-                p { class: "mt-3 py-1.5 text-xs text-muted",
-                    {translate_fmt(
-                        locale(),
-                        "rewards_draw.selected_count",
-                        &[("count", selected_categories().len().to_string())]
-                    )}
-                }
-                button {
-                    class: if !drawing()
-                        && phase() == DrawPhase::SelectCategories
-                        && !quota_exhausted()
-                        && !selected_categories().is_empty()
-                    {
-                        "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white hover:bg-amber-600 transition-colors"
-                    } else {
-                        "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-gray-300 text-white cursor-not-allowed transition-colors"
-                    },
-                    disabled: quota_exhausted()
-                        || drawing()
-                        || selected_categories().is_empty()
-                        || phase() != DrawPhase::SelectCategories,
-                    onclick: build_store_draw,
-                    {translate(locale(), "rewards_draw.button.validate_categories")}
+                    p { class: "mt-3 py-1.5 text-xs text-muted",
+                        {translate_fmt(
+                            locale(),
+                            "rewards_draw.selected_count",
+                            &[("count", selected_categories().len().to_string())]
+                        )}
+                    }
+                    button {
+                        class: if !drawing()
+                            && phase() == DrawPhase::SelectCategories
+                            && !quota_exhausted()
+                            && !selected_categories().is_empty()
+                        {
+                            "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white hover:bg-amber-600 transition-colors"
+                        } else {
+                            "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-gray-300 text-white cursor-not-allowed transition-colors"
+                        },
+                        disabled: quota_exhausted()
+                            || drawing()
+                            || selected_categories().is_empty()
+                            || phase() != DrawPhase::SelectCategories,
+                        onclick: build_store_draw,
+                        {translate(locale(), "rewards_draw.button.validate_categories")}
+                    }
                 }
             }
 

@@ -82,7 +82,7 @@
   "home.ticker.prizes_label": "Gewinner",
   "home.ticker.prizes_ratio": "{current}/{max}",
   "home.ticker.reset_in_label": "Reset in",
-  "home.ticker.quota_full_label": "24h-Cooldown verbleibend",
+  "home.ticker.quota_full_label": "Cooldown verbleibend",
   "home.ticker.winners_hint": "Letzte Gewinner",
   "home.ticker.empty": "Seien Sie der erste Gewinner heute",
   "home.ticker.sep": "•",

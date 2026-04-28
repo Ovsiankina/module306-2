@@ -13,6 +13,10 @@
   --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
+span.text-accent {
+  color: rgba(237, 134, 6, 1);
+}
+
 /* Bandeau « gagnants » sous la nav : défilement infini (liste dupliquée côté Rust en 2 passes). */
 @keyframes ft-home-ticker-scroll {
   to {
