@@ -944,8 +944,8 @@
       "phone": "+41 091 646 32 22",
       "website": "https://www.freddy.com",
       "icon_path": "/brands/freddy.jpg",
-      "map_x": 38.61788558959961,
-      "map_y": 30.69198226928711
+      "map_x": 33.414634704589844,
+      "map_y": 29.938804626464844
     },
     {
       "name": "Icebreaker",
@@ -1549,8 +1549,8 @@
       "phone": "+41 091 646 83 37",
       "website": "https://www.lecreuset.com",
       "icon_path": "/brands/le_creuset.jpg",
-      "map_x": 33.08943176269531,
-      "map_y": 29.938804626464844
+      "map_x": null,
+      "map_y": null
     },
     {
       "name": "Millefiori store",
@@ -1703,8 +1703,8 @@
       "phone": "+41 091 646 78 83",
       "website": "https://www.foxtown.com",
       "icon_path": null,
-      "map_x": 25.52845573425293,
-      "map_y": 29.938804626464844
+      "map_x": 25.609756469726562,
+      "map_y": 31.068571090698242
     },
     {
       "name": "Tax & Exchange Services",

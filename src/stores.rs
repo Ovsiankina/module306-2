@@ -95,6 +95,26 @@ impl Category {
         }
     }
 
+    /// i18n key for this category's display label (shared across pages).
+    pub fn label_key(&self) -> &'static str {
+        match self {
+            Category::HighFashion => "home.category.luxury_fashion",
+            Category::LadiesMenswear => "home.category.fashion",
+            Category::Casualwear => "home.category.casualwear",
+            Category::SportswearEquipment => "home.category.sport_performance",
+            Category::Childrenswear => "home.category.kidswear",
+            Category::Footwear => "home.category.footwear",
+            Category::Underwear => "home.category.underwear",
+            Category::WatchesJewellery => "home.category.luxury_heritage",
+            Category::Accessories => "home.category.accessories",
+            Category::Electronics => "home.category.electronics",
+            Category::Beauty => "home.category.beauty",
+            Category::Home => "home.category.home_lifestyle",
+            Category::FoodDrinks => "home.category.food_drinks",
+            Category::Services => "home.category.services",
+        }
+    }
+
     pub fn all() -> Vec<Category> {
         vec![
             Category::HighFashion,
@@ -163,6 +183,18 @@ pub fn get_store_local(slug: &str) -> Option<Store> {
         .iter()
         .find(|s| slugify(&s.name) == slug)
         .cloned()
+}
+
+/// Tailwind classes for a floor's marker pill (background, border, text).
+/// Shared between the public map and the admin editor so the two stay
+/// visually consistent.
+pub fn floor_marker_classes(level: u8) -> &'static str {
+    match level {
+        0 => "bg-yellow-400 border-yellow-700 text-yellow-900",
+        1 => "bg-red-500 border-red-800 text-white",
+        2 => "bg-blue-500 border-blue-800 text-white",
+        _ => "bg-green-500 border-green-800 text-white",
+    }
 }
 
 // --- Slug ---

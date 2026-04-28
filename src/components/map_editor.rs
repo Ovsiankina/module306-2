@@ -3,17 +3,8 @@ use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::context::auth::{read_token, AuthState};
 use crate::i18n::{translate, translate_fmt, Locale};
-use crate::stores::{get_stores, set_store_position, slugify, Category, Store};
+use crate::stores::{floor_marker_classes, get_stores, set_store_position, slugify, Store};
 use dioxus::prelude::*;
-
-fn floor_color_classes(level: u8) -> &'static str {
-    match level {
-        0 => "bg-yellow-400 border-yellow-700 text-yellow-900",
-        1 => "bg-red-500 border-red-800 text-white",
-        2 => "bg-blue-500 border-blue-800 text-white",
-        _ => "bg-green-500 border-green-800 text-white",
-    }
-}
 
 fn floor_plan_src(level: u8) -> Asset {
     match level {
@@ -21,25 +12,6 @@ fn floor_plan_src(level: u8) -> Asset {
         1 => asset!("/assets/fox_town/level_1.jpg"),
         2 => asset!("/assets/fox_town/level_2.jpg"),
         _ => asset!("/assets/fox_town/level_3.jpg"),
-    }
-}
-
-fn category_label_key(category: &Category) -> &'static str {
-    match category {
-        Category::HighFashion => "home.category.luxury_fashion",
-        Category::LadiesMenswear => "home.category.fashion",
-        Category::Casualwear => "home.category.casualwear",
-        Category::SportswearEquipment => "home.category.sport_performance",
-        Category::Childrenswear => "home.category.kidswear",
-        Category::Footwear => "home.category.footwear",
-        Category::Underwear => "home.category.underwear",
-        Category::WatchesJewellery => "home.category.luxury_heritage",
-        Category::Accessories => "home.category.accessories",
-        Category::Electronics => "home.category.electronics",
-        Category::Beauty => "home.category.beauty",
-        Category::Home => "home.category.home_lifestyle",
-        Category::FoodDrinks => "home.category.food_drinks",
-        Category::Services => "home.category.services",
     }
 }
 
@@ -163,6 +135,15 @@ pub fn MapEditorPage() -> Element {
                                 .filter(|s| s.level == Some(floor) && s.map_x.is_some())
                                 .count();
                             let is_active = active_level() == floor;
+                            let is_open = is_active && list_visible();
+                            // Chevron hints that the active button toggles the
+                            // sidebar list (▾ open, ▸ collapsed). Hidden on
+                            // inactive buttons to avoid implying the same toggle.
+                            let chevron = if is_active {
+                                if is_open { " ▾" } else { " ▸" }
+                            } else {
+                                ""
+                            };
                             rsx! {
                                 button {
                                     key: "lvl-{floor}",
@@ -181,7 +162,7 @@ pub fn MapEditorPage() -> Element {
                                         }
                                     },
                                     {translate_fmt(locale(), "directory.floor_button", &[("level", floor.to_string())])}
-                                    span { class: "ml-2 opacity-80", " {placed}/{total}" }
+                                    span { class: "ml-2 opacity-80", " {placed}/{total}{chevron}" }
                                 }
                             }
                         }
@@ -235,14 +216,14 @@ pub fn MapEditorPage() -> Element {
                                             checked: hide_placed(),
                                             onchange: move |evt| hide_placed.set(evt.checked()),
                                         }
-                                        "UNPLACED ONLY"
+                                        {translate(locale(), "map_editor.unplaced_only")}
                                     }
                                 }
                                 div { class: "relative",
                                     input {
                                         r#type: "text",
                                         value: "{query}",
-                                        placeholder: "Search store or unit…",
+                                        placeholder: translate(locale(), "map_editor.search_placeholder"),
                                         class: "w-full px-3 py-1.5 pr-7 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-dark",
                                         oninput: move |evt| query.set(evt.value()),
                                     }
@@ -261,7 +242,7 @@ pub fn MapEditorPage() -> Element {
                                         if stores_for_level.is_empty() {
                                             {translate(locale(), "map_editor.no_stores_for_level")}
                                         } else {
-                                            "No stores match your filters."
+                                            {translate(locale(), "map_editor.no_filter_match")}
                                         }
                                     }
                                 } else {
@@ -270,7 +251,7 @@ pub fn MapEditorPage() -> Element {
                                             let slug = slugify(&store.name);
                                             let is_selected = selected_slug() == Some(slug.clone());
                                             let placed = store.map_x.is_some() && store.map_y.is_some();
-                                            let cat_label = translate(locale(), category_label_key(&store.category));
+                                            let cat_label = translate(locale(), store.category.label_key());
                                             let unit = store.store_number.clone().unwrap_or_default();
                                             let slug_for_select = slug.clone();
                                             let slug_for_clear = slug.clone();
@@ -367,6 +348,9 @@ pub fn MapEditorPage() -> Element {
                                     img_handle.set(Some(evt.data()));
                                 },
                                 onclick: move |evt| {
+                                    if saving() {
+                                        return;
+                                    }
                                     let Some(slug) = selected_slug() else { return };
                                     let Some(handle) = img_handle.read().clone() else { return };
                                     let coords = evt.element_coordinates();
@@ -426,7 +410,7 @@ pub fn MapEditorPage() -> Element {
                                     } else {
                                         ""
                                     };
-                                    let color = floor_color_classes(level);
+                                    let color = floor_marker_classes(level);
                                     rsx! {
                                         button {
                                             key: "marker-{slug}",

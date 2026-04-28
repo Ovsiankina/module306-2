@@ -1,37 +1,9 @@
 use crate::components::footer::Footer;
 use crate::components::nav::{Nav, NavPage};
 use crate::i18n::{translate, translate_fmt, Locale};
-use crate::stores::{get_stores, slugify, Category, Store};
+use crate::stores::{floor_marker_classes, get_stores, slugify, Category, Store};
 use crate::Route;
 use dioxus::prelude::*;
-
-fn floor_marker_classes(level: u8) -> &'static str {
-    match level {
-        0 => "bg-yellow-400 border-yellow-700 text-yellow-900",
-        1 => "bg-red-500 border-red-800 text-white",
-        2 => "bg-blue-500 border-blue-800 text-white",
-        _ => "bg-green-500 border-green-800 text-white",
-    }
-}
-
-fn category_label_key(category: &Category) -> &'static str {
-    match category {
-        Category::HighFashion => "home.category.luxury_fashion",
-        Category::LadiesMenswear => "home.category.fashion",
-        Category::Casualwear => "home.category.casualwear",
-        Category::SportswearEquipment => "home.category.sport_performance",
-        Category::Childrenswear => "home.category.kidswear",
-        Category::Footwear => "home.category.footwear",
-        Category::Underwear => "home.category.underwear",
-        Category::WatchesJewellery => "home.category.luxury_heritage",
-        Category::Accessories => "home.category.accessories",
-        Category::Electronics => "home.category.electronics",
-        Category::Beauty => "home.category.beauty",
-        Category::Home => "home.category.home_lifestyle",
-        Category::FoodDrinks => "home.category.food_drinks",
-        Category::Services => "home.category.services",
-    }
-}
 
 fn store_matches(store: &Store, search_lc: &str, category: Option<&Category>) -> bool {
     let matches_search = search_lc.is_empty() || store.name.to_lowercase().contains(search_lc);
@@ -182,7 +154,7 @@ pub fn ShopDirectory() -> Element {
                                         key: "{c.key()}",
                                         value: "{c.key()}",
                                         selected: category_filter().as_ref() == Some(&c),
-                                        {translate(locale(), category_label_key(&c))}
+                                        {translate(locale(), c.label_key())}
                                     }
                                 }
                             }

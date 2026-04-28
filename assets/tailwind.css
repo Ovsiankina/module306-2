@@ -635,9 +635,6 @@
   .w-2 {
     width: calc(var(--spacing) * 2);
   }
-  .w-3 {
-    width: calc(var(--spacing) * 3);
-  }
   .w-6 {
     width: calc(var(--spacing) * 6);
   }
@@ -744,10 +741,6 @@
   .translate-1\/2 {
     --tw-translate-x: calc(1/2 * 100%);
     --tw-translate-y: calc(1/2 * 100%);
-    translate: var(--tw-translate-x) var(--tw-translate-y);
-  }
-  .-translate-x-1\/2 {
-    --tw-translate-x: calc(calc(1/2 * 100%) * -1);
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
   .-translate-y-1\/2 {
@@ -1657,9 +1650,6 @@
   }
   .uppercase {
     text-transform: uppercase;
-  }
-  .italic {
-    font-style: italic;
   }
   .tabular-nums {
     --tw-numeric-spacing: tabular-nums;

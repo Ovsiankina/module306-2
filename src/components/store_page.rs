@@ -1,5 +1,5 @@
 use crate::components::directory::DirectoryMap;
-use crate::stores::{get_store_local, get_stores, slugify, Category, Store};
+use crate::stores::{get_store_local, get_stores, slugify, Store};
 use crate::i18n::{Locale, translate, translate_fmt};
 use crate::Route;
 use dioxus::prelude::*;
@@ -19,25 +19,6 @@ fn level_label(level: u8) -> &'static str {
         1 => "store.level.1",
         2 => "store.level.2",
         _ => "store.level.3",
-    }
-}
-
-fn category_label_key(category: &Category) -> &'static str {
-    match category {
-        Category::HighFashion => "home.category.luxury_fashion",
-        Category::LadiesMenswear => "home.category.fashion",
-        Category::Casualwear => "home.category.casualwear",
-        Category::SportswearEquipment => "home.category.sport_performance",
-        Category::Childrenswear => "home.category.kidswear",
-        Category::Footwear => "home.category.footwear",
-        Category::Underwear => "home.category.underwear",
-        Category::WatchesJewellery => "home.category.luxury_heritage",
-        Category::Accessories => "home.category.accessories",
-        Category::Electronics => "home.category.electronics",
-        Category::Beauty => "home.category.beauty",
-        Category::Home => "home.category.home_lifestyle",
-        Category::FoodDrinks => "home.category.food_drinks",
-        Category::Services => "home.category.services",
     }
 }
 
@@ -110,7 +91,7 @@ pub fn StorePage(name: String) -> Element {
                         }
                     }
                     span { class: "inline-block text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600",
-                        {translate(locale(), category_label_key(&category))}
+                        {translate(locale(), category.label_key())}
                     }
                 }
             }
@@ -161,12 +142,14 @@ pub fn StorePage(name: String) -> Element {
             }
 
             // Map: same component as the directory page, with this store highlighted.
+            // `key` is bound to the store name so navigating between stores via the
+            // map remounts StoreMap with a fresh active_floor signal.
             div { class: "bg-white border border-gray-200 rounded-lg overflow-hidden",
                 h2 { class: "px-6 py-4 text-xs uppercase font-semibold font-heading text-gray-400 tracking-widest border-b border-gray-100",
                     {translate(locale(), "store.map_title")}
                 }
                 div { class: "p-4",
-                    StoreMap { name: name.clone(), level }
+                    StoreMap { key: "{name}", name: name.clone(), level }
                 }
             }
         }
@@ -178,6 +161,22 @@ fn StoreMap(name: String, level: Option<u8>) -> Element {
     let locale = use_context::<Signal<Locale>>();
     let active_floor = use_signal(|| level.unwrap_or(0));
     let stores = use_loader(|| get_stores())?;
+
+    // If the current store has no coordinates yet, embedding the map would
+    // dim every other marker without showing the highlighted one — confusing.
+    // Show a "not placed" message instead.
+    let slug = slugify(&name);
+    let current_placed = stores
+        .iter()
+        .any(|s| slugify(&s.name) == slug && s.map_x.is_some() && s.map_y.is_some());
+    if !current_placed {
+        return rsx! {
+            div { class: "py-8 text-sm text-gray-500 text-center",
+                {translate(locale(), "store.map_not_placed")}
+            }
+        };
+    }
+
     let stores_owned: Vec<Store> = stores.iter().map(|s| (*s).clone()).collect();
 
     rsx! {
@@ -187,7 +186,7 @@ fn StoreMap(name: String, level: Option<u8>) -> Element {
             stores: stores_owned,
             search_lc: String::new(),
             category: None,
-            highlight_slug: Some(slugify(&name)),
+            highlight_slug: Some(slug),
         }
     }
 }
