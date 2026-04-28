@@ -125,19 +125,30 @@ pub fn ShopDirectory() -> Element {
                                             let level_for_click = store.level;
                                             rsx! {
                                                 div {
-                                                    class: "px-4 py-3 hover:bg-gray-50 cursor-pointer",
+                                                    class: "px-4 py-3 hover:bg-gray-50 cursor-pointer flex items-center gap-3",
                                                     onclick: move |_| {
                                                         if let Some(level) = level_for_click {
                                                             active_floor.set(level);
                                                         }
                                                     },
-                                                    p { class: "text-sm font-bold text-dark", "{store.name}" }
-                                                    if let Some(level) = store.level {
-                                                        p { class: "text-xs text-muted",
-                                                            if let Some(ref num) = store.store_number {
-                                                                {translate_fmt(locale(), "directory.level_short_unit", &[("level", level.to_string()), ("unit", num.clone())])}
-                                                            } else {
-                                                                {translate_fmt(locale(), "directory.level_short", &[("level", level.to_string())])}
+                                                    if let Some(ref src) = store.icon_path {
+                                                        div { class: "h-10 w-10 shrink-0 rounded border border-gray-100 bg-white overflow-hidden flex items-center justify-center",
+                                                            img {
+                                                                src: "{src}",
+                                                                class: "max-h-full max-w-full object-contain p-0.5",
+                                                                alt: "{store.name}",
+                                                            }
+                                                        }
+                                                    }
+                                                    div { class: "min-w-0 flex-1",
+                                                        p { class: "text-sm font-bold text-dark truncate", "{store.name}" }
+                                                        if let Some(level) = store.level {
+                                                            p { class: "text-xs text-muted",
+                                                                if let Some(ref num) = store.store_number {
+                                                                    {translate_fmt(locale(), "directory.level_short_unit", &[("level", level.to_string()), ("unit", num.clone())])}
+                                                                } else {
+                                                                    {translate_fmt(locale(), "directory.level_short", &[("level", level.to_string())])}
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -408,6 +419,7 @@ fn DirectoryMap(
                             let name_for_nav = store.name.clone();
                             let slug = slugify(&store.name);
                             let unit = store.store_number.clone().unwrap_or_default();
+                            let icon = store.icon_path.clone();
                             let matches = store_matches(&store, &search_lc, category.as_ref());
                             let dimmed = any_filter_active && !matches;
                             let highlighted = any_filter_active && matches;
@@ -417,7 +429,7 @@ fn DirectoryMap(
                             rsx! {
                                 button {
                                     key: "marker-{slug}",
-                                    class: "pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 px-1.5 py-0.5 text-[10px] font-bold shadow {color} {dim_class} {pulse_class} hover:scale-125 transition-transform",
+                                    class: "pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {dim_class} {pulse_class} hover:scale-125 transition-transform",
                                     style: "left: {x}%; top: {y}%;",
                                     title: "{name_for_nav}",
                                     onclick: move |evt| {
@@ -426,7 +438,16 @@ fn DirectoryMap(
                                     },
                                     onmousedown: move |evt| { evt.stop_propagation(); },
                                     ontouchstart: move |evt| { evt.stop_propagation(); },
-                                    "{unit}"
+                                    if let Some(ref src) = icon {
+                                        img {
+                                            src: "{src}",
+                                            class: "max-h-full max-w-full object-contain",
+                                            alt: "{name_for_nav}",
+                                            draggable: false,
+                                        }
+                                    } else {
+                                        span { class: "text-[10px] font-bold leading-none", "{unit}" }
+                                    }
                                 }
                             }
                         }

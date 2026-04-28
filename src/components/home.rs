@@ -99,18 +99,18 @@ impl FilterGroup {
 #[component]
 fn StoreCardImage(name: String, icon_path: Option<String>) -> Element {
     let mut image_failed = use_signal(|| false);
-    let image_src = icon_path.filter(|p| !p.trim().is_empty());
-    let image_src_value = image_src.as_deref().unwrap_or_default();
+    let resolved = icon_path.filter(|p| !p.trim().is_empty());
+    let resolved_value = resolved.as_deref().unwrap_or_default();
 
     rsx! {
         div { class: "h-40 w-full bg-gray-100 rounded-lg mb-4 overflow-hidden flex items-center justify-center",
-            if image_failed() || image_src.is_none() {
+            if image_failed() || resolved.is_none() {
                 span { class: "text-2xl font-extrabold text-gray-300 tracking-wider group-hover:text-accent transition-colors",
                     "{name}"
                 }
             } else {
                 img {
-                    src: "{image_src_value}",
+                    src: "{resolved_value}",
                     class: "w-full h-full object-cover",
                     alt: "{name}",
                     onerror: move |_| image_failed.set(true),

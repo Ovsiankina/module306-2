@@ -70,6 +70,7 @@ pub fn StorePage(name: String) -> Element {
         level,
         phone,
         website,
+        icon_path,
         ..
     } = store;
 
@@ -87,18 +88,29 @@ pub fn StorePage(name: String) -> Element {
             }
 
             // Header
-            div { class: "mb-8",
-                div { class: "flex flex-wrap items-center gap-3 mb-3",
-                    h1 { class: "text-3xl font-bold font-heading text-gray-900", "{name}" }
-                    if let Some(lvl) = level {
-                        span {
-                            class: "text-sm font-semibold px-3 py-1 rounded-full border {level_badge_class(lvl)}",
-                            {translate_fmt(locale(), "store.floor_badge", &[("level", lvl.to_string())])}
+            div { class: "mb-8 flex items-start gap-5",
+                if let Some(ref src) = icon_path {
+                    div { class: "h-20 w-20 shrink-0 rounded-lg border border-gray-200 bg-white overflow-hidden flex items-center justify-center",
+                        img {
+                            src: "{src}",
+                            class: "max-h-full max-w-full object-contain p-2",
+                            alt: "{name}",
                         }
                     }
                 }
-                span { class: "inline-block text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600",
-                    {translate(locale(), category_label_key(&category))}
+                div { class: "flex-1 min-w-0",
+                    div { class: "flex flex-wrap items-center gap-3 mb-3",
+                        h1 { class: "text-3xl font-bold font-heading text-gray-900", "{name}" }
+                        if let Some(lvl) = level {
+                            span {
+                                class: "text-sm font-semibold px-3 py-1 rounded-full border {level_badge_class(lvl)}",
+                                {translate_fmt(locale(), "store.floor_badge", &[("level", lvl.to_string())])}
+                            }
+                        }
+                    }
+                    span { class: "inline-block text-sm px-3 py-1 rounded-full bg-gray-100 text-gray-600",
+                        {translate(locale(), category_label_key(&category))}
+                    }
                 }
             }
 

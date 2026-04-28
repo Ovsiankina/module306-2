@@ -55,6 +55,12 @@ pub fn MapEditorPage() -> Element {
     let mut error = use_signal(String::new);
     let mut saving = use_signal(|| false);
     let mut img_handle = use_signal(|| None::<std::rc::Rc<MountedData>>);
+    let mut query = use_signal(String::new);
+    let mut hide_placed = use_signal(|| false);
+    // Whether the store list for the active level is currently shown.
+    // Clicking the active floor button toggles this; clicking a different
+    // floor switches level and forces the list visible.
+    let mut list_visible = use_signal(|| true);
 
     // Initial load
     use_effect(move || {
@@ -97,12 +103,32 @@ pub fn MapEditorPage() -> Element {
         .filter(|s| s.map_x.is_some() && s.map_y.is_some())
         .cloned()
         .collect();
-
     let placed_count = placed_for_level.len();
     let level_total = stores_for_level.len();
 
-    // Sort: unplaced first, then alphabetical
-    let mut listed = stores_for_level.clone();
+    // Filter by search query and "hide placed" toggle, then sort:
+    // unplaced first, then alphabetical.
+    let q = query().trim().to_lowercase();
+    let hide = hide_placed();
+    let mut listed: Vec<Store> = stores_for_level
+        .iter()
+        .filter(|s| {
+            if hide && s.map_x.is_some() {
+                return false;
+            }
+            if q.is_empty() {
+                return true;
+            }
+            let in_name = s.name.to_lowercase().contains(&q);
+            let in_unit = s
+                .store_number
+                .as_deref()
+                .map(|u| u.to_lowercase().contains(&q))
+                .unwrap_or(false);
+            in_name || in_unit
+        })
+        .cloned()
+        .collect();
     listed.sort_by(|a, b| {
         let a_placed = a.map_x.is_some();
         let b_placed = b.map_x.is_some();
@@ -146,8 +172,13 @@ pub fn MapEditorPage() -> Element {
                                         "px-5 py-2 rounded-full text-xs font-bold tracking-wider bg-gray-100 text-muted hover:bg-gray-200 transition-colors"
                                     },
                                     onclick: move |_| {
-                                        active_level.set(floor);
-                                        selected_slug.set(None);
+                                        if active_level() == floor {
+                                            list_visible.set(!list_visible());
+                                        } else {
+                                            active_level.set(floor);
+                                            list_visible.set(true);
+                                            selected_slug.set(None);
+                                        }
                                     },
                                     {translate_fmt(locale(), "directory.floor_button", &[("level", floor.to_string())])}
                                     span { class: "ml-2 opacity-80", " {placed}/{total}" }
@@ -178,101 +209,139 @@ pub fn MapEditorPage() -> Element {
                     }
                 }
 
-                // Layout: list + map
-                div { class: "grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6",
+                // Layout: list + map. Sidebar is hidden when list is collapsed,
+                // and the map expands to fill the row.
+                div { class: if list_visible() {
+                        "grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6"
+                    } else {
+                        "grid grid-cols-1 gap-6"
+                    },
 
-                    // Sidebar: store list for active level
-                    div { class: "border border-gray-100 rounded-xl overflow-hidden flex flex-col max-h-[700px]",
-                        div { class: "px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between",
-                            p { class: "text-xs font-bold tracking-widest text-dark",
-                                {translate_fmt(locale(), "map_editor.placed_count", &[
-                                    ("placed", placed_count.to_string()),
-                                    ("total", level_total.to_string()),
-                                ])}
-                            }
-                        }
-                        div { class: "overflow-y-auto divide-y divide-gray-50",
-                            if listed.is_empty() {
-                                p { class: "px-4 py-8 text-sm text-muted text-center",
-                                    {translate(locale(), "map_editor.no_stores_for_level")}
+                    if list_visible() {
+                        // Sidebar: store list for active level
+                        div { class: "border border-gray-100 rounded-xl overflow-hidden flex flex-col max-h-[700px]",
+                            div { class: "px-4 py-3 bg-gray-50 border-b border-gray-100 flex flex-col gap-2",
+                                div { class: "flex items-center justify-between gap-2",
+                                    p { class: "text-xs font-bold tracking-widest text-dark",
+                                        {translate_fmt(locale(), "map_editor.placed_count", &[
+                                            ("placed", placed_count.to_string()),
+                                            ("total", level_total.to_string()),
+                                        ])}
+                                    }
+                                    label { class: "flex items-center gap-1.5 text-[11px] font-bold tracking-wider text-muted cursor-pointer select-none",
+                                        input {
+                                            r#type: "checkbox",
+                                            class: "accent-dark",
+                                            checked: hide_placed(),
+                                            onchange: move |evt| hide_placed.set(evt.checked()),
+                                        }
+                                        "UNPLACED ONLY"
+                                    }
                                 }
-                            } else {
-                                for store in listed.clone() {
-                                    {
-                                        let slug = slugify(&store.name);
-                                        let is_selected = selected_slug() == Some(slug.clone());
-                                        let placed = store.map_x.is_some() && store.map_y.is_some();
-                                        let cat_label = translate(locale(), category_label_key(&store.category));
-                                        let unit = store.store_number.clone().unwrap_or_default();
-                                        let slug_for_select = slug.clone();
-                                        let slug_for_clear = slug.clone();
-                                        let saving_clear = saving;
-                                        rsx! {
-                                            div {
-                                                key: "{slug}",
-                                                class: if is_selected {
-                                                    "px-3 py-2 bg-accent/10"
-                                                } else {
-                                                    "px-3 py-2 hover:bg-gray-50"
-                                                },
-                                                div { class: "flex items-start justify-between gap-2",
-                                                    div { class: "min-w-0 flex-1",
-                                                        p { class: "text-sm font-bold text-dark truncate", "{store.name}" }
-                                                        p { class: "text-xs text-muted truncate", "{cat_label} • {unit}" }
-                                                    }
-                                                    if placed {
-                                                        span { class: "text-[10px] font-bold tracking-wider text-green-700 bg-green-50 px-2 py-0.5 rounded",
-                                                            {translate(locale(), "map_editor.placed_badge")}
+                                div { class: "relative",
+                                    input {
+                                        r#type: "text",
+                                        value: "{query}",
+                                        placeholder: "Search store or unit…",
+                                        class: "w-full px-3 py-1.5 pr-7 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:border-dark",
+                                        oninput: move |evt| query.set(evt.value()),
+                                    }
+                                    if !query().is_empty() {
+                                        button {
+                                            class: "absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-dark text-sm",
+                                            onclick: move |_| query.set(String::new()),
+                                            "×"
+                                        }
+                                    }
+                                }
+                            }
+                            div { class: "overflow-y-auto divide-y divide-gray-50",
+                                if listed.is_empty() {
+                                    p { class: "px-4 py-8 text-sm text-muted text-center",
+                                        if stores_for_level.is_empty() {
+                                            {translate(locale(), "map_editor.no_stores_for_level")}
+                                        } else {
+                                            "No stores match your filters."
+                                        }
+                                    }
+                                } else {
+                                    for store in listed.clone() {
+                                        {
+                                            let slug = slugify(&store.name);
+                                            let is_selected = selected_slug() == Some(slug.clone());
+                                            let placed = store.map_x.is_some() && store.map_y.is_some();
+                                            let cat_label = translate(locale(), category_label_key(&store.category));
+                                            let unit = store.store_number.clone().unwrap_or_default();
+                                            let slug_for_select = slug.clone();
+                                            let slug_for_clear = slug.clone();
+                                            let saving_clear = saving;
+                                            rsx! {
+                                                div {
+                                                    key: "{slug}",
+                                                    class: if is_selected {
+                                                        "px-3 py-2 bg-accent/10"
+                                                    } else {
+                                                        "px-3 py-2 hover:bg-gray-50"
+                                                    },
+                                                    div { class: "flex items-start justify-between gap-2",
+                                                        div { class: "min-w-0 flex-1",
+                                                            p { class: "text-sm font-bold text-dark truncate", "{store.name}" }
+                                                            p { class: "text-xs text-muted truncate", "{cat_label} • {unit}" }
                                                         }
-                                                    }
-                                                }
-                                                div { class: "mt-2 flex items-center gap-2",
-                                                    button {
-                                                        class: "px-3 py-1 rounded text-[11px] font-bold tracking-wider bg-dark text-white hover:bg-gray-800",
-                                                        onclick: move |_| {
-                                                            selected_slug.set(Some(slug_for_select.clone()));
-                                                        },
                                                         if placed {
-                                                            {translate(locale(), "map_editor.move_btn")}
-                                                        } else {
-                                                            {translate(locale(), "map_editor.place_btn")}
+                                                            span { class: "text-[10px] font-bold tracking-wider text-green-700 bg-green-50 px-2 py-0.5 rounded",
+                                                                {translate(locale(), "map_editor.placed_badge")}
+                                                            }
                                                         }
                                                     }
-                                                    if placed {
+                                                    div { class: "mt-2 flex items-center gap-2",
                                                         button {
-                                                            class: "px-3 py-1 rounded text-[11px] font-bold tracking-wider text-red-700 hover:bg-red-50",
-                                                            disabled: saving_clear(),
+                                                            class: "px-3 py-1 rounded text-[11px] font-bold tracking-wider bg-dark text-white hover:bg-gray-800",
                                                             onclick: move |_| {
-                                                                let slug = slug_for_clear.clone();
-                                                                let level = active_level();
-                                                                let mut saving = saving_clear;
-                                                                let mut error = error;
-                                                                let mut stores = stores;
-                                                                let mut selected_slug = selected_slug;
-                                                                spawn(async move {
-                                                                    let Some(token) = read_token() else {
-                                                                        error.set("Missing auth token".to_string());
-                                                                        return;
-                                                                    };
-                                                                    saving.set(true);
-                                                                    error.set(String::new());
-                                                                    match set_store_position(token, slug.clone(), Some(level), None, None).await {
-                                                                        Ok(updated) => {
-                                                                            let mut list = stores();
-                                                                            if let Some(s) = list.iter_mut().find(|s| slugify(&s.name) == slug) {
-                                                                                *s = updated;
-                                                                            }
-                                                                            stores.set(list);
-                                                                            if selected_slug() == Some(slug) {
-                                                                                selected_slug.set(None);
-                                                                            }
-                                                                        }
-                                                                        Err(e) => error.set(e.to_string()),
-                                                                    }
-                                                                    saving.set(false);
-                                                                });
+                                                                selected_slug.set(Some(slug_for_select.clone()));
                                                             },
-                                                            {translate(locale(), "map_editor.remove_btn")}
+                                                            if placed {
+                                                                {translate(locale(), "map_editor.move_btn")}
+                                                            } else {
+                                                                {translate(locale(), "map_editor.place_btn")}
+                                                            }
+                                                        }
+                                                        if placed {
+                                                            button {
+                                                                class: "px-3 py-1 rounded text-[11px] font-bold tracking-wider text-red-700 hover:bg-red-50",
+                                                                disabled: saving_clear(),
+                                                                onclick: move |_| {
+                                                                    let slug = slug_for_clear.clone();
+                                                                    let level = active_level();
+                                                                    let mut saving = saving_clear;
+                                                                    let mut error = error;
+                                                                    let mut stores = stores;
+                                                                    let mut selected_slug = selected_slug;
+                                                                    spawn(async move {
+                                                                        let Some(token) = read_token() else {
+                                                                            error.set("Missing auth token".to_string());
+                                                                            return;
+                                                                        };
+                                                                        saving.set(true);
+                                                                        error.set(String::new());
+                                                                        match set_store_position(token, slug.clone(), Some(level), None, None).await {
+                                                                            Ok(updated) => {
+                                                                                let mut list = stores();
+                                                                                if let Some(s) = list.iter_mut().find(|s| slugify(&s.name) == slug) {
+                                                                                    *s = updated;
+                                                                                }
+                                                                                stores.set(list);
+                                                                                if selected_slug() == Some(slug) {
+                                                                                    selected_slug.set(None);
+                                                                                }
+                                                                            }
+                                                                            Err(e) => error.set(e.to_string()),
+                                                                        }
+                                                                        saving.set(false);
+                                                                    });
+                                                                },
+                                                                {translate(locale(), "map_editor.remove_btn")}
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -347,6 +416,8 @@ pub fn MapEditorPage() -> Element {
                                     let x = store.map_x.unwrap_or(0.0);
                                     let y = store.map_y.unwrap_or(0.0);
                                     let unit = store.store_number.clone().unwrap_or_default();
+                                    let icon = store.icon_path.clone();
+                                    let name = store.name.clone();
                                     let level = active_level();
                                     let slug = slugify(&store.name);
                                     let is_selected_marker = selected_slug() == Some(slug.clone());
@@ -359,14 +430,23 @@ pub fn MapEditorPage() -> Element {
                                     rsx! {
                                         button {
                                             key: "marker-{slug}",
-                                            class: "absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 px-1.5 py-0.5 text-[10px] font-bold shadow {color} {outline}",
+                                            class: "absolute -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border-2 bg-white overflow-hidden flex items-center justify-center shadow {color} {outline}",
                                             style: "left: {x}%; top: {y}%;",
-                                            title: "{store.name}",
+                                            title: "{name}",
                                             onclick: move |evt| {
                                                 evt.stop_propagation();
                                                 selected_slug.set(Some(slug.clone()));
                                             },
-                                            "{unit}"
+                                            if let Some(ref src) = icon {
+                                                img {
+                                                    src: "{src}",
+                                                    class: "max-h-full max-w-full object-contain",
+                                                    alt: "{name}",
+                                                    draggable: false,
+                                                }
+                                            } else {
+                                                span { class: "text-[10px] font-bold leading-none", "{unit}" }
+                                            }
                                         }
                                     }
                                 }
