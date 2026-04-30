@@ -203,6 +203,12 @@ pub fn Nav(#[props(default)] active: NavPage) -> Element {
                                                 onclick: move |_| account_menu_open.set(false),
                                                 {translate(locale(), "nav.admin.stores_management")}
                                             }
+                                            a {
+                                                class: "block px-4 py-2.5 text-xs font-bold tracking-widest text-dark hover:bg-gray-50",
+                                                href: "/admin/map-editor",
+                                                onclick: move |_| account_menu_open.set(false),
+                                                {translate(locale(), "nav.admin.map_editor")}
+                                            }
                                         }
                                         // Logout: all logged-in roles (Editor + Admin)
                                         button {

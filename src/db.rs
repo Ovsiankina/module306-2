@@ -172,11 +172,22 @@ mod server {
                 level         INTEGER,
                 phone         TEXT,
                 website       TEXT,
-                icon_path     TEXT
+                icon_path     TEXT,
+                map_x         REAL,
+                map_y         REAL
             )",
         )
         .execute(pool)
         .await?;
+
+        // Backfill: ensure map_x/map_y columns exist when upgrading from an
+        // older schema that predates the floor-plan editor.
+        let _ = sqlx::query("ALTER TABLE stores ADD COLUMN map_x REAL")
+            .execute(pool)
+            .await;
+        let _ = sqlx::query("ALTER TABLE stores ADD COLUMN map_y REAL")
+            .execute(pool)
+            .await;
 
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS parkings (
@@ -226,6 +237,10 @@ mod server {
                 phone: Option<String>,
                 website: Option<String>,
                 icon_path: Option<String>,
+                #[serde(default)]
+                map_x: Option<f64>,
+                #[serde(default)]
+                map_y: Option<f64>,
             }
             #[derive(serde::Deserialize)]
             struct SeedStores {
@@ -236,8 +251,8 @@ mod server {
                 .expect("stores seed JSON must be valid");
             for shop in seed.shops {
                 sqlx::query(
-                    "INSERT INTO stores (name, category, store_number, level, phone, website, icon_path)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO stores (name, category, store_number, level, phone, website, icon_path, map_x, map_y)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(shop.name)
                 .bind(shop.category)
@@ -246,6 +261,8 @@ mod server {
                 .bind(shop.phone)
                 .bind(shop.website)
                 .bind(shop.icon_path)
+                .bind(shop.map_x)
+                .bind(shop.map_y)
                 .execute(pool)
                 .await?;
             }

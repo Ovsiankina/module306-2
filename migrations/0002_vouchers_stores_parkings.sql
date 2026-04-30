@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS stores (
     level         INTEGER,
     phone         TEXT,
     website       TEXT,
-    icon_path     TEXT
+    icon_path     TEXT,
+    map_x         REAL,
+    map_y         REAL
 );
 
 CREATE TABLE IF NOT EXISTS parkings (
