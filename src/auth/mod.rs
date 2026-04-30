@@ -16,7 +16,59 @@ pub struct UserDto {
     pub id: i64,
     pub username: String,
     pub email: String,
+    pub first_name: String,
+    pub last_name: String,
     pub role: Role,
+}
+
+/// Label shown for recent winners: given name + first letter of family name (e.g. `Jean D.`).
+/// Falls back to parsing `username_fallback` when structured names are empty.
+pub fn winner_public_label(first_name: &str, last_name: &str, username_fallback: &str) -> String {
+    let f = first_name.trim();
+    let l = last_name.trim();
+    if !f.is_empty() || !l.is_empty() {
+        let first_fmt = capitalize_like_name(f);
+        let initial = l
+            .chars()
+            .next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or_else(|| "U".to_string());
+        return format!("{first_fmt} {initial}.");
+    }
+    winner_label_from_username(username_fallback)
+}
+
+fn capitalize_like_name(s: &str) -> String {
+    if s.is_empty() {
+        return String::new();
+    }
+    s.chars()
+        .enumerate()
+        .map(|(i, c)| {
+            if i == 0 {
+                c.to_uppercase().to_string()
+            } else {
+                c.to_lowercase().to_string()
+            }
+        })
+        .collect()
+}
+
+fn winner_label_from_username(username: &str) -> String {
+    let trimmed = username.trim();
+    if trimmed.is_empty() {
+        return "User U.".to_string();
+    }
+    let mut words = trimmed.split_whitespace();
+    let first_name_raw = words.next().unwrap_or(trimmed);
+    let first_name = capitalize_like_name(first_name_raw);
+    let initial_source = words.next().unwrap_or(first_name_raw);
+    let initial = initial_source
+        .chars()
+        .next()
+        .map(|c| c.to_uppercase().to_string())
+        .unwrap_or_else(|| "U".to_string());
+    format!("{first_name} {initial}.")
 }
 
 // ─── Server-only helpers ──────────────────────────────────────────────────────
@@ -58,6 +110,10 @@ struct Claims {
     sub: i64,
     username: String,
     email: String,
+    #[serde(default)]
+    first_name: String,
+    #[serde(default)]
+    last_name: String,
     role: String,
     exp: usize,
 }
@@ -70,6 +126,8 @@ fn encode_jwt(user: &UserDto) -> Result<String, String> {
         sub: user.id,
         username: user.username.clone(),
         email: user.email.clone(),
+        first_name: user.first_name.clone(),
+        last_name: user.last_name.clone(),
         role: format!("{:?}", user.role),
         exp,
     };
@@ -92,7 +150,14 @@ fn decode_jwt(token: &str) -> Option<UserDto> {
     .ok()?;
     let c = data.claims;
     let role = if c.role == "Admin" { Role::Admin } else { Role::Editor };
-    Some(UserDto { id: c.sub, username: c.username, email: c.email, role })
+    Some(UserDto {
+        id: c.sub,
+        username: c.username,
+        email: c.email,
+        first_name: c.first_name,
+        last_name: c.last_name,
+        role,
+    })
 }
 
 /// Verify a JWT and require a minimum role. Used by admin server functions.
@@ -113,21 +178,26 @@ pub fn require_role(token: &str, min_role: &Role) -> Result<UserDto, ServerFnErr
 // ─── Server functions ─────────────────────────────────────────────────────────
 
 /// Register a new user account and return a JWT.
-/// POST /api/register — body: { username, email, password }
+/// POST /api/register — body: { username, email, first_name, last_name, password }
 #[server]
 pub async fn register(
     username: String,
     email: String,
+    first_name: String,
+    last_name: String,
     password: String,
 ) -> Result<String, ServerFnError> {
     let hash = hash_password(&password).map_err(ServerFnError::new)?;
     let pool = crate::db::pool().await;
 
     sqlx::query(
-        "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'Editor')",
+        "INSERT INTO users (username, email, first_name, last_name, password_hash, role)
+         VALUES (?, ?, ?, ?, ?, 'Editor')",
     )
     .bind(&username)
     .bind(&email)
+    .bind(&first_name)
+    .bind(&last_name)
     .bind(&hash)
     .execute(pool)
     .await
@@ -139,16 +209,24 @@ pub async fn register(
         }
     })?;
 
-    let (id, uname, mail, role_str): (i64, String, String, String) = sqlx::query_as(
-        "SELECT id, username, email, role FROM users WHERE username = ?",
-    )
-    .bind(&username)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| ServerFnError::new(e.to_string()))?;
+    let (id, uname, mail, fname, lname, role_str): (i64, String, String, String, String, String) =
+        sqlx::query_as(
+            "SELECT id, username, email, first_name, last_name, role FROM users WHERE username = ?",
+        )
+        .bind(&username)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| ServerFnError::new(e.to_string()))?;
 
     let role = if role_str == "Admin" { Role::Admin } else { Role::Editor };
-    let user = UserDto { id, username: uname, email: mail, role };
+    let user = UserDto {
+        id,
+        username: uname,
+        email: mail,
+        first_name: fname,
+        last_name: lname,
+        role,
+    };
     encode_jwt(&user).map_err(ServerFnError::new)
 }
 
@@ -158,8 +236,8 @@ pub async fn register(
 pub async fn login(username: String, password: String) -> Result<String, ServerFnError> {
     let pool = crate::db::pool().await;
 
-    let row: Option<(i64, String, String, String, String)> = sqlx::query_as(
-        "SELECT id, username, email, password_hash, role
+    let row: Option<(i64, String, String, String, String, String, String)> = sqlx::query_as(
+        "SELECT id, username, email, first_name, last_name, password_hash, role
          FROM users
          WHERE username = ? OR email = ?",
     )
@@ -169,7 +247,7 @@ pub async fn login(username: String, password: String) -> Result<String, ServerF
     .await
     .map_err(|e| ServerFnError::new(e.to_string()))?;
 
-    let (id, uname, email, hash, role_str) =
+    let (id, uname, email, fname, lname, hash, role_str) =
         row.ok_or_else(|| ServerFnError::new("Invalid credentials"))?;
 
     if !verify_password(&password, &hash) {
@@ -177,7 +255,14 @@ pub async fn login(username: String, password: String) -> Result<String, ServerF
     }
 
     let role = if role_str == "Admin" { Role::Admin } else { Role::Editor };
-    let user = UserDto { id, username: uname, email, role };
+    let user = UserDto {
+        id,
+        username: uname,
+        email,
+        first_name: fname,
+        last_name: lname,
+        role,
+    };
     encode_jwt(&user).map_err(ServerFnError::new)
 }
 

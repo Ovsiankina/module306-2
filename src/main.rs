@@ -32,6 +32,7 @@ mod components {
     pub mod voucher_list;
     pub mod visits_stats;
     pub mod store_page;
+    pub mod stores_admin;
     pub mod terms;
 }
 mod context {
@@ -50,28 +51,43 @@ fn main() {
     #[cfg(not(target_family = "wasm"))]
     dotenvy::dotenv().ok();
 
-    dioxus::launch(|| {
-        rsx! {
-            document::Link {
-                rel: "stylesheet",
-                href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-            }
-            document::Link {
-                rel: "stylesheet",
-                href: asset!("/public/tailwind.css")
-            }
+    #[cfg(not(target_family = "wasm"))]
+    {
+        dioxus_server::serve(|| async move {
+            use dioxus_server::{axum, DioxusRouterExt, ServeConfig};
+            Ok(
+                axum::Router::new()
+                    .serve_dioxus_application(ServeConfig::new(), App)
+                    .layer(axum::extract::DefaultBodyLimit::disable()),
+            )
+        });
+    }
 
-            components::loading::ChildrenOrLoading {
-                I18nProvider {
-                    AuthProvider {
-                        CartProvider {
-                            Router::<Route> {}
-                        }
+    #[cfg(target_family = "wasm")]
+    dioxus::launch(App);
+}
+
+fn App() -> Element {
+    rsx! {
+        document::Link {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        }
+        document::Link {
+            rel: "stylesheet",
+            href: asset!("/public/tailwind.css")
+        }
+
+        components::loading::ChildrenOrLoading {
+            I18nProvider {
+                AuthProvider {
+                    CartProvider {
+                        Router::<Route> {}
                     }
                 }
             }
         }
-    });
+    }
 }
 
 #[derive(Clone, Routable, Debug, PartialEq)]
@@ -108,6 +124,9 @@ pub enum Route {
 
     #[route("/admin/content")]
     AdminContent {},
+
+    #[route("/admin/stores")]
+    StoresAdmin {},
 
     #[route("/store/:name")]
     Store { name: String },
@@ -231,6 +250,14 @@ fn AdminContent() -> Element {
     rsx! {
         ProtectedRoute {
             components::admin_content::AdminContentPage {}
+        }
+    }
+}
+
+fn StoresAdmin() -> Element {
+    rsx! {
+        ProtectedRoute {
+            components::stores_admin::StoresAdminPage {}
         }
     }
 }

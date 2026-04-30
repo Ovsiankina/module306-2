@@ -7,10 +7,39 @@ use crate::services::game::{
     DailyPrizePoolSnapshot,
 };
 use crate::services::vouchers::list_recent_vouchers;
-use crate::stores::{get_stores, slugify, Category, Store};
+use crate::stores::{search_stores, slugify, Category, Store};
 use crate::Route;
 use chrono::Utc;
 use dioxus::prelude::*;
+
+/// Reporte l'exécution sur la file JS (`setTimeout(0)`), hors de l'exécuteur
+/// `wasm-bindgen-futures` — évite les panics `RefCell already borrowed` lors
+/// des `Signal::set` déclenchés depuis des gestionnaires de clic / hydratation.
+#[cfg(target_family = "wasm")]
+fn defer_after_paint(f: impl FnOnce() + 'static) {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let mut f = Some(f);
+    let closure = Closure::wrap(Box::new(move || {
+        if let Some(done) = f.take() {
+            done();
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+        closure.as_ref().unchecked_ref(),
+        0,
+    );
+    closure.forget();
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn defer_after_paint(f: impl FnOnce() + 'static) {
+    f();
+}
 
 #[derive(Clone, Copy, PartialEq, Default)]
 enum FilterGroup {
@@ -67,105 +96,10 @@ impl FilterGroup {
     }
 }
 
-fn brand_image(name: &str) -> Option<String> {
-    let normalized = name.trim().to_lowercase();
-    let file_name = match normalized.as_str() {
-        "swatch"
-        | "mantero"
-        | "christmas store"
-        | "chalet suisse"
-        | "fashion bar"
-        | "gelateria"
-        | "il caffè"
-        | "maui poke"
-        | "pizzeria"
-        | "the place"
-        | "wood avenue - italian restaurant"
-        | "casinò admiral"
-        | "infopoint / guest services"
-        | "tax & exchange services"
-        | "cloakroom / tailor's store"
-        | "vantaviaggi"
-        | "the sense gallery" => return None,
-        "kate spade new york" => "kate_spade.jpg".to_string(),
-        "philipp plein" => "philipp_plein_men.jpg".to_string(),
-        "polo ralph lauren" => "polo.jpg".to_string(),
-        "7 for all mankind" => "7.jpg".to_string(),
-        "andré maurice" => "andre_maurice.jpg".to_string(),
-        "boggi milano" => "boggi.jpg".to_string(),
-        "elena mirò" => "elena_miro.jpg".to_string(),
-        "gaudì" => "gaudi.jpg".to_string(),
-        "hackett london" => "hackett.jpg".to_string(),
-        "human couture" => "0_sbs.jpg".to_string(),
-        "paul & shark" => "paul_shark.jpg".to_string(),
-        "aeronautica militare" => "aventurx.jpg".to_string(),
-        "c.p. company" => "cp_company.jpg".to_string(),
-        "diesel factory outlet" => "diesel.jpg".to_string(),
-        "k·way" => "kway.jpg".to_string(),
-        "k-way" => "kway.jpg".to_string(),
-        "jack & jones" => "jack_jones.jpg".to_string(),
-        "lee - wrangler" => "lee.jpg".to_string(),
-        "levi's & dockers" => "levis.jpg".to_string(),
-        "quiksilver" => "quicksilver.jpg".to_string(),
-        "nike factory store" => "nike.jpg".to_string(),
-        "rh+" => "rh_plus.jpg".to_string(),
-        "harmont & blaine junior" => "harmont_&_blaine.jpg".to_string(),
-        "jacadi paris" => "jacadi.jpg".to_string(),
-        "church's" => "churchs.jpg".to_string(),
-        "tod's - hogan" => "tods.jpg".to_string(),
-        "calzedonia - intimissimi" => "calzedonia.jpg".to_string(),
-        "belotti otticaudito" => "belotti.jpg".to_string(),
-        "blitz for eyes" => "blitz.jpg".to_string(),
-        "bric's" => "brics.jpg".to_string(),
-        "sbs" => "0_sbs.jpg".to_string(),
-        "kiko milano" => "kiko.jpg".to_string(),
-        "millefiori store" => "millefiori.jpg".to_string(),
-        "villeroy & boch" => "villeroy_et_boch.jpg".to_string(),
-        "free shop" => "free2shop.jpg".to_string(),
-        "dolce & gabbana" => "dolce_gabana.jpg".to_string(),
-        "loro piana" => "Loro_piana.jpg".to_string(),
-        "marc o'polo" => "marc_O_polo.jpg".to_string(),
-        "harmont & blaine" => "harmont_&_blaine.jpg".to_string(),
-        "zadig & voltaire" => "zadig_&_voltaire.jpg".to_string(),
-        "salvatore ferragamo" => "salvatorre_ferragamo.jpg".to_string(),
-        _ => {
-            let mut slug = String::with_capacity(normalized.len());
-            let mut prev_underscore = false;
-
-            for ch in normalized.chars() {
-                let mapped = if ch.is_ascii_alphanumeric() {
-                    Some(ch)
-                } else if ch == '&' {
-                    Some('&')
-                } else {
-                    Some('_')
-                };
-
-                if let Some(c) = mapped {
-                    if c == '_' {
-                        if !prev_underscore {
-                            slug.push('_');
-                            prev_underscore = true;
-                        }
-                    } else {
-                        slug.push(c);
-                        prev_underscore = false;
-                    }
-                }
-            }
-
-            let slug = slug.trim_matches('_');
-            format!("{slug}.jpg")
-        }
-    };
-
-    Some(format!("/brands/{file_name}"))
-}
-
 #[component]
-fn StoreCardImage(name: String) -> Element {
+fn StoreCardImage(name: String, icon_path: Option<String>) -> Element {
     let mut image_failed = use_signal(|| false);
-    let image_src = brand_image(&name);
+    let image_src = icon_path.filter(|p| !p.trim().is_empty());
     let image_src_value = image_src.as_deref().unwrap_or_default();
 
     rsx! {
@@ -188,65 +122,8 @@ fn StoreCardImage(name: String) -> Element {
 
 #[cfg(test)]
 mod tests {
-    use super::{FilterGroup, brand_image, category_label};
+    use super::{FilterGroup, category_label};
     use crate::stores::Category;
-
-    #[test]
-    fn brand_image_uses_known_overrides() {
-        assert_eq!(
-            brand_image("Dolce & Gabbana"),
-            Some("/brands/dolce_gabana.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Loro Piana"),
-            Some("/brands/Loro_piana.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Marc O'Polo"),
-            Some("/brands/marc_O_polo.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Harmont & Blaine"),
-            Some("/brands/harmont_&_blaine.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Zadig & Voltaire"),
-            Some("/brands/zadig_&_voltaire.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Salvatore Ferragamo"),
-            Some("/brands/salvatorre_ferragamo.jpg".to_string())
-        );
-    }
-
-    #[test]
-    fn brand_image_normalizes_generic_names() {
-        assert_eq!(
-            brand_image("New Balance"),
-            Some("/brands/new_balance.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("  Tommy   Hilfiger  "),
-            Some("/brands/tommy_hilfiger.jpg".to_string())
-        );
-        assert_eq!(
-            brand_image("Paul&Shark"),
-            Some("/brands/paul&shark.jpg".to_string())
-        );
-    }
-
-    #[test]
-    fn brand_image_collapses_separator_runs() {
-        assert_eq!(brand_image("A---B"), Some("/brands/a_b.jpg".to_string()));
-        assert_eq!(brand_image("A   B"), Some("/brands/a_b.jpg".to_string()));
-        assert_eq!(brand_image("__A__B__"), Some("/brands/a_b.jpg".to_string()));
-    }
-
-    #[test]
-    fn brand_image_skips_known_missing_files() {
-        assert_eq!(brand_image("Swatch"), None);
-        assert_eq!(brand_image("The Sense Gallery"), None);
-    }
 
     #[test]
     fn filter_group_label_keys_are_stable_and_complete() {
@@ -303,33 +180,6 @@ fn category_label(cat: &Category) -> &'static str {
         Category::FoodDrinks => "home.category.food_drinks",
         Category::Services => "home.category.services",
     }
-}
-
-fn winner_display_name(username: &str) -> String {
-    let trimmed = username.trim();
-    if trimmed.is_empty() {
-        return "User U.".to_string();
-    }
-    let mut words = trimmed.split_whitespace();
-    let first_name_raw = words.next().unwrap_or(trimmed);
-    let first_name = first_name_raw
-        .chars()
-        .enumerate()
-        .map(|(i, c)| {
-            if i == 0 {
-                c.to_uppercase().to_string()
-            } else {
-                c.to_lowercase().to_string()
-            }
-        })
-        .collect::<String>();
-    let initial_source = words.next().unwrap_or(first_name_raw);
-    let initial = initial_source
-        .chars()
-        .next()
-        .map(|c| c.to_uppercase().to_string())
-        .unwrap_or_else(|| "U".to_string());
-    format!("{first_name} {initial}.")
 }
 
 fn ticker_relative_time(locale: Locale, created_at: &str) -> String {
@@ -396,7 +246,7 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
                             .into_iter()
                             .map(|v| {
                                 (
-                                    winner_display_name(&v.username),
+                                    v.display_name.clone(),
                                     ticker_relative_time(loc, &v.created_at),
                                 )
                             })
@@ -519,6 +369,7 @@ pub(crate) fn Home() -> Element {
     rsx! {
         div { class: "min-h-screen flex flex-col bg-white font-heading",
             Nav { active: NavPage::None }
+            GamePromoModal {}
 
             LandingSection {}
 
@@ -557,22 +408,140 @@ pub(crate) fn Home() -> Element {
     }
 }
 
+/// Logique localStorage (navigateur uniquement). Le serveur ne doit pas décider
+/// d'afficher la modale à l'init : même état `false` partout évite les erreurs
+/// d'hydratation (`hydrate_node` / attributs indéfinis).
+fn wasm_game_promo_should_open_and_mark_seen() -> bool {
+    const KEY: &str = "game_promo_last_seen_at_ms";
+    const COOLDOWN_MS: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
+
+    #[cfg(target_family = "wasm")]
+    {
+        if let Some(storage) = web_sys::window().and_then(|w| w.local_storage().ok().flatten()) {
+            let now = js_sys::Date::now();
+            let should_show = match storage.get_item(KEY).ok().flatten() {
+                None => true,
+                Some(raw) => raw
+                    .parse::<f64>()
+                    .map(|last_seen| now - last_seen >= COOLDOWN_MS)
+                    .unwrap_or(true),
+            };
+            if should_show {
+                let _ = storage.set_item(KEY, &now.to_string());
+            }
+            return should_show;
+        }
+    }
+
+    false
+}
+
+#[component]
+fn GamePromoModal() -> Element {
+    let mut is_open = use_signal(|| false);
+    let nav = use_navigator();
+
+    use_effect(move || {
+        #[cfg(target_family = "wasm")]
+        if wasm_game_promo_should_open_and_mark_seen() {
+            defer_after_paint(move || is_open.set(true));
+        }
+    });
+
+    rsx! {
+        if is_open() {
+            div {
+                class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
+                style: "position: fixed; inset: 0; z-index: 9999;",
+                onclick: move |_| {
+                    defer_after_paint(move || is_open.set(false));
+                },
+
+                div {
+                    class: "relative isolate w-full max-w-lg rounded-2xl bg-white border border-gray-200 shadow-2xl overflow-hidden",
+                    onclick: move |e| e.stop_propagation(),
+
+                    div { class: "py-6 px-6 md:p-8",
+                        div { class: "mb-4 flex justify-center",
+                            img {
+                                src: asset!("/assets/fox_icon.svg"),
+                                alt: "FoxTown game",
+                                class: "h-24 w-24 ft-fox-pulse object-contain",
+                            }
+                        }
+
+                        p { class: "text-xs font-bold tracking-[0.22em] uppercase text-accent text-center mb-2",
+                            "New game"
+                        }
+                        p { class: "text-sm md:text-base text-body text-center mb-6",
+                            "Play the FoxTown rewards game now and claim exclusive discounts in just a few clicks."
+                        }
+
+                        div { class: "flex flex-col sm:flex-row gap-3",
+                            button {
+                                r#type: "button",
+                                class: "flex-1 py-3 px-4 rounded-lg bg-accent text-white font-bold tracking-wide hover:bg-amber-600 transition-colors",
+                                onclick: move |_| {
+                                    defer_after_paint(move || {
+                                        is_open.set(false);
+                                        nav.push(Route::Rewards {});
+                                    });
+                                },
+                                "Play now"
+                            }
+                            button {
+                                r#type: "button",
+                                class: "flex-1 py-3 px-4 rounded-lg bg-gray-100 text-dark font-semibold hover:bg-gray-200 transition-colors",
+                                onclick: move |_| {
+                                    defer_after_paint(move || is_open.set(false));
+                                },
+                                "Maybe later"
+                            }
+                        }
+                    }
+
+                    button {
+                        class: "pointer-events-auto absolute top-[12px] right-[12px] z-20 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-gray-100 p-0 text-base font-bold leading-none text-gray-600 shadow-sm hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                        r#type: "button",
+                        aria_label: "Close game promotion",
+                        style: "margin: 0;",
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            defer_after_paint(move || is_open.set(false));
+                        },
+                        "×"
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub(crate) fn StoresPage() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut search = use_signal(String::new);
     let mut filter = use_signal(FilterGroup::default);
+    let stores = use_loader(|| search_stores(String::new()))?;
+    let mut queried_stores = use_signal(Vec::<Store>::new);
+    let mut query_seq = use_signal(|| 0u64);
 
-    let stores = use_loader(|| get_stores())?;
+    let active_filter = filter();
+    let source_rows: Vec<Store> = if search().trim().is_empty() {
+        stores.iter().map(|s| (*s).clone()).collect()
+    } else {
+        queried_stores()
+    };
 
-    let q = search().to_lowercase();
-    let fg = filter();
-
-    let filtered: Vec<Store> = stores
-        .iter()
+    let filtered: Vec<Store> = source_rows
+        .into_iter()
         .filter(|s| {
-            (q.is_empty() || s.name.to_lowercase().contains(&q)) && fg.matches(&s.category)
+            let has_icon = s
+                .icon_path
+                .as_deref()
+                .map(|p| !p.trim().is_empty())
+                .unwrap_or(false);
+            has_icon && active_filter.matches(&s.category)
         })
-        .map(|s| (*s).clone())
         .collect();
 
     rsx! {
@@ -601,7 +570,18 @@ pub(crate) fn StoresPage() -> Element {
                             r#type: "text",
                             placeholder: {translate(locale(), "home.search_placeholder")},
                             value: "{search}",
-                            oninput: move |e| search.set(e.value()),
+                            oninput: move |e| {
+                                let value = e.value();
+                                search.set(value.clone());
+                                let seq = query_seq() + 1;
+                                query_seq.set(seq);
+                                spawn(async move {
+                                    let rows = search_stores(value).await.unwrap_or_default();
+                                    if query_seq() == seq {
+                                        queried_stores.set(rows);
+                                    }
+                                });
+                            },
                         }
                     }
                     button { class: "px-5 bg-dark text-white rounded-r-lg hover:bg-gray-700 transition-colors",
@@ -651,13 +631,16 @@ pub(crate) fn StoresPage() -> Element {
                     }
                 } else {
                     div { class: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6",
-                        for store in filtered {
+                        for (idx, store) in filtered.into_iter().enumerate() {
                             Link {
-                                key: "{store.name}",
+                                key: "{idx}-{slugify(&store.name)}",
                                 to: Route::Store { name: slugify(&store.name) },
                                 class: "group block",
 
-                                StoreCardImage { name: store.name.clone() }
+                                StoreCardImage {
+                                    name: store.name.clone(),
+                                    icon_path: store.icon_path.clone(),
+                                }
 
                                 // Info
                                 h3 { class: "text-sm font-bold text-dark tracking-wide mb-1",

@@ -1,12 +1,41 @@
 @import "tailwindcss";
 @source "./src/**/*.{rs,html,css}";
+/* Preflight met les boutons en fond transparent ; ces utilitaires doivent exister dans le CSS compilé (scanner parfois incomplet sur les chaînes Rust). */
+@source inline("bg-black hover:bg-gray-800");
 
 @theme {
-  --color-accent: #ED8606;
+  --color-accent: rgba(237, 134, 6, 1);
   --color-dark: #1A1C1C;
   --color-body: #5F5E5E;
   --color-muted: #A3A3A3;
   --color-nav: #737373;
   --color-surface: #525252;
   --font-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+span.text-accent {
+  color: rgba(237, 134, 6, 1);
+}
+
+/* Bandeau « gagnants » sous la nav : défilement infini (liste dupliquée côté Rust en 2 passes). */
+@keyframes ft-home-ticker-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ft-home-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ft-home-ticker-scroll 50s linear infinite;
+}
+
+.ft-home-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ft-home-ticker-track {
+    animation: none;
+  }
 }

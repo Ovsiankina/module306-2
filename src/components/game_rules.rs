@@ -4,7 +4,7 @@ use crate::components::nav::{Nav, NavPage};
 use crate::context::auth::AuthState;
 use crate::i18n::{translate, translate_fmt, Locale};
 use crate::services::game::{
-    default_game_rules, get_game_rules, total_unique_shops_count, update_game_rules,
+    default_game_rules, game_server_total_unique_shops_count, get_game_rules, update_game_rules,
     DiscountRangeRule, GameRules,
 };
 use crate::Route;
@@ -18,8 +18,7 @@ pub fn GameRulesPage() -> Element {
     let nav = use_navigator();
 
     let mut rules = use_signal(default_game_rules);
-    let mut discount_units_percent =
-        use_signal(|| vec![true; default_game_rules().discount_draw.ranges.len()]);
+    let mut total_stores = use_signal(|| 0usize);
     let mut loading = use_signal(|| true);
     let mut saving = use_signal(|| false);
     let mut status = use_signal(String::new);
@@ -41,18 +40,19 @@ pub fn GameRulesPage() -> Element {
         spawn(async move {
             match get_game_rules().await {
                 Ok(server_rules) => {
-                    let n = server_rules.discount_draw.ranges.len();
-                    discount_units_percent.set(vec![true; n]);
                     rules.set(server_rules);
                     status.set(String::new());
                 }
                 Err(_) => status.set(translate(locale(), "game_rules.status.load_error")),
             }
+            if let Ok(count) = game_server_total_unique_shops_count().await {
+                total_stores.set(count);
+            }
             loading.set(false);
         });
     });
 
-    let total_stores = total_unique_shops_count();
+    let total_stores = total_stores();
     let current = rules();
     let store_max_limit = total_stores.max(1).min(u16::MAX as usize) as u16;
     let store_min = current.store_draw.black_balls_min.min(store_max_limit);
@@ -252,40 +252,7 @@ pub fn GameRulesPage() -> Element {
                                                     }
                                                 },
                                             }
-                                            div { class: "flex items-center gap-2 text-xs text-gray-700 whitespace-nowrap",
-                                                label { class: "inline-flex items-center gap-1",
-                                                    input {
-                                                        r#type: "radio",
-                                                        name: "discount-unit-{idx}",
-                                                        checked: discount_units_percent().get(idx).copied().unwrap_or(true),
-                                                        onchange: move |_| {
-                                                            let mut next_units = discount_units_percent();
-                                                            if next_units.len() <= idx {
-                                                                next_units.resize(idx + 1, true);
-                                                            }
-                                                            next_units[idx] = true;
-                                                            discount_units_percent.set(next_units);
-                                                        },
-                                                    }
-                                                    span { "%" }
-                                                }
-                                                label { class: "inline-flex items-center gap-1",
-                                                    input {
-                                                        r#type: "radio",
-                                                        name: "discount-unit-{idx}",
-                                                        checked: !discount_units_percent().get(idx).copied().unwrap_or(true),
-                                                        onchange: move |_| {
-                                                            let mut next_units = discount_units_percent();
-                                                            if next_units.len() <= idx {
-                                                                next_units.resize(idx + 1, true);
-                                                            }
-                                                            next_units[idx] = false;
-                                                            discount_units_percent.set(next_units);
-                                                        },
-                                                    }
-                                                    span { "CHF" }
-                                                }
-                                            }
+                                            span { class: "text-xs font-medium text-gray-700 whitespace-nowrap", "%" }
                                         }
                                         div { class: "flex min-w-0 items-center justify-between gap-2",
                                             div { class: "flex items-center gap-2",
@@ -323,11 +290,6 @@ pub fn GameRulesPage() -> Element {
                                                         next.discount_draw.ranges.remove(idx);
                                                     }
                                                     rules.set(next);
-                                                    let mut units = discount_units_percent();
-                                                    if idx < units.len() {
-                                                        units.remove(idx);
-                                                    }
-                                                    discount_units_percent.set(units);
                                                 },
                                                 "−"
                                             }
@@ -350,9 +312,6 @@ pub fn GameRulesPage() -> Element {
                                                 balls_weight: 1,
                                             });
                                             rules.set(next);
-                                            let mut units = discount_units_percent();
-                                            units.push(true);
-                                            discount_units_percent.set(units);
                                         },
                                         "+"
                                     }

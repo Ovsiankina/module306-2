@@ -3,7 +3,6 @@ use crate::context::auth::read_token;
 use crate::i18n::{translate, translate_fmt, Locale};
 use chrono::{DateTime, Utc};
 use crate::services::game::{
-    all_categories,
     default_game_rules,
     delay_ms,
     DailyPrizePoolSnapshot,
@@ -12,18 +11,47 @@ use crate::services::game::{
     get_game_rules,
     game_server_can_award_prize_today,
     game_server_can_start_today,
+    game_server_all_categories,
     game_server_choose_distributed_shop,
     game_server_register_session_finished,
+    game_server_shops_by_category_keys,
     game_server_try_register_prize_award,
     get_daily_prize_pool_snapshot,
     random_index,
-    shops_by_category_keys,
+    StoreCategory,
     store_black_ball_count_for_shop_count,
     ShopInfo,
 };
 use crate::services::vouchers::create_voucher_and_send_email;
 use dioxus::prelude::*;
 use std::collections::HashMap;
+
+/// Évite les panics `RefCell already borrowed` lors des `Signal::set` depuis des clics (cf. `home.rs`).
+#[cfg(target_family = "wasm")]
+pub(crate) fn defer_after_paint(f: impl FnOnce() + 'static) {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let Some(window) = web_sys::window() else {
+        return;
+    };
+    let mut f = Some(f);
+    let closure = Closure::wrap(Box::new(move || {
+        if let Some(done) = f.take() {
+            done();
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+        closure.as_ref().unchecked_ref(),
+        0,
+    );
+    closure.forget();
+}
+
+#[cfg(not(target_family = "wasm"))]
+pub(crate) fn defer_after_paint(f: impl FnOnce() + 'static) {
+    f();
+}
 
 const CONTAINER_RADIUS: f64 = 120.0;
 const BALL_RADIUS: f64 = 16.0;
@@ -89,6 +117,10 @@ pub struct WinnerEvent {
     pub valid_until_iso: String,
     pub qr_payload: String,
 }
+
+/// Fourni par `RewardsPage` : ouverture du modal règles / reset depuis le bouton du hero.
+#[derive(Clone, Copy)]
+pub struct RewardsRulesModalOpen(pub Signal<bool>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum DrawPhase {
@@ -529,6 +561,7 @@ fn render_machine(
 pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     let auth = use_context::<Signal<AuthState>>();
     let locale = use_context::<Signal<Locale>>();
+    let mut rules_modal_open = use_context::<RewardsRulesModalOpen>().0;
     let mut daily_reset_countdown =
         use_signal(|| format_daily_prize_reset_countdown_hms());
     let mut daily_reset_at = use_signal(|| format_next_reset_local(locale(), next_utc_midnight()));
@@ -576,9 +609,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     });
 
     let mut phase = use_signal(|| DrawPhase::SelectCategories);
-    let categories = all_categories();
+    let mut categories = use_signal(Vec::<StoreCategory>::new);
     let mut selected_categories = use_signal(Vec::<String>::new);
     let mut shops = use_signal(Vec::<ShopInfo>::new);
+
+    use_effect(move || {
+        spawn(async move {
+            if let Ok(server_categories) = game_server_all_categories().await {
+                categories.set(server_categories);
+            }
+        });
+    });
 
     let mut store_balls = use_signal(Vec::<Ball3D>::new);
     let mut discount_balls = use_signal(|| init_discount_balls(&game_rules()));
@@ -608,12 +649,17 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
     };
 
     let build_store_draw = move |_| {
-        if drawing() || quota_exhausted() {
+        if drawing()
+            || quota_exhausted()
+            || phase() != DrawPhase::SelectCategories
+            || selected_categories().is_empty()
+        {
             return;
         }
         let locale_sig = locale;
         let auth_sig = auth;
         spawn(async move {
+            drawing.set(true);
             let loc = locale_sig();
             let player_key = match auth_sig() {
                 AuthState::LoggedIn(user) => format!("user:{}", user.id),
@@ -626,6 +672,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         loc,
                         "rewards_draw.status.game_closed_daily_quota",
                     ));
+                    drawing.set(false);
                     return;
                 }
                 _ => {}
@@ -637,10 +684,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         loc,
                         "rewards_draw.status.one_game_per_day_limit",
                     ));
+                    drawing.set(false);
                     return;
                 }
                 Err(_) => {
                     status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    drawing.set(false);
                     return;
                 }
                 Ok(true) => {}
@@ -649,16 +698,26 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
             let selected = selected_categories();
             if selected.is_empty() {
                 status_message.set(translate(loc, "rewards_draw.status.min_one_category"));
+                drawing.set(false);
                 return;
             }
             if selected.len() > 3 {
                 status_message.set(translate(loc, "rewards_draw.status.max_three_categories"));
+                drawing.set(false);
                 return;
             }
 
-            let available_shops = shops_by_category_keys(&selected);
+            let available_shops = match game_server_shops_by_category_keys(selected.clone()).await {
+                Ok(shops) => shops,
+                Err(_) => {
+                    status_message.set(translate(loc, "rewards_draw.status.server_error"));
+                    drawing.set(false);
+                    return;
+                }
+            };
             if available_shops.is_empty() {
                 status_message.set(translate(loc, "rewards_draw.status.no_store_for_selection"));
+                drawing.set(false);
                 return;
             }
 
@@ -688,6 +747,7 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     ("black", black_balls.to_string()),
                 ],
             ));
+            drawing.set(false);
         });
     };
 
@@ -1014,136 +1074,165 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                         )}
                     }
                 }
-            } else {
-            div { class: "w-full max-w-3xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm",
-                p { class: "text-xs font-bold tracking-widest text-slate-600 text-center",
-                    {translate(locale(), "rewards_draw.daily_reset.heading")}
-                }
-                p { class: "mt-2 text-center font-mono text-2xl font-bold tabular-nums text-dark tracking-tight",
-                    "{daily_reset_countdown()}"
-                }
-                p { class: "mt-2 text-center text-xs text-slate-600 leading-relaxed",
-                    {translate_fmt(
-                        locale(),
-                        "rewards_draw.daily_reset.resets_at",
-                        &[("time", daily_reset_at())],
-                    )}
-                }
-                p { class: "mt-1 text-center text-[10px] text-slate-400",
-                    {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
-                }
             }
-            if can_show_machine {
-                p {
-                    class: "text-xs text-muted tracking-wider",
-                    style: "position: relative; top: -132px; left: 24px; width: 544px; height: 40px; display: grid; grid-template-columns: repeat(1, 1fr); grid-template-rows: repeat(1, 1fr); transform: none;",
-                    if phase() == DrawPhase::DrawStore {
-                        if second_chance_used() {
-                            {translate(locale(), "rewards_draw.phase.second_chance")}
-                        } else {
-                            {translate(locale(), "rewards_draw.phase.first_store_draw")}
-                        }
-                    } else if phase() == DrawPhase::DrawDiscount {
-                        {translate(locale(), "rewards_draw.phase.discount_draw")}
-                    } else {
-                        {translate(locale(), "rewards_draw.phase.session_finished")}
-                    }
-                }
-            }
-            div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl p-4",
-                p { class: "text-xs font-bold tracking-widest text-accent mb-3",
-                    {translate(locale(), "rewards_draw.title.pick_categories")}
-                }
-                div { class: "flex flex-wrap gap-2",
-                    for category in categories {
-                        button {
-                            key: "{category.key}",
-                            class: if selected_categories().contains(&category.key) {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-dark text-white"
-                            } else if selected_categories().len() >= 3 {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
-                            } else {
-                                "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-dark hover:bg-gray-200"
-                            },
-                            disabled: quota_exhausted()
-                                || (!selected_categories().contains(&category.key)
-                                    && selected_categories().len() >= 3),
-                            onclick: {
-                                let key = category.key.clone();
-                                move |_| toggle_category(key.clone())
-                            },
-                            {
-                                category_translation_key(&category.key)
-                                    .map(|key| translate(locale(), key))
-                                    .unwrap_or_else(|| category.label.clone())
+            if rules_modal_open() {
+                div {
+                    class: "fixed inset-0 flex items-center justify-center p-4 bg-black/55",
+                    style: "position: fixed; inset: 0; z-index: 9999;",
+                    onclick: move |_| {
+                        defer_after_paint(move || rules_modal_open.set(false));
+                    },
+                    div {
+                        class: "relative isolate w-full max-w-lg max-h-[min(90vh,640px)] overflow-y-auto rounded-2xl bg-white border border-gray-200 shadow-2xl",
+                        onclick: move |e| e.stop_propagation(),
+                        div { class: "py-5 px-5 md:p-6",
+                            h2 { class: "text-sm font-extrabold tracking-widest text-dark text-center mb-4",
+                                {translate(locale(), "rewards_draw.rules.title")}
+                            }
+                            div { class: "rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-4",
+                                p { class: "text-xs font-bold tracking-widest text-slate-600 text-center",
+                                    {translate(locale(), "rewards_draw.daily_reset.heading")}
+                                }
+                                p { class: "mt-2 text-center font-mono text-2xl font-bold tabular-nums text-dark tracking-tight",
+                                    "{daily_reset_countdown()}"
+                                }
+                                p { class: "mt-2 text-center text-xs text-slate-600 leading-relaxed",
+                                    {translate_fmt(
+                                        locale(),
+                                        "rewards_draw.daily_reset.resets_at",
+                                        &[("time", daily_reset_at())],
+                                    )}
+                                }
+                                p { class: "mt-1 text-center text-[10px] text-slate-400",
+                                    {translate(locale(), "rewards_draw.daily_reset.utc_hint")}
+                                }
+                            }
+                            h3 { class: "text-xs font-bold tracking-wider text-dark mb-2",
+                                {translate(locale(), "rewards_draw.rules.diff_title")}
+                            }
+                            p { class: "text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_reset")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_cooldown")}
+                            }
+                            p { class: "mt-2 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_midnight_note")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-700 font-semibold leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_goal")}
+                            }
+                            p { class: "mt-3 text-xs text-slate-600 leading-relaxed",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_intro")}
+                            }
+                            p { class: "mt-1.5 text-xs text-slate-600 leading-relaxed pl-1",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_bullet_cooldown")}
+                            }
+                            p { class: "mt-1 text-xs text-slate-600 leading-relaxed pl-1",
+                                {translate(locale(), "rewards_draw.rules.diff_pause_bullet_reset")}
                             }
                         }
+                        button {
+                            class: "pointer-events-auto absolute top-[10px] right-[10px] z-20 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 bg-gray-100 p-0 text-base font-bold leading-none text-gray-600 shadow-sm hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+                            r#type: "button",
+                            aria_label: translate(locale(), "rewards_draw.rules.close_aria"),
+                            style: "margin: 0;",
+                            onclick: move |e| {
+                                e.stop_propagation();
+                                defer_after_paint(move || rules_modal_open.set(false));
+                            },
+                            "×"
+                        }
                     }
                 }
-                p { class: "mt-3 text-xs text-muted",
-                    {translate_fmt(
-                        locale(),
-                        "rewards_draw.selected_count",
-                        &[("count", selected_categories().len().to_string())]
-                    )}
-                }
-                button {
-                    class: "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white disabled:bg-gray-300",
-                    disabled: quota_exhausted()
-                        || drawing()
-                        || selected_categories().is_empty()
-                        || phase() != DrawPhase::SelectCategories,
-                    onclick: build_store_draw,
-                    {translate(locale(), "rewards_draw.button.validate_categories")}
-                }
-                if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
-                    p { class: "mt-3 text-xs font-semibold text-amber-700",
+            }
+            if phase() == DrawPhase::SelectCategories && !status_message().is_empty() {
+                div { class: "w-full max-w-3xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm",
+                    p { class: "text-xs font-semibold text-amber-800 text-center leading-relaxed",
                         "{status_message()}"
                     }
                 }
             }
-
-            if can_show_machine {
-                div { class: "w-full max-w-5xl grid grid-cols-2 gap-6 items-start",
-                    div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-muted text-center mb-2",
-                            style: "transform: none;",
-                            {translate(locale(), "rewards_draw.phase.first_store_draw")}
+            if !quota_exhausted() {
+                div { class: "w-full max-w-3xl bg-white border border-gray-100 rounded-xl py-4 px-6",
+                    p { class: "text-xs font-bold tracking-widest text-accent mb-3",
+                        {translate(locale(), "rewards_draw.title.pick_categories")}
+                    }
+                    div { class: "flex flex-wrap gap-2",
+                        for category in categories() {
+                            button {
+                                key: "{category.key}",
+                                class: if selected_categories().contains(&category.key) {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-dark text-white"
+                                } else if selected_categories().len() >= 3 {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-gray-400 cursor-not-allowed"
+                                } else {
+                                    "px-3 py-2 text-xs font-bold rounded-full bg-gray-100 text-dark hover:bg-gray-200"
+                                },
+                                disabled: quota_exhausted()
+                                    || (!selected_categories().contains(&category.key)
+                                        && selected_categories().len() >= 3),
+                                onclick: {
+                                    let key = category.key.clone();
+                                    move |_| toggle_category(key.clone())
+                                },
+                                {
+                                    category_translation_key(&category.key)
+                                        .map(|key| translate(locale(), key))
+                                        .unwrap_or_else(|| category.label.clone())
+                                }
+                            }
                         }
-                        {render_machine(
-                            &ordered_store_balls,
-                            extracted_store_ball(),
-                            false,
-                            extracted_store().as_deref(),
-                            false,
-                            0.0,
+                    }
+                    p { class: "mt-3 py-1.5 text-xs text-muted",
+                        {translate_fmt(
+                            locale(),
+                            "rewards_draw.selected_count",
+                            &[("count", selected_categories().len().to_string())]
                         )}
                     }
-                    div { class: "bg-white border border-gray-100 rounded-xl p-3",
-                        p { class: "text-xs font-bold tracking-widest text-muted text-center mb-2",
-                            style: "transform: none;",
-                            {translate(locale(), "rewards_draw.phase.discount_draw")}
-                        }
-                        {render_machine(
-                            &ordered_discount_balls,
-                            extracted_discount_ball(),
-                            true,
-                            None,
-                            show_discount_stamp,
-                            discount_stamp_ink_progress(),
-                        )}
+                    button {
+                        class: if !drawing()
+                            && phase() == DrawPhase::SelectCategories
+                            && !quota_exhausted()
+                            && !selected_categories().is_empty()
+                        {
+                            "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-accent text-white hover:bg-amber-600 transition-colors"
+                        } else {
+                            "mt-4 px-4 py-2 text-xs font-bold tracking-wider rounded-lg bg-gray-300 text-white cursor-not-allowed transition-colors"
+                        },
+                        disabled: quota_exhausted()
+                            || drawing()
+                            || selected_categories().is_empty()
+                            || phase() != DrawPhase::SelectCategories,
+                        onclick: build_store_draw,
+                        {translate(locale(), "rewards_draw.button.validate_categories")}
                     }
                 }
             }
 
             if can_show_machine {
-                div { class: "text-center",
-                    div { class: "flex items-center justify-center gap-3 mb-3",
+                div { class: "w-full max-w-5xl grid grid-cols-2 grid-rows-1 gap-6",
+                    div { class: "flex flex-col gap-4 items-center w-full",
+                        div { class: "bg-white border border-gray-100 rounded-xl p-3 w-full",
+                            p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
+                                style: "transform: none;",
+                                {translate(locale(), "rewards_draw.phase.first_store_draw")}
+                            }
+                            {render_machine(
+                                &ordered_store_balls,
+                                extracted_store_ball(),
+                                false,
+                                extracted_store().as_deref(),
+                                false,
+                                0.0,
+                            )}
+                        }
                         button {
                             class: if !drawing() && phase() == DrawPhase::DrawStore {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
                             } else {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
                             },
                             disabled: drawing() || phase() != DrawPhase::DrawStore,
                             onclick: draw_store,
@@ -1153,11 +1242,27 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                                 {translate(locale(), "rewards_draw.button.draw_store")}
                             }
                         }
+                    }
+                    div { class: "flex flex-col gap-4 items-center w-full",
+                        div { class: "bg-white border border-gray-100 rounded-xl p-3 w-full",
+                            p { class: "text-xs font-bold tracking-widest text-accent text-center mb-2",
+                                style: "transform: none;",
+                                {translate(locale(), "rewards_draw.phase.discount_draw")}
+                            }
+                            {render_machine(
+                                &ordered_discount_balls,
+                                extracted_discount_ball(),
+                                true,
+                                None,
+                                show_discount_stamp,
+                                discount_stamp_ink_progress(),
+                            )}
+                        }
                         button {
                             class: if !drawing() && phase() == DrawPhase::DrawDiscount {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-accent hover:bg-amber-600 rounded-lg transition-colors shadow-lg shadow-accent/30"
                             } else {
-                                "px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
+                                "shrink-0 px-6 py-3 text-xs font-bold tracking-wider text-white bg-gray-300 rounded-lg transition-colors cursor-not-allowed"
                             },
                             disabled: drawing() || phase() != DrawPhase::DrawDiscount,
                             onclick: draw_discount,
@@ -1168,8 +1273,12 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                             }
                         }
                     }
+                }
+            }
 
-                p { class: "text-xs text-muted mt-2",
+            if can_show_machine {
+                div { class: "text-center w-full max-w-5xl",
+                p { class: "text-xs text-muted mt-4",
                     "{status_message()}"
                 }
                 if let Some(store) = extracted_store() {
@@ -1210,7 +1319,6 @@ pub fn RewardsDraw(on_win: EventHandler<WinnerEvent>) -> Element {
                     }
                 }
                 }
-            }
             }
         }
     }

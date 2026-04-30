@@ -33,7 +33,7 @@
       "level": 3,
       "phone": "+41 091 601 93 30",
       "website": "https://www.akris.ch",
-      "icon_path": null
+      "icon_path": "/brands/akris.jpg"
     },
     {
       "name": "Armani",
@@ -42,7 +42,7 @@
       "level": 3,
       "phone": "+41 091 630 06 17",
       "website": "https://www.armani.com",
-      "icon_path": null
+      "icon_path": "/brands/armani.jpg"
     },
     {
       "name": "Borbonese",
@@ -51,7 +51,7 @@
       "level": 2,
       "phone": "+41 091 646 26 60",
       "website": "https://www.borbonese.it",
-      "icon_path": null
+      "icon_path": "/brands/borbonese.jpg"
     },
     {
       "name": "Boss",
@@ -60,7 +60,7 @@
       "level": 3,
       "phone": "+41 091 630 26 40",
       "website": "https://www.hugoboss.com",
-      "icon_path": null
+      "icon_path": "/brands/boss.jpg"
     },
     {
       "name": "Brooks Brothers",
@@ -69,7 +69,7 @@
       "level": 3,
       "phone": "+41 091 646 62 52",
       "website": "https://www.brooksbrothers.com",
-      "icon_path": null
+      "icon_path": "/brands/brooks_brothers.jpg"
     },
     {
       "name": "Burberry",
@@ -78,7 +78,7 @@
       "level": 3,
       "phone": "+41 044 588 99 62",
       "website": "https://www.burberry.com",
-      "icon_path": null
+      "icon_path": "/brands/burberry.jpg"
     },
     {
       "name": "Coach",
@@ -87,7 +87,7 @@
       "level": 2,
       "phone": "+41 091 646 01 86",
       "website": "https://www.coach.com",
-      "icon_path": null
+      "icon_path": "/brands/coach.jpg"
     },
     {
       "name": "Corneliani",
@@ -96,7 +96,7 @@
       "level": 3,
       "phone": "+41 091 630 01 47",
       "website": "https://www.corneliani.com",
-      "icon_path": null
+      "icon_path": "/brands/corneliani.jpg"
     },
     {
       "name": "Dolce & Gabbana",
@@ -105,7 +105,7 @@
       "level": 3,
       "phone": "+41 091 630 29 90",
       "website": "https://www.dolcegabbana.com",
-      "icon_path": null
+      "icon_path": "/brands/dolce_gabana.jpg"
     },
     {
       "name": "Dsquared2",
@@ -114,7 +114,7 @@
       "level": 1,
       "phone": "+41 091 646 35 36",
       "website": "https://www.dsquared2.com",
-      "icon_path": null
+      "icon_path": "/brands/dsquared2.jpg"
     },
     {
       "name": "Etro",
@@ -123,7 +123,7 @@
       "level": 3,
       "phone": "+41 091 646 34 15",
       "website": "https://www.etro.com",
-      "icon_path": null
+      "icon_path": "/brands/etro.jpg"
     },
     {
       "name": "Fay",
@@ -132,7 +132,7 @@
       "level": 3,
       "phone": "+41 091 646 92 15",
       "website": "https://www.fay.it",
-      "icon_path": null
+      "icon_path": "/brands/fay.jpg"
     },
     {
       "name": "Furla",
@@ -141,7 +141,7 @@
       "level": 3,
       "phone": "+41 091 646 36 01",
       "website": "https://www.furla.com",
-      "icon_path": null
+      "icon_path": "/brands/furla.jpg"
     },
     {
       "name": "John Richmond",
@@ -150,7 +150,7 @@
       "level": 3,
       "phone": "+41 091 630 29 33",
       "website": "https://www.johnrichmond.com",
-      "icon_path": null
+      "icon_path": "/brands/john_richmond.jpg"
     },
     {
       "name": "Kate Spade New York",
@@ -159,7 +159,7 @@
       "level": 3,
       "phone": "+41 091 646 77 67",
       "website": "https://www.katespade.com",
-      "icon_path": null
+      "icon_path": "/brands/kate_spade.jpg"
     },
     {
       "name": "Kiton",
@@ -168,7 +168,7 @@
       "level": 3,
       "phone": "+41 091 683 02 02",
       "website": "https://www.kiton.com",
-      "icon_path": null
+      "icon_path": "/brands/kiton.jpg"
     },
     {
       "name": "Longchamp",
@@ -177,7 +177,7 @@
       "level": 3,
       "phone": "+41 091 600 35 30",
       "website": "https://www.longchamp.com",
-      "icon_path": null
+      "icon_path": "/brands/longchamp.jpg"
     },
     {
       "name": "Loro Piana",
@@ -186,7 +186,7 @@
       "level": 3,
       "phone": "+41 091 640 99 30",
       "website": "https://www.loropiana.com",
-      "icon_path": null
+      "icon_path": "/brands/Loro_piana.jpg"
     },
     {
       "name": "Michael Kors",
@@ -195,7 +195,7 @@
       "level": 2,
       "phone": "+41 091 646 81 00",
       "website": "https://www.michaelkors.com",
-      "icon_path": null
+      "icon_path": "/brands/michael_kors.jpg"
     },
     {
       "name": "Missoni",
@@ -204,7 +204,7 @@
       "level": 3,
       "phone": "+41 091 646 74 19",
       "website": "https://www.missoni.com",
-      "icon_path": null
+      "icon_path": "/brands/missoni.jpg"
     },
     {
       "name": "Off-White",
@@ -213,7 +213,7 @@
       "level": 3,
       "phone": "+41 091 646 33 90",
       "website": "https://www.off---white.com",
-      "icon_path": null
+      "icon_path": "/brands/off_white.jpg"
     },
     {
       "name": "Patrizia Pepe",
@@ -222,20 +222,25 @@
       "level": 3,
       "phone": "+41 091 640 08 11",
       "website": "https://www.patriziapepe.com",
-      "icon_path": null
+      "icon_path": "/brands/patrizia_pepe.jpg"
     },
     {
-      "name": "Philipp Plein",
+      "name": "Philipp Plein - Women",
       "category": "HIGH_FASHION",
       "store_number": "157",
       "level": 1,
       "phone": "+41 091 646 24 08",
       "website": "https://www.philippplein.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Women", "store_number": "157", "level": 1 },
-        { "label": "Men", "store_number": "158", "level": 1 }
-      ]
+      "icon_path": "/brands/philipp_plein_women.jpg"
+    },
+    {
+      "name": "Philipp Plein - Men",
+      "category": "HIGH_FASHION",
+      "store_number": "158",
+      "level": 1,
+      "phone": "+41 091 646 24 08",
+      "website": "https://www.philippplein.com",
+      "icon_path": "/brands/philipp_plein_men.jpg"
     },
     {
       "name": "Polo Ralph Lauren",
@@ -244,7 +249,7 @@
       "level": 1,
       "phone": "+41 091 641 30 10",
       "website": "https://www.ralphlauren.com",
-      "icon_path": null
+      "icon_path": "/brands/polo.jpg"
     },
     {
       "name": "Prada",
@@ -253,7 +258,7 @@
       "level": 3,
       "phone": "+41 091 986 64 40",
       "website": "https://www.prada.com",
-      "icon_path": null
+      "icon_path": "/brands/prada.jpg"
     },
     {
       "name": "Salvatore Ferragamo",
@@ -262,7 +267,7 @@
       "level": 1,
       "phone": "+41 091 630 05 90",
       "website": "https://www.ferragamo.com",
-      "icon_path": null
+      "icon_path": "/brands/salvatorre_ferragamo.jpg"
     },
     {
       "name": "Versace",
@@ -271,7 +276,7 @@
       "level": 3,
       "phone": "+41 091 646 74 74",
       "website": "https://www.versace.com",
-      "icon_path": null
+      "icon_path": "/brands/versace.jpg"
     },
     {
       "name": "7 for all mankind",
@@ -280,7 +285,7 @@
       "level": 3,
       "phone": "+41 091 646 35 12",
       "website": "https://www.7forallmankind.com",
-      "icon_path": null
+      "icon_path": "/brands/7.jpg"
     },
     {
       "name": "André Maurice",
@@ -289,7 +294,7 @@
       "level": 3,
       "phone": "+41 091 630 29 29",
       "website": "https://www.andremaurice.com",
-      "icon_path": null
+      "icon_path": "/brands/andre_maurice.jpg"
     },
     {
       "name": "Angelico",
@@ -298,7 +303,7 @@
       "level": 2,
       "phone": "+41 091 224 65 57",
       "website": "https://www.angelico.com",
-      "icon_path": null
+      "icon_path": "/brands/angelico.jpg"
     },
     {
       "name": "Boggi Milano",
@@ -307,7 +312,7 @@
       "level": 1,
       "phone": "+41 091 646 78 33",
       "website": "https://www.boggi.com",
-      "icon_path": null
+      "icon_path": "/brands/boggi.jpg"
     },
     {
       "name": "Camicissima",
@@ -316,7 +321,7 @@
       "level": 1,
       "phone": "+41 091 646 27 27",
       "website": "https://www.camicissima.com",
-      "icon_path": null
+      "icon_path": "/brands/camicissima.jpg"
     },
     {
       "name": "Caroll",
@@ -325,7 +330,7 @@
       "level": 2,
       "phone": "+41 091 922 81 72",
       "website": "https://www.caroll.com",
-      "icon_path": null
+      "icon_path": "/brands/caroll.jpg"
     },
     {
       "name": "Costume National",
@@ -334,7 +339,7 @@
       "level": 2,
       "phone": "+41 091 646 80 62",
       "website": "https://www.costumenational.com",
-      "icon_path": null
+      "icon_path": "/brands/costume_national.jpg"
     },
     {
       "name": "Elena Mirò",
@@ -343,7 +348,7 @@
       "level": 2,
       "phone": "+41 091 646 38 66",
       "website": "https://www.elenamiro.com",
-      "icon_path": null
+      "icon_path": "/brands/elena_miro.jpg"
     },
     {
       "name": "Elmas Phil",
@@ -352,13 +357,27 @@
       "level": 2,
       "phone": "+41 091 220 84 53",
       "website": "https://www.elmasphil.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Main", "store_number": "267", "level": 2 },
-        { "label": "Collection", "store_number": "356", "level": 3 },
-        { "label": "Uomo", "store_number": "349", "level": 3 }
-      ]
+      "icon_path": "/brands/elmas_phil.jpg"
     },
+    {
+      "name": "Elmas Phil Collection",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "356",
+      "level": 3,
+      "phone": "+41 091 220 84 53",
+      "website": "https://www.elmasphil.com",
+      "icon_path": "/brands/elmas_phil_collection.jpg"
+    },
+    {
+      "name": "Elmas Phil Uomo",
+      "category": "LADIES_MENSWEAR",
+      "store_number": "349",
+      "level": 3,
+      "phone": "+41 091 220 84 53",
+      "website": "https://www.elmasphil.com",
+      "icon_path": "/brands/elmas_phil_uomo.jpg"
+    },
+
     {
       "name": "Falke",
       "category": "LADIES_MENSWEAR",
@@ -366,7 +385,7 @@
       "level": 3,
       "phone": "+41 091 646 83 88",
       "website": "https://www.falke.com",
-      "icon_path": null
+      "icon_path": "/brands/falke.jpg"
     },
     {
       "name": "Fiorella Rubino",
@@ -375,7 +394,7 @@
       "level": 2,
       "phone": "+41 091 224 48 62",
       "website": "https://www.fiorellarubino.com",
-      "icon_path": null
+      "icon_path": "/brands/fiorella_rubino.jpg"
     },
     {
       "name": "Flavio Castellani",
@@ -384,7 +403,7 @@
       "level": 3,
       "phone": "+41 091 646 48 48",
       "website": "https://www.flaviocastellani.it",
-      "icon_path": null
+      "icon_path": "/brands/flavio_castellani.jpg"
     },
     {
       "name": "Gaudì",
@@ -393,7 +412,7 @@
       "level": 3,
       "phone": "+41 091 646 87 44",
       "website": "https://www.gaudi.it",
-      "icon_path": null
+      "icon_path": "/brands/gaudi.jpg"
     },
     {
       "name": "Hackett London",
@@ -402,7 +421,7 @@
       "level": 2,
       "phone": "+41 091 630 03 29",
       "website": "https://www.hackett.com",
-      "icon_path": null
+      "icon_path": "/brands/hackett.jpg"
     },
     {
       "name": "Human Couture",
@@ -411,7 +430,7 @@
       "level": 2,
       "phone": "+41 091 646 36 53",
       "website": "https://www.humancouture.it",
-      "icon_path": null
+      "icon_path": "/brands/0_sbs.jpg"
     },
     {
       "name": "Il Lanificio",
@@ -420,7 +439,7 @@
       "level": 2,
       "phone": "+41 091 630 23 10",
       "website": "https://www.illanificio.it",
-      "icon_path": null
+      "icon_path": "/brands/il_lanificio.jpg"
     },
     {
       "name": "Jerem",
@@ -429,7 +448,7 @@
       "level": 1,
       "phone": "+41 091 646 01 10",
       "website": "https://www.jerem.eu",
-      "icon_path": null
+      "icon_path": "/brands/jerem.jpg"
     },
     {
       "name": "Maje",
@@ -438,7 +457,7 @@
       "level": 3,
       "phone": "+41 091 630 01 46",
       "website": "https://www.maje.com",
-      "icon_path": null
+      "icon_path": "/brands/maje.jpg"
     },
     {
       "name": "Marc O'Polo",
@@ -447,7 +466,7 @@
       "level": 3,
       "phone": "+41 091 252 00 01",
       "website": "https://www.marc-o-polo.com",
-      "icon_path": null
+      "icon_path": "/brands/marc_O_polo.jpg"
     },
     {
       "name": "Modesto Bertotto",
@@ -456,7 +475,7 @@
       "level": 2,
       "phone": "+41 091 646 06 25",
       "website": "https://www.modestobertotto.com",
-      "icon_path": null
+      "icon_path": "/brands/modesto_bertotto.jpg"
     },
     {
       "name": "Moorer",
@@ -465,7 +484,7 @@
       "level": 3,
       "phone": "+41 091 640 95 56",
       "website": "https://www.moorer.it",
-      "icon_path": null
+      "icon_path": "/brands/moorer.jpg"
     },
     {
       "name": "Morgan",
@@ -474,7 +493,7 @@
       "level": 2,
       "phone": "+41 091 646 77 52",
       "website": "https://www.morgan.fr",
-      "icon_path": null
+      "icon_path": "/brands/morgan.jpg"
     },
     {
       "name": "Motivi",
@@ -483,7 +502,7 @@
       "level": 1,
       "phone": "+41 091 630 28 45",
       "website": "https://www.motivi.com",
-      "icon_path": null
+      "icon_path": "/brands/motivi.jpg"
     },
     {
       "name": "Paul & Shark",
@@ -492,7 +511,7 @@
       "level": 3,
       "phone": "+41 091 646 00 67",
       "website": "https://www.paulshark.com",
-      "icon_path": null
+      "icon_path": "/brands/paul_shark.jpg"
     },
     {
       "name": "Peuterey",
@@ -501,7 +520,7 @@
       "level": 3,
       "phone": "+41 091 646 36 56",
       "website": "https://www.peuterey.com",
-      "icon_path": null
+      "icon_path": "/brands/peuterey.jpg"
     },
     {
       "name": "Pinko",
@@ -510,7 +529,7 @@
       "level": 3,
       "phone": "+41 091 630 22 16",
       "website": "https://www.pinko.com",
-      "icon_path": null
+      "icon_path": "/brands/pinko.jpg"
     },
     {
       "name": "Sandro",
@@ -519,7 +538,7 @@
       "level": 3,
       "phone": "+41 091 260 08 64",
       "website": "https://www.sandro-paris.com",
-      "icon_path": null
+      "icon_path": "/brands/sandro.jpg"
     },
     {
       "name": "Trussardi",
@@ -528,7 +547,7 @@
       "level": 2,
       "phone": "+41 091 225 63 23",
       "website": "https://www.trussardi.com",
-      "icon_path": null
+      "icon_path": "/brands/trussardi.jpg"
     },
     {
       "name": "Vero Moda",
@@ -537,7 +556,7 @@
       "level": 1,
       "phone": "+41 091 646 31 35",
       "website": "https://www.veromoda.com",
-      "icon_path": null
+      "icon_path": "/brands/vero_moda.jpg"
     },
     {
       "name": "Woolrich",
@@ -546,7 +565,7 @@
       "level": 3,
       "phone": "+41 091 646 01 81",
       "website": "https://www.woolrich.com",
-      "icon_path": null
+      "icon_path": "/brands/woolrich.jpg"
     },
     {
       "name": "Zadig & Voltaire",
@@ -555,7 +574,7 @@
       "level": 3,
       "phone": "+41 091 646 28 32",
       "website": "https://www.zadig-et-voltaire.com",
-      "icon_path": null
+      "icon_path": "/brands/zadig_&_voltaire.jpg"
     },
     {
       "name": "Aeronautica Militare",
@@ -564,7 +583,7 @@
       "level": 2,
       "phone": "+41 091 971 60 00",
       "website": "https://www.aeronautica.it",
-      "icon_path": null
+      "icon_path": "/brands/aventurx.jpg"
     },
     {
       "name": "Boxeur Des Rues",
@@ -573,11 +592,16 @@
       "level": 2,
       "phone": "+41 091 646 01 01",
       "website": "https://www.boxeurdesrues.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Malloy (permanent)", "store_number": "225", "level": 2 },
-        { "label": "Temporary", "store_number": "371", "level": 3 }
-      ]
+      "icon_path": "/brands/boxeur_des_rues.jpg"
+    },
+    {
+      "name": "Boxeur Des Rues",
+      "category": "CASUALWEAR",
+      "store_number": "371",
+      "level": 3,
+      "phone": "+41 091 646 01 01",
+      "website": "https://www.boxeurdesrues.com",
+      "icon_path": "/brands/boxeur_des_rues.jpg"
     },
     {
       "name": "Calvin Klein",
@@ -586,7 +610,7 @@
       "level": 2,
       "phone": "+41 091 646 02 50",
       "website": "https://www.calvinklein.com",
-      "icon_path": null
+      "icon_path": "/brands/calvin_klein.jpg"
     },
     {
       "name": "C.P. Company",
@@ -595,7 +619,7 @@
       "level": 2,
       "phone": "+41 091 646 02 21",
       "website": "https://www.cpcompany.com",
-      "icon_path": null
+      "icon_path": "/brands/cp_company.jpg"
     },
     {
       "name": "Diesel Factory Outlet",
@@ -604,7 +628,7 @@
       "level": 1,
       "phone": "+41 091 646 02 46",
       "website": "https://www.diesel.com",
-      "icon_path": null
+      "icon_path": "/brands/diesel.jpg"
     },
     {
       "name": "Gant",
@@ -613,7 +637,7 @@
       "level": 1,
       "phone": "+41 091 646 50 22",
       "website": "https://www.gant.com",
-      "icon_path": null
+      "icon_path": "/brands/gant.jpg"
     },
     {
       "name": "Guess",
@@ -622,11 +646,16 @@
       "level": 2,
       "phone": "+41 091 630 26 50",
       "website": "https://www.guess.eu",
-      "icon_path": null,
-      "locations": [
-        { "label": "Store 1", "store_number": "241", "level": 2 },
-        { "label": "Store 2", "store_number": "269", "level": 2 }
-      ]
+      "icon_path": "/brands/guess.jpg"
+    },
+    {
+      "name": "Guess",
+      "category": "CASUALWEAR",
+      "store_number": "269",
+      "level": 2,
+      "phone": "+41 091 630 26 50",
+      "website": "https://www.guess.eu",
+      "icon_path": "/brands/guess2.jpg"
     },
     {
       "name": "Harmont & Blaine",
@@ -635,7 +664,7 @@
       "level": 2,
       "phone": "+41 091 646 03 55",
       "website": "https://www.harmont.com",
-      "icon_path": null
+      "icon_path": "/brands/harmont_&_blaine.jpg"
     },
     {
       "name": "Jack & Jones",
@@ -644,7 +673,7 @@
       "level": 1,
       "phone": "+41 091 630 00 04",
       "website": "https://www.jackjones.com",
-      "icon_path": null
+      "icon_path": "/brands/jack_jones.jpg"
     },
     {
       "name": "K·Way",
@@ -653,7 +682,7 @@
       "level": 1,
       "phone": "+41 091 609 10 00",
       "website": "https://www.k-way.com",
-      "icon_path": null
+      "icon_path": "/brands/kway.jpg"
     },
     {
       "name": "La Martina",
@@ -662,7 +691,7 @@
       "level": 1,
       "phone": "+41 091 646 54 35",
       "website": "https://www.lamartina.com",
-      "icon_path": null
+      "icon_path": "/brands/la_martina.jpg"
     },
     {
       "name": "Lacoste",
@@ -671,7 +700,7 @@
       "level": 1,
       "phone": "+41 091 646 11 24",
       "website": "https://www.lacoste.com",
-      "icon_path": null
+      "icon_path": "/brands/lacoste.jpg"
     },
     {
       "name": "Lee - Wrangler",
@@ -680,7 +709,7 @@
       "level": 2,
       "phone": "+41 091 646 01 01",
       "website": "https://www.lee.com",
-      "icon_path": null
+      "icon_path": "/brands/lee.jpg"
     },
     {
       "name": "Levi's & Dockers",
@@ -689,7 +718,7 @@
       "level": 1,
       "phone": "+41 091 630 29 85",
       "website": "https://www.levi.com",
-      "icon_path": null
+      "icon_path": "/brands/levis.jpg"
     },
     {
       "name": "Napapijri",
@@ -698,7 +727,7 @@
       "level": 3,
       "phone": "+41 091 646 74 83",
       "website": "https://www.napapijri.com",
-      "icon_path": null
+      "icon_path": "/brands/napapijri.jpg"
     },
     {
       "name": "Only",
@@ -707,7 +736,7 @@
       "level": 1,
       "phone": "+41 091 646 23 35",
       "website": "https://www.only.com",
-      "icon_path": null
+      "icon_path": "/brands/only.jpg"
     },
     {
       "name": "Pepe Jeans",
@@ -716,7 +745,7 @@
       "level": 2,
       "phone": "+41 091 630 03 27",
       "website": "https://www.pepejeans.com",
-      "icon_path": null
+      "icon_path": "/brands/pepe_jeans.jpg"
     },
     {
       "name": "Quiksilver",
@@ -725,7 +754,7 @@
       "level": 1,
       "phone": "+41 091 646 82 33",
       "website": "https://www.quiksilver.eu",
-      "icon_path": null
+      "icon_path": "/brands/quicksilver.jpg"
     },
     {
       "name": "Replay",
@@ -734,7 +763,7 @@
       "level": 2,
       "phone": "+41 091 630 27 14",
       "website": "https://www.replay.it",
-      "icon_path": null
+      "icon_path": "/brands/replay.jpg"
     },
     {
       "name": "Timberland",
@@ -743,11 +772,16 @@
       "level": 2,
       "phone": "+41 091 630 23 55",
       "website": "https://www.timberland.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Permanent", "store_number": "261", "level": 2 },
-        { "label": "Temporary", "store_number": "236", "level": 2 }
-      ]
+      "icon_path": "/brands/timberland.jpg"
+    },
+    {
+      "name": "Timberland",
+      "category": "CASUALWEAR",
+      "store_number": "236",
+      "level": 2,
+      "phone": "+41 091 630 23 55",
+      "website": "https://www.timberland.com",
+      "icon_path": "/brands/timberland.jpg"
     },
     {
       "name": "Tommy Hilfiger",
@@ -756,7 +790,7 @@
       "level": 2,
       "phone": "+41 091 630 20 54",
       "website": "https://www.tommy.com",
-      "icon_path": null
+      "icon_path": "/brands/tommy_hilfiger.jpg"
     },
     {
       "name": "Aventurx",
@@ -765,7 +799,7 @@
       "level": 2,
       "phone": "+41 091 646 24 90",
       "website": "https://www.aventurx.ch",
-      "icon_path": null
+      "icon_path": "/brands/aventurx.jpg"
     },
     {
       "name": "Cmp",
@@ -774,7 +808,7 @@
       "level": 2,
       "phone": "+41 091 630 06 06",
       "website": "https://www.cmp.it",
-      "icon_path": null
+      "icon_path": "/brands/cmp.jpg"
     },
     {
       "name": "Freddy",
@@ -783,7 +817,7 @@
       "level": 0,
       "phone": "+41 091 646 32 22",
       "website": "https://www.freddy.com",
-      "icon_path": null
+      "icon_path": "/brands/freddy.jpg"
     },
     {
       "name": "Icebreaker",
@@ -792,7 +826,7 @@
       "level": 2,
       "phone": "+41 091 600 00 95",
       "website": "https://www.icebreaker.com",
-      "icon_path": null
+      "icon_path": "/brands/icebreaker.jpg"
     },
     {
       "name": "Jaked",
@@ -801,7 +835,7 @@
       "level": 1,
       "phone": "+41 091 646 42 76",
       "website": "https://www.jaked.com",
-      "icon_path": null
+      "icon_path": "/brands/jaked.jpg"
     },
     {
       "name": "Mammut",
@@ -810,7 +844,7 @@
       "level": 2,
       "phone": "+41 091 630 12 44",
       "website": "https://www.mammut.com",
-      "icon_path": null
+      "icon_path": "/brands/mammut.jpg"
     },
     {
       "name": "New Balance",
@@ -819,7 +853,7 @@
       "level": 2,
       "phone": "+41 091 646 11 01",
       "website": "https://www.newbalance.com",
-      "icon_path": null
+      "icon_path": "/brands/new_balance.jpg"
     },
     {
       "name": "Nike Factory Store",
@@ -828,7 +862,7 @@
       "level": 1,
       "phone": "+41 091 640 40 60",
       "website": "https://www.nike.com",
-      "icon_path": null
+      "icon_path": "/brands/nike.jpg"
     },
     {
       "name": "Oakley",
@@ -837,7 +871,7 @@
       "level": 2,
       "phone": "+41 091 646 49 50",
       "website": "https://www.oakley.com",
-      "icon_path": null
+      "icon_path": "/brands/oakley.jpg"
     },
     {
       "name": "Odlo",
@@ -846,11 +880,16 @@
       "level": 2,
       "phone": "+41 041 545 36 79",
       "website": "https://www.odlo.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Permanent", "store_number": "246", "level": 2 },
-        { "label": "Temporary", "store_number": "240", "level": 2 }
-      ]
+      "icon_path": "/brands/odlo.jpg"
+    },
+    {
+      "name": "Odlo",
+      "category": "SPORTSWEAR_EQUIPMENT",
+      "store_number": "240",
+      "level": 2,
+      "phone": "+41 041 545 36 79",
+      "website": "https://www.odlo.com",
+      "icon_path": "/brands/odlo.jpg"
     },
     {
       "name": "Peak Performance",
@@ -859,7 +898,7 @@
       "level": 1,
       "phone": "+41 091 640 95 20",
       "website": "https://www.peakperformance.com",
-      "icon_path": null
+      "icon_path": "/brands/peak_performance.jpg"
     },
     {
       "name": "Plein Sport",
@@ -868,7 +907,7 @@
       "level": 2,
       "phone": "+41 091 646 80 75",
       "website": "https://www.pleinsport.com",
-      "icon_path": null
+      "icon_path": "/brands/plein_sport.jpg"
     },
     {
       "name": "Puma",
@@ -877,7 +916,7 @@
       "level": 2,
       "phone": "+41 091 630 27 01",
       "website": "https://www.puma.com",
-      "icon_path": null
+      "icon_path": "/brands/puma.jpg"
     },
     {
       "name": "Rh+",
@@ -886,7 +925,7 @@
       "level": 3,
       "phone": "+41 091 682 10 97",
       "website": "https://www.rh-plus.it",
-      "icon_path": null
+      "icon_path": "/brands/rh_plus.jpg"
     },
     {
       "name": "Salomon",
@@ -895,7 +934,7 @@
       "level": 2,
       "phone": "+41 091 646 77 44",
       "website": "https://www.salomon.com",
-      "icon_path": null
+      "icon_path": "/brands/salomon.jpg"
     },
     {
       "name": "The North Face",
@@ -904,7 +943,7 @@
       "level": 2,
       "phone": "+41 091 646 23 09",
       "website": "https://www.thenorthface.com",
-      "icon_path": null
+      "icon_path": "/brands/the_north_face.jpg"
     },
     {
       "name": "Vaude",
@@ -913,7 +952,7 @@
       "level": 2,
       "phone": "+41 091 630 10 78",
       "website": "https://www.vaude.com",
-      "icon_path": null
+      "icon_path": "/brands/vaude.jpg"
     },
     {
       "name": "Brums",
@@ -922,7 +961,7 @@
       "level": 1,
       "phone": null,
       "website": "https://www.brums.com",
-      "icon_path": null
+      "icon_path": "/brands/brums.jpg"
     },
     {
       "name": "Harmont & Blaine Junior",
@@ -931,7 +970,7 @@
       "level": 1,
       "phone": "+41 091 646 66 34",
       "website": "https://www.harmont.com",
-      "icon_path": null
+      "icon_path": "/brands/harmont_&_blaine_junior.jpg"
     },
     {
       "name": "Jacadi Paris",
@@ -940,7 +979,7 @@
       "level": 3,
       "phone": "+41 091 646 38 88",
       "website": "https://www.jacadi.fr",
-      "icon_path": null
+      "icon_path": "/brands/jacadi.jpg"
     },
     {
       "name": "Kid Space",
@@ -949,11 +988,16 @@
       "level": 2,
       "phone": "+41 091 646 80 62",
       "website": "https://www.foxtown.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Main", "store_number": "222", "level": 2 },
-        { "label": "Collection", "store_number": "133", "level": 1 }
-      ]
+      "icon_path": "/brands/kid_space.jpg"
+    },
+    {
+      "name": "Kid Space Collection",
+      "category": "CHILDRENSWEAR",
+      "store_number": "133",
+      "level": 1,
+      "phone": "+41 091 646 80 62",
+      "website": "https://www.foxtown.com",
+      "icon_path": "/brands/kid_space_collection.jpg"
     },
     {
       "name": "Simonetta",
@@ -962,7 +1006,7 @@
       "level": 3,
       "phone": "+41 091 646 38 13",
       "website": "https://www.simonettaonline.it",
-      "icon_path": null
+      "icon_path": "/brands/simonetta.jpg"
     },
     {
       "name": "Baldinini",
@@ -971,7 +1015,7 @@
       "level": 2,
       "phone": "+41 091 630 28 30",
       "website": "https://www.baldinini.it",
-      "icon_path": null
+      "icon_path": "/brands/baldinini.jpg"
     },
     {
       "name": "Bally",
@@ -980,11 +1024,16 @@
       "level": 3,
       "phone": "+41 091 646 73 45",
       "website": "https://www.bally.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Permanent", "store_number": "305", "level": 3 },
-        { "label": "Temporary", "store_number": "005", "level": 0 }
-      ]
+      "icon_path": "/brands/bally.jpg"
+    },
+    {
+      "name": "Bally",
+      "category": "FOOTWEAR",
+      "store_number": "005",
+      "level": 0,
+      "phone": "+41 091 646 73 45",
+      "website": "https://www.bally.com",
+      "icon_path": "/brands/bally.jpg"
     },
     {
       "name": "Church's",
@@ -993,7 +1042,7 @@
       "level": 3,
       "phone": "+41 091 640 60 20",
       "website": "https://www.church-footwear.com",
-      "icon_path": null
+      "icon_path": "/brands/churchs.jpg"
     },
     {
       "name": "Clarks",
@@ -1002,7 +1051,7 @@
       "level": 1,
       "phone": "+41 091 630 08 01",
       "website": "https://www.clarks.com",
-      "icon_path": null
+      "icon_path": "/brands/clarks.jpg"
     },
     {
       "name": "Ecco",
@@ -1011,7 +1060,7 @@
       "level": 2,
       "phone": "+41 091 646 08 88",
       "website": "https://www.ecco.com",
-      "icon_path": null
+      "icon_path": "/brands/ecco.jpg"
     },
     {
       "name": "Fratelli Rossetti",
@@ -1020,7 +1069,7 @@
       "level": 2,
       "phone": "+41 091 630 28 72",
       "website": "https://www.fratellirossetti.com",
-      "icon_path": null
+      "icon_path": "/brands/fratelli_rossetti.jpg"
     },
     {
       "name": "Geox",
@@ -1029,7 +1078,7 @@
       "level": 1,
       "phone": "+41 091 630 22 24",
       "website": "https://www.geox.com",
-      "icon_path": null
+      "icon_path": "/brands/geox.jpg"
     },
     {
       "name": "Jimmy Choo",
@@ -1038,7 +1087,7 @@
       "level": 2,
       "phone": "+41 091 646 18 20",
       "website": "https://www.jimmychoo.com",
-      "icon_path": null
+      "icon_path": "/brands/jimmy_choo.jpg"
     },
     {
       "name": "Pollini",
@@ -1047,7 +1096,7 @@
       "level": 3,
       "phone": "+41 091 646 79 06",
       "website": "https://www.pollini.com",
-      "icon_path": null
+      "icon_path": "/brands/pollini.jpg"
     },
     {
       "name": "Skechers",
@@ -1056,7 +1105,7 @@
       "level": 2,
       "phone": "+41 091 646 01 60",
       "website": "https://www.skechers.com",
-      "icon_path": null
+      "icon_path": "/brands/skechers.jpg"
     },
     {
       "name": "Tod's - Hogan",
@@ -1065,7 +1114,7 @@
       "level": 3,
       "phone": "+41 091 646 92 15",
       "website": "https://www.tods.com",
-      "icon_path": null
+      "icon_path": "/brands/tods.jpg"
     },
     {
       "name": "Ugg",
@@ -1074,7 +1123,7 @@
       "level": 2,
       "phone": "+41 091 630 00 71",
       "website": "https://www.ugg.com",
-      "icon_path": null
+      "icon_path": "/brands/ugg.jpg"
     },
     {
       "name": "Vans",
@@ -1083,7 +1132,7 @@
       "level": 2,
       "phone": "+41 091 630 02 93",
       "website": "https://www.vans.com",
-      "icon_path": null
+      "icon_path": "/brands/vans.jpg"
     },
     {
       "name": "Calida",
@@ -1092,7 +1141,7 @@
       "level": 1,
       "phone": "+41 091 630 23 45",
       "website": "https://www.calida.com",
-      "icon_path": null
+      "icon_path": "/brands/calida.jpg"
     },
     {
       "name": "Calzedonia - Intimissimi",
@@ -1101,7 +1150,7 @@
       "level": 1,
       "phone": "+41 091 646 74 41",
       "website": "https://www.calzedonia.com",
-      "icon_path": null
+      "icon_path": "/brands/calzedonia.jpg"
     },
     {
       "name": "Hanro",
@@ -1110,7 +1159,7 @@
       "level": 2,
       "phone": "+41 091 630 09 94",
       "website": "https://www.hanro.com",
-      "icon_path": null
+      "icon_path": "/brands/hanro.jpg"
     },
     {
       "name": "Triumph",
@@ -1119,7 +1168,7 @@
       "level": 1,
       "phone": "+41 091 646 37 02",
       "website": "https://www.triumph.com",
-      "icon_path": null
+      "icon_path": "/brands/triumph.jpg"
     },
     {
       "name": "Wolford",
@@ -1128,7 +1177,7 @@
       "level": 3,
       "phone": "+41 091 630 10 27",
       "website": "https://www.wolford.com",
-      "icon_path": null
+      "icon_path": "/brands/wolford.jpg"
     },
     {
       "name": "Damiani",
@@ -1137,7 +1186,7 @@
       "level": 3,
       "phone": "+41 091 630 15 95",
       "website": "https://www.damiani.com",
-      "icon_path": null
+      "icon_path": "/brands/damiani.jpg"
     },
     {
       "name": "Hour Passion",
@@ -1146,7 +1195,7 @@
       "level": 3,
       "phone": "+41 091 646 14 44",
       "website": "https://www.hourpassion.com",
-      "icon_path": null
+      "icon_path": "/brands/hour_passion.jpg"
     },
     {
       "name": "Swarovski",
@@ -1155,7 +1204,7 @@
       "level": 1,
       "phone": "+41 091 646 01 78",
       "website": "https://www.swarovski.com",
-      "icon_path": null
+      "icon_path": "/brands/swarovski.jpg"
     },
     {
       "name": "Swatch",
@@ -1173,7 +1222,7 @@
       "level": 3,
       "phone": "+41 091 646 30 31",
       "website": "https://www.belottiottica.ch",
-      "icon_path": null
+      "icon_path": "/brands/belotti.jpg"
     },
     {
       "name": "Blitz for eyes",
@@ -1182,7 +1231,7 @@
       "level": 1,
       "phone": "+41 091 630 01 30",
       "website": "https://www.blitzforeyes.com",
-      "icon_path": null
+      "icon_path": "/brands/blitz.jpg"
     },
     {
       "name": "Bric's",
@@ -1191,7 +1240,7 @@
       "level": 1,
       "phone": "+41 091 646 07 18",
       "website": "https://www.brics.it",
-      "icon_path": null
+      "icon_path": "/brands/brics.jpg"
     },
     {
       "name": "Coccinelle",
@@ -1200,7 +1249,7 @@
       "level": 3,
       "phone": "+41 091 630 00 24",
       "website": "https://www.coccinelle.com",
-      "icon_path": null
+      "icon_path": "/brands/coccinelle.jpg"
     },
     {
       "name": "Freitag",
@@ -1209,7 +1258,7 @@
       "level": 3,
       "phone": null,
       "website": "https://www.freitag.ch",
-      "icon_path": null
+      "icon_path": "/brands/freitag.jpg"
     },
     {
       "name": "Mantero",
@@ -1227,7 +1276,7 @@
       "level": 2,
       "phone": "+41 091 640 95 43",
       "website": "https://www.miriade.it",
-      "icon_path": null
+      "icon_path": "/brands/miriade.jpg"
     },
     {
       "name": "Samsonite",
@@ -1236,7 +1285,7 @@
       "level": 2,
       "phone": "+41 091 630 21 70",
       "website": "https://www.samsonite.com",
-      "icon_path": null
+      "icon_path": "/brands/samsonite.jpg"
     },
     {
       "name": "Sbs",
@@ -1245,7 +1294,7 @@
       "level": 1,
       "phone": "+41 091 646 08 05",
       "website": "https://www.sbsitalia.com",
-      "icon_path": null
+      "icon_path": "/brands/0_sbs.jpg"
     },
     {
       "name": "Free Shop",
@@ -1254,11 +1303,16 @@
       "level": 1,
       "phone": "+41 091 646 09 29",
       "website": "https://www.foxtown.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Store 1", "store_number": "107", "level": 1 },
-        { "label": "Store 2", "store_number": "357", "level": 3 }
-      ]
+      "icon_path": "/brands/free_1_shop.jpg"
+    },
+    {
+      "name": "Free Shop",
+      "category": "BEAUTY",
+      "store_number": "357",
+      "level": 3,
+      "phone": "+41 091 646 09 29",
+      "website": "https://www.foxtown.com",
+      "icon_path": "/brands/free2shop.jpg"
     },
     {
       "name": "Kiko Milano",
@@ -1267,7 +1321,7 @@
       "level": 2,
       "phone": "+41 091 630 02 55",
       "website": "https://www.kikocosmetics.com",
-      "icon_path": null
+      "icon_path": "/brands/kiko.jpg"
     },
     {
       "name": "Bassetti",
@@ -1276,7 +1330,7 @@
       "level": 2,
       "phone": "+41 091 646 45 05",
       "website": "https://www.bassetti.it",
-      "icon_path": null
+      "icon_path": "/brands/bassetti.jpg"
     },
     {
       "name": "Christmas Store",
@@ -1294,7 +1348,7 @@
       "level": 0,
       "phone": "+41 091 646 83 37",
       "website": "https://www.lecreuset.com",
-      "icon_path": null
+      "icon_path": "/brands/le_creuset.jpg"
     },
     {
       "name": "Millefiori store",
@@ -1303,7 +1357,7 @@
       "level": 1,
       "phone": "+41 091 646 77 12",
       "website": "https://www.millefiori.com",
-      "icon_path": null
+      "icon_path": "/brands/millefiori.jpg"
     },
     {
       "name": "Villeroy & Boch",
@@ -1312,7 +1366,7 @@
       "level": 2,
       "phone": "+41 091 630 26 20",
       "website": "https://www.villeroy-boch.com",
-      "icon_path": null
+      "icon_path": "/brands/villeroy_et_boch.jpg"
     },
     {
       "name": "Wmf",
@@ -1321,7 +1375,7 @@
       "level": 2,
       "phone": "+41 091 646 21 25",
       "website": "https://www.wmf.com",
-      "icon_path": null
+      "icon_path": "/brands/wmf.jpg"
     },
     {
       "name": "Chalet Suisse",
@@ -1366,7 +1420,7 @@
       "level": 1,
       "phone": "+41 091 914 48 58",
       "website": "https://www.lindt.com",
-      "icon_path": null
+      "icon_path": "/brands/lindt.jpg"
     },
     {
       "name": "Maui Poke",
@@ -1387,18 +1441,31 @@
       "icon_path": null
     },
     {
-      "name": "The Place",
+      "name": "The Place - Asian",
       "category": "FOOD_DRINKS",
       "store_number": "121",
       "level": 1,
       "phone": "+41 091 646 03 58",
       "website": "https://www.foxtown.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Asian", "store_number": "121", "level": 1 },
-        { "label": "Juices", "store_number": "154", "level": 1 },
-        { "label": "Sweet & Salt", "store_number": "121", "level": 1 }
-      ]
+      "icon_path": null
+    },
+    {
+      "name": "The Place - Juices",
+      "category": "FOOD_DRINKS",
+      "store_number": "154",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": "https://www.foxtown.com",
+      "icon_path": null
+    },
+    {
+      "name": "The Place - Sweet & Salt",
+      "category": "FOOD_DRINKS",
+      "store_number": "121",
+      "level": 1,
+      "phone": "+41 091 646 03 58",
+      "website": "https://www.foxtown.com",
+      "icon_path": null
     },
     {
       "name": "Wood Avenue - Italian Restaurant",
@@ -1434,12 +1501,7 @@
       "level": 1,
       "phone": "+41 091 630 00 61",
       "website": "https://www.globalblue.com",
-      "icon_path": null,
-      "locations": [
-        { "label": "Global Blue Tax Free Refund Point", "store_number": "120", "level": 1 },
-        { "label": "Planet Tax Refund Point", "store_number": "120", "level": 1 },
-        { "label": "Tichange - Exchange Office", "store_number": "120", "level": 1 }
-      ]
+      "icon_path": null
     },
     {
       "name": "Infopoint / Guest Services",

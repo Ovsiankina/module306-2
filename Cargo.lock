@@ -1352,8 +1352,10 @@ dependencies = [
  "base64",
  "chrono",
  "dioxus",
+ "dioxus-server",
  "dotenvy",
  "gloo-timers",
+ "infer",
  "js-sys",
  "jsonwebtoken",
  "lettre",
@@ -1365,6 +1367,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "uuid",
+ "wasm-bindgen",
  "web-sys",
 ]
 
