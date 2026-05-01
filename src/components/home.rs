@@ -343,15 +343,6 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
         None => ("—".to_string(), "10".to_string(), false),
     };
     let right_hms = cooldown_hms().unwrap_or_else(|| reset_hms());
-    let (global_available, ev_available) = match parking_stats() {
-        Some((occupied_total, capacity_total, ev_occupied_total, ev_capacity_total)) => {
-            (
-                capacity_total.saturating_sub(occupied_total),
-                ev_capacity_total.saturating_sub(ev_occupied_total),
-            )
-        }
-        None => (0, 0),
-    };
 
     rsx! {
         div {
@@ -426,32 +417,6 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
                         }
                     }
                     ParkingWidgetBar {}
-                }
-                div { class: "hidden md:flex h-16 max-h-16 shrink-0 items-center gap-2 rounded-lg border border-black bg-gray-900/70 px-2 py-1 self-center overflow-hidden",
-                    img {
-                        src: asset!("/assets/parking_icons/icons8-parking-100.png"),
-                        alt: "Parking",
-                        class: "h-4 w-4 shrink-0 object-contain",
-                        style: "width: 60px; filter: brightness(0) invert(1);",
-                    }
-                    p { class: "text-[11px] font-semibold text-white whitespace-nowrap leading-4 flex flex-col justify-center items-start",
-                        span { class: "text-[10px] font-bold tracking-widest uppercase text-accent mr-2", "Disponible" }
-                        "{global_available} places · {ev_available} bornes"
-                    }
-                }
-            }
-            div { class: "md:hidden max-w-7xl mx-auto px-6 pb-2",
-                div { class: "h-16 max-h-16 flex items-center gap-2 rounded-lg border border-black bg-gray-900/70 px-2 py-1 self-center overflow-hidden",
-                    img {
-                        src: asset!("/assets/parking_icons/icons8-parking-100.png"),
-                        alt: "Parking",
-                        class: "h-4 w-4 shrink-0 object-contain",
-                        style: "width: 60px; filter: brightness(0) invert(1);",
-                    }
-                    p { class: "text-[11px] font-semibold text-white whitespace-nowrap leading-4 flex flex-col justify-center items-start",
-                        span { class: "text-[10px] font-bold tracking-widest uppercase text-accent mr-2", "Disponible" }
-                        "{global_available} places · {ev_available} bornes"
-                    }
                 }
             }
         }
