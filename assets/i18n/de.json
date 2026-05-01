@@ -314,6 +314,7 @@
   "parking.card.ev_subtitle": "Verfugbarkeit von Parkplatzen mit Lademoglichkeit.",
   "parking.card.occupied_count": "{occupied}/{capacity} belegte Platze",
   "parking.card.available_count": "{count} freie Platze",
+  "parking.spots": "PLATZE",
   "parking.zone.standard_spaces": "Standardplatze",
   "parking.zone.ev_stations": "Elektro-Ladestationen",
   "parking.zone.occupied_percent": "{occupied}/{capacity} belegt ({percent}%)",

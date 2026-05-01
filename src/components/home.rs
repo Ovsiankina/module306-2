@@ -226,6 +226,47 @@ fn format_remaining_to_timestamp_hms(target_rfc3339: &str) -> Option<String> {
 }
 
 #[component]
+fn ParkingWidgetBar() -> Element {
+    let locale = use_context::<Signal<Locale>>();
+    let mut available_parking = use_signal(|| 0u32);
+    let nav = use_navigator();
+
+    use_effect(move || {
+        spawn(async move {
+            loop {
+                if let Ok(snapshot) = get_parking_snapshot().await {
+                    let total_capacity: u32 = snapshot.zones.iter().map(|z| z.capacity).sum();
+                    let total_occupied: u32 = snapshot.zones.iter().map(|z| z.occupied).sum();
+                    available_parking.set(total_capacity.saturating_sub(total_occupied));
+                }
+                delay_ms(30_000).await;
+            }
+        });
+    });
+
+    rsx! {
+        button {
+            r#type: "button",
+            onclick: move |_| { let _ = nav.push(Route::Parking {}); },
+            class: "shrink-0 px-3 py-1.5 rounded-lg hover:bg-gray-800 transition-colors text-right cursor-pointer",
+            title: {translate(locale(), "nav.parking")},
+            "aria-label": {translate(locale(), "nav.parking")},
+            style: "min-width: 7rem;",
+            span {
+                class: "text-xs font-bold tracking-widest text-accent uppercase block",
+                {translate(locale(), "nav.parking")}
+            }
+            p {
+                class: "text-sm font-black text-white",
+                style: "margin: 0; margin-top: 2px;",
+                "{available_parking()} "
+                span { class: "text-xs text-gray-400", {translate(locale(), "parking.spots")} }
+            }
+        }
+    }
+}
+
+#[component]
 pub(crate) fn HomeWinnersTickerBar() -> Element {
     let locale = use_context::<Signal<Locale>>();
     let mut pool = use_signal(|| None::<DailyPrizePoolSnapshot>);
@@ -314,10 +355,10 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
 
     rsx! {
         div {
-            class: "sticky z-10 w-full bg-dark text-white border-b border-gray-700 font-heading shadow-sm",
+            class: "sticky z-10 w-full h-16 max-h-16 overflow-hidden bg-dark text-white font-heading shadow-sm",
             style: "top: 4rem;",
             div {
-                class: "max-w-7xl mx-auto px-6 h-16 max-h-16 flex items-center gap-3",
+                class: "max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-3",
                 style: "min-height: 0;",
                 div {
                     class: "shrink-0 flex flex-col justify-center gap-1",
@@ -366,20 +407,25 @@ pub(crate) fn HomeWinnersTickerBar() -> Element {
                     }
                 }
                 div {
-                    class: "shrink-0 flex flex-col justify-center items-end gap-1 text-right",
-                    style: "line-height: 1; min-width: 9rem;",
-                    span { class: "text-xs font-bold tracking-widest text-accent uppercase",
-                        if cooldown_active {
-                            {translate(locale(), "home.ticker.quota_full_label")}
-                        } else {
-                            {translate(locale(), "home.ticker.reset_in_label")}
+                    class: "shrink-0 flex items-center gap-4",
+                    style: "margin-right: 0;",
+                    div {
+                        class: "flex flex-col justify-center items-end gap-1 text-right",
+                        style: "line-height: 1; min-width: 9rem;",
+                        span { class: "text-xs font-bold tracking-widest text-accent uppercase",
+                            if cooldown_active {
+                                {translate(locale(), "home.ticker.quota_full_label")}
+                            } else {
+                                {translate(locale(), "home.ticker.reset_in_label")}
+                            }
+                        }
+                        p {
+                            class: "mt-0 text-lg font-bold text-white",
+                            style: "font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -0.025em;",
+                            "{right_hms}"
                         }
                     }
-                    p {
-                        class: "mt-0 text-lg font-bold text-white",
-                        style: "font-family: var(--font-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -0.025em;",
-                        "{right_hms}"
-                    }
+                    ParkingWidgetBar {}
                 }
                 div { class: "hidden md:flex h-16 max-h-16 shrink-0 items-center gap-2 rounded-lg border border-black bg-gray-900/70 px-2 py-1 self-center overflow-hidden",
                     img {

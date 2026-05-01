@@ -314,6 +314,7 @@
   "parking.card.ev_subtitle": "Disponibilita dei posti con ricarica.",
   "parking.card.occupied_count": "{occupied}/{capacity} posti occupati",
   "parking.card.available_count": "{count} posti disponibili",
+  "parking.spots": "POSTI",
   "parking.zone.standard_spaces": "Posti standard",
   "parking.zone.ev_stations": "Colonnine elettriche",
   "parking.zone.occupied_percent": "{occupied}/{capacity} occupati ({percent}%)",

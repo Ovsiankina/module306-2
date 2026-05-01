@@ -314,6 +314,7 @@
   "parking.card.ev_subtitle": "Availability of charging-enabled spots.",
   "parking.card.occupied_count": "{occupied}/{capacity} occupied spots",
   "parking.card.available_count": "{count} spots available",
+  "parking.spots": "SPOTS",
   "parking.zone.standard_spaces": "Standard spaces",
   "parking.zone.ev_stations": "Electric chargers",
   "parking.zone.occupied_percent": "{occupied}/{capacity} occupied ({percent}%)",
